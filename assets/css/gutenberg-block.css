@@ -1,0 +1,111 @@
+/**
+ * SyntekPro Forms - Gutenberg Block Editor Styles
+ */
+
+.syntekpro-forms-block-wrapper {
+    margin: 20px 0;
+}
+
+.syntekpro-forms-block-preview {
+    background: linear-gradient(135deg, #f7f9fc 0%, #ffffff 60%);
+    border: 1px solid #e3e7ef;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 12px 30px rgba(16, 24, 40, 0.08);
+}
+
+.syntekpro-forms-block-header {
+    background: #ffffff;
+    color: #1d2327;
+    padding: 14px 22px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    border-bottom: 1px solid #e3e7ef;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.syntekpro-forms-block-header .dashicons {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: #0073aa;
+}
+
+.syntekpro-forms-block-content {
+    padding: 46px 48px 54px;
+    background: #f9fbfe;
+    min-height: 160px;
+}
+
+.syntekpro-forms-block-content .spf-form-wrapper,
+.syntekpro-forms-block-content .spf-form-container {
+    max-width: 960px;
+    margin-left: auto;
+    margin-right: auto;
+    border-radius: 16px;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+    padding: 28px 32px;
+    background: #ffffff;
+}
+
+@media (max-width: 900px) {
+    .syntekpro-forms-block-content {
+        padding: 28px 22px 34px;
+    }
+    .syntekpro-forms-block-content .spf-form-wrapper,
+    .syntekpro-forms-block-content .spf-form-container {
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+    }
+}
+
+.syntekpro-forms-block-content .spf-form-title {
+    margin-top: 0;
+    font-size: 1.6em;
+}
+
+.syntekpro-forms-block-content .spf-form-description {
+    margin-bottom: 22px;
+}
+
+.syntekpro-forms-block-placeholder {
+    margin: 20px 0;
+}
+
+.syntekpro-forms-select {
+    min-width: 300px;
+}
+
+/* Placeholder styling */
+.syntekpro-forms-block-placeholder .components-placeholder {
+    min-height: 200px;
+    background: #fff;
+    border: 2px dashed #0073aa;
+    border-radius: 4px;
+}
+
+.syntekpro-forms-block-placeholder .components-placeholder__label {
+    color: #0073aa;
+    font-weight: 600;
+}
+
+/* Inspector controls */
+.syntekpro-forms-block-wrapper .components-panel__body {
+    border-top: 1px solid #e0e0e0;
+}
+
+/* Make sure block is visible in list view */
+.block-editor-block-list__block[data-type="syntekpro-forms/form-selector"] {
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+
+/* Block icon in inserter */
+.block-editor-block-types-list__item[data-id="syntekpro-forms/form-selector"] .block-editor-block-icon {
+    color: #0073aa;
+}

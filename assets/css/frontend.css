@@ -1,0 +1,590 @@
+/* SyntekPro Forms - Frontend Styles */
+
+/* Form Container */
+.spf-form-wrapper,
+.spf-form-container {
+    max-width: 980px;
+    width: 100%;
+    margin: 24px auto;
+    padding: 30px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: var(--spf-border-radius, 8px);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+    font-family: var(--spf-font-family, inherit);
+    font-size: var(--spf-font-size, 16px);
+}
+
+@media (max-width: 720px) {
+    .spf-form-wrapper,
+    .spf-form-container {
+        padding: 18px;
+        margin: 16px auto;
+        border-radius: var(--spf-border-radius, 6px);
+    }
+}
+
+.spf-form-title {
+    margin: 0 0 15px 0;
+    font-size: var(--spf-title-size, 1.75em);
+    font-weight: 600;
+    color: var(--spf-title-color, #1d2327);
+}
+
+.spf-form-description {
+    margin-bottom: 25px;
+    color: var(--spf-desc-color, #50575e);
+    font-size: var(--spf-desc-size, 1em);
+    line-height: 1.6;
+}
+
+/* Form Fields */
+.spf-form {
+    width: 100%;
+}
+
+.spf-field-wrapper {
+    margin-bottom: 25px;
+}
+
+.spf-field-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    font-size: var(--spf-label-size, 0.95em);
+    color: var(--spf-label-color, #1d2327);
+}
+
+.spf-required {
+    color: #dc3232;
+    font-weight: bold;
+}
+
+.spf-field-input,
+.spf-field-textarea,
+.spf-field-select,
+.spf-field-file {
+    width: 100%;
+    padding: var(--spf-field-padding, 12px 15px);
+    border: 1px solid var(--spf-input-border, #ddd);
+    border-radius: var(--spf-border-radius, 4px);
+    font-size: var(--spf-input-font-size, 1em);
+    font-family: inherit;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    background: var(--spf-input-bg, #fff);
+    color: var(--spf-input-text, inherit);
+}
+
+.spf-field-input:focus,
+.spf-field-textarea:focus,
+.spf-field-select:focus {
+    outline: none;
+    border-color: var(--spf-input-accent, var(--spf-primary-color, #0073aa));
+    box-shadow: 0 0 0 1px var(--spf-input-accent, var(--spf-primary-color, #0073aa));
+}
+
+.spf-field-textarea {
+    resize: vertical;
+    min-height: 120px;
+}
+
+/* Radio and Checkbox Groups */
+.spf-radio-group,
+.spf-checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.spf-radio-label,
+.spf-checkbox-label {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    background: #f6f7f7;
+    border: 1px solid #ddd;
+    border-radius: var(--spf-border-radius, 4px);
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s;
+    font-size: 1em;
+}
+
+.spf-radio-label:hover,
+.spf-checkbox-label:hover {
+    background: #e8f4f8;
+    border-color: var(--spf-input-accent, var(--spf-primary-color, #0073aa));
+}
+
+.spf-radio-label input[type="radio"],
+.spf-checkbox-label input[type="checkbox"] {
+    margin-right: 10px;
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: var(--spf-input-accent, var(--spf-primary-color, #0073aa));
+}
+
+/* Field Description */
+.spf-field-description {
+    margin-top: 6px;
+    font-size: 0.85em;
+    color: #646970;
+    font-style: italic;
+}
+
+/* File Upload */
+.spf-field-file {
+    padding: 10px;
+    cursor: pointer;
+}
+
+/* reCAPTCHA */
+.spf-recaptcha {
+    margin-bottom: 20px;
+}
+
+/* Form Footer */
+.spf-form-footer {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #ddd;
+}
+
+.spf-submit-button {
+    padding: 14px 30px;
+    background: var(--spf-btn-bg, var(--spf-primary-color, #0073aa));
+    color: var(--spf-btn-text, #fff);
+    border: none;
+    border-radius: var(--spf-border-radius, 4px);
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+.spf-submit-button:hover {
+    filter: brightness(90%);
+}
+
+.spf-submit-button:active {
+    transform: scale(0.98);
+}
+
+.spf-submit-button:disabled {
+    background: #c3c4c7;
+    cursor: not-allowed;
+}
+
+/* Submit Alignment */
+.spf-submit-align-center {
+    display: flex;
+    justify-content: center;
+}
+
+.spf-submit-align-right {
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* --- THEMES --- */
+
+/* Modern Theme */
+.spf-theme-modern {
+    border: none;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    padding: 40px;
+}
+
+.spf-theme-modern .spf-field-input,
+.spf-theme-modern .spf-field-textarea,
+.spf-theme-modern .spf-field-select {
+    background: #f8f9fa;
+    border-color: transparent;
+}
+
+.spf-theme-modern .spf-field-input:focus,
+.spf-theme-modern .spf-field-textarea:focus,
+.spf-theme-modern .spf-field-select:focus {
+    background: #fff;
+    border-color: var(--spf-primary-color);
+}
+
+/* Minimal Theme */
+.spf-theme-minimal {
+    border: none;
+    box-shadow: none;
+    padding: 20px 0;
+    background: transparent;
+}
+
+.spf-theme-minimal .spf-field-input,
+.spf-theme-minimal .spf-field-textarea,
+.spf-theme-minimal .spf-field-select {
+    border: none;
+    border-bottom: 2px solid #eee;
+    border-radius: 0;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.spf-theme-minimal .spf-field-input:focus,
+.spf-theme-minimal .spf-field-textarea:focus,
+.spf-theme-minimal .spf-field-select:focus {
+    box-shadow: none;
+    border-bottom-color: var(--spf-primary-color);
+}
+
+.spf-theme-minimal .spf-radio-label,
+.spf-theme-minimal .spf-checkbox-label {
+    background: transparent;
+    border: none;
+    padding-left: 0;
+}
+
+.spf-theme-minimal .spf-submit-button {
+    width: auto;
+    border-radius: 0;
+}
+
+/* Elegant Theme */
+.spf-theme-elegant {
+    background: linear-gradient(135deg, #f8f6ff, #ffffff);
+    border: 1px solid #e6ddff;
+    box-shadow: 0 12px 30px rgba(88, 63, 176, 0.08);
+}
+
+.spf-theme-elegant .spf-form-title {
+    color: #4c3d8f;
+    letter-spacing: 0.02em;
+}
+
+.spf-theme-elegant .spf-field-input,
+.spf-theme-elegant .spf-field-textarea,
+.spf-theme-elegant .spf-field-select {
+    background: #fefbff;
+    border-color: #d9c8ff;
+}
+
+.spf-theme-elegant .spf-field-input:focus,
+.spf-theme-elegant .spf-field-textarea:focus,
+.spf-theme-elegant .spf-field-select:focus {
+    border-color: #7c5bff;
+    box-shadow: 0 0 0 2px rgba(124,91,255,0.15);
+}
+
+.spf-theme-elegant .spf-submit-button {
+    background: linear-gradient(120deg, #7c5bff, #a16eff);
+}
+
+/* High Contrast Theme */
+.spf-theme-contrast {
+    background: #0b172a;
+    color: #e8edf7;
+    border: 1px solid #111b2f;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.35);
+}
+
+.spf-theme-contrast .spf-form-title { color: #ffffff; }
+.spf-theme-contrast .spf-form-description { color: #c4cee3; }
+.spf-theme-contrast .spf-field-label { color: #cbd7ef; }
+
+.spf-theme-contrast .spf-field-input,
+.spf-theme-contrast .spf-field-textarea,
+.spf-theme-contrast .spf-field-select {
+    background: #0f2038;
+    border-color: #1f3352;
+    color: #e8edf7;
+}
+
+.spf-theme-contrast .spf-field-input:focus,
+.spf-theme-contrast .spf-field-textarea:focus,
+.spf-theme-contrast .spf-field-select:focus {
+    border-color: #4bd0ff;
+    box-shadow: 0 0 0 2px rgba(75,208,255,0.25);
+}
+
+.spf-theme-contrast .spf-radio-label,
+.spf-theme-contrast .spf-checkbox-label {
+    background: #0f2038;
+    border-color: #1f3352;
+    color: #e8edf7;
+}
+
+.spf-theme-contrast .spf-submit-button {
+    background: linear-gradient(120deg, #4bd0ff, #4c8dff);
+    color: #0b172a;
+}
+
+/* Pastel Theme */
+.spf-theme-pastel {
+    background: #fffaf5;
+    border: 1px solid #ffe7d4;
+    box-shadow: 0 8px 24px rgba(255,168,112,0.12);
+}
+
+.spf-theme-pastel .spf-form-title { color: #d05f3c; }
+.spf-theme-pastel .spf-form-description { color: #a45a3a; }
+.spf-theme-pastel .spf-field-label { color: #d05f3c; }
+
+.spf-theme-pastel .spf-field-input,
+.spf-theme-pastel .spf-field-textarea,
+.spf-theme-pastel .spf-field-select {
+    background: #fff7ef;
+    border-color: #ffd7ba;
+}
+
+.spf-theme-pastel .spf-field-input:focus,
+.spf-theme-pastel .spf-field-textarea:focus,
+.spf-theme-pastel .spf-field-select:focus {
+    border-color: #f48b5f;
+    box-shadow: 0 0 0 2px rgba(244,139,95,0.2);
+}
+
+.spf-theme-pastel .spf-radio-label,
+.spf-theme-pastel .spf-checkbox-label {
+    background: #fff0e3;
+    border-color: #ffd7ba;
+}
+
+.spf-theme-pastel .spf-submit-button {
+    background: linear-gradient(120deg, #f48b5f, #f4b36f);
+}
+
+/* Outline Theme */
+.spf-theme-outline {
+    background: transparent;
+    border: 2px dashed #d0d7e2;
+    box-shadow: none;
+}
+
+.spf-theme-outline .spf-field-input,
+.spf-theme-outline .spf-field-textarea,
+.spf-theme-outline .spf-field-select {
+    background: #fff;
+    border: 1px dashed #c2cad6;
+    border-radius: 10px;
+}
+
+.spf-theme-outline .spf-field-input:focus,
+.spf-theme-outline .spf-field-textarea:focus,
+.spf-theme-outline .spf-field-select:focus {
+    border-color: #4b6fff;
+    box-shadow: 0 0 0 2px rgba(75,111,255,0.2);
+}
+
+.spf-theme-outline .spf-radio-label,
+.spf-theme-outline .spf-checkbox-label {
+    border-style: dashed;
+    background: #f8faff;
+}
+
+.spf-theme-outline .spf-submit-button {
+    background: #4b6fff;
+}
+
+/* Glassmorphism Theme */
+.spf-theme-glass {
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    box-shadow: 0 20px 50px rgba(30, 41, 59, 0.18);
+    backdrop-filter: blur(10px);
+}
+
+.spf-theme-glass .spf-field-input,
+.spf-theme-glass .spf-field-textarea,
+.spf-theme-glass .spf-field-select {
+    background: rgba(255, 255, 255, 0.7);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.spf-theme-glass .spf-field-input:focus,
+.spf-theme-glass .spf-field-textarea:focus,
+.spf-theme-glass .spf-field-select:focus {
+    border-color: #7ed2ff;
+    box-shadow: 0 0 0 2px rgba(126,210,255,0.25);
+}
+
+.spf-theme-glass .spf-radio-label,
+.spf-theme-glass .spf-checkbox-label {
+    background: rgba(255, 255, 255, 0.65);
+    border-color: rgba(255, 255, 255, 0.45);
+}
+
+/* Inherit / Site Theme */
+.spf-theme-inherit.spf-form-wrapper,
+.spf-theme-inherit.spf-form-container {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    max-width: 100%;
+}
+
+.spf-theme-inherit .spf-form-title,
+.spf-theme-inherit .spf-form-description {
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.spf-theme-inherit .spf-field-wrapper {
+    margin-bottom: 22px;
+}
+
+.spf-theme-inherit .spf-field-label,
+.spf-theme-inherit .spf-form-title,
+.spf-theme-inherit .spf-form-description {
+    color: inherit;
+}
+
+.spf-theme-inherit .spf-field-input,
+.spf-theme-inherit .spf-field-textarea,
+.spf-theme-inherit .spf-field-select {
+    background: transparent;
+    border: 1px solid currentColor;
+    color: inherit;
+    box-shadow: none;
+}
+
+.spf-theme-inherit .spf-field-input:focus,
+.spf-theme-inherit .spf-field-textarea:focus,
+.spf-theme-inherit .spf-field-select:focus {
+    border-color: currentColor;
+    box-shadow: none;
+}
+
+.spf-theme-inherit .spf-radio-label,
+.spf-theme-inherit .spf-checkbox-label {
+    background: transparent;
+    border: 1px solid currentColor;
+    color: inherit;
+}
+
+.spf-theme-inherit .spf-submit-button {
+    background: transparent;
+    color: inherit;
+    border: 1px solid currentColor;
+}
+
+.spf-theme-glass .spf-submit-button {
+    background: linear-gradient(120deg, #7ed2ff, #8a9bff);
+    color: #0f172a;
+}
+
+/* Messages */
+.spf-form-messages {
+    margin-top: 20px;
+}
+
+.spf-success-message,
+.spf-error-message {
+    padding: 15px 20px;
+    border-radius: 4px;
+    margin-bottom: 15px;
+    font-size: 15px;
+}
+
+.spf-success-message {
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+}
+
+.spf-error-message {
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+}
+
+/* Loading State */
+.spf-form.loading {
+    position: relative;
+    pointer-events: none;
+    opacity: 0.6;
+}
+
+.spf-form.loading::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 30px;
+    height: 30px;
+    margin: -15px 0 0 -15px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #0073aa;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Field Errors */
+.spf-field-wrapper.error .spf-field-input,
+.spf-field-wrapper.error .spf-field-textarea,
+.spf-field-wrapper.error .spf-field-select {
+    border-color: #dc3232;
+}
+
+.spf-field-error {
+    color: #dc3232;
+    font-size: 13px;
+    margin-top: 5px;
+    display: block;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .spf-form-container {
+        padding: 20px;
+    }
+    
+    .spf-form-title {
+        font-size: 24px;
+    }
+    
+    .spf-field-input,
+    .spf-field-textarea,
+    .spf-field-select {
+        font-size: 16px; /* Prevents zoom on iOS */
+    }
+    
+    .spf-submit-button {
+        width: 100%;
+        padding: 16px;
+    }
+}
+
+/* Accessibility */
+.spf-field-input:focus-visible,
+.spf-field-textarea:focus-visible,
+.spf-field-select:focus-visible {
+    outline: 2px solid #0073aa;
+    outline-offset: 2px;
+}
+
+/* Dark mode support (optional) */
+@media (prefers-color-scheme: dark) {
+    .spf-form-container {
+        background: #1e1e1e;
+        border-color: #3a3a3a;
+        color: #e0e0e0;
+    }
+    
+    .spf-field-input,
+    .spf-field-textarea,
+    .spf-field-select {
+        background: #2a2a2a;
+        border-color: #3a3a3a;
+        color: #e0e0e0;
+    }
+    
+    .spf-radio-label,
+    .spf-checkbox-label {
+        background: #2a2a2a;
+        border-color: #3a3a3a;
+        color: #e0e0e0;
+    }
+}
