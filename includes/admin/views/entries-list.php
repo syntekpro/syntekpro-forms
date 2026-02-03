@@ -16,60 +16,6 @@ $search = isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '';
 $date_from = isset($_GET['date_from']) ? sanitize_text_field(wp_unslash($_GET['date_from'])) : '';
 $date_to = isset($_GET['date_to']) ? sanitize_text_field(wp_unslash($_GET['date_to'])) : '';
 
-// Build query
-$where = array('1=1');
-$query_params = array();
-
-if ($form_id > 0) {
-    $where[] = 'e.form_id = %d';
-    $query_params[] = $form_id;
-}
-
-if (!empty($status)) {
-    $where[] = 'e.status = %s';
-    $query_params[] = $status;
-}
-
-if (!empty($search)) {
-    $like = '%' . $wpdb->esc_like($search) . '%';
-    $where[] = '(e.entry_data LIKE %s OR e.ip_address LIKE %s OR f.title LIKE %s)';
-    $query_params[] = $like;
-    $query_params[] = $like;
-    $query_params[] = $like;
-}
-
-if (!empty($date_from)) {
-    $where[] = 'DATE(e.created_at) >= %s';
-    $query_params[] = $date_from;
-}
-
-if (!empty($date_to)) {
-    $where[] = 'DATE(e.created_at) <= %s';
-    $query_params[] = $date_to;
-}
-
-$where_clause = implode(' AND ', $where);
-
-// Get entries
-if (!empty($query_params)) {
-    $entries = $wpdb->get_results($wpdb->prepare(
-        "SELECT e.*, f.title as form_title 
-         FROM {$wpdb->prefix}spf_entries e 
-         LEFT JOIN {$wpdb->prefix}spf_forms f ON e.form_id = f.id 
-         WHERE $where_clause 
-         ORDER BY e.created_at DESC",
-        $query_params
-    ));
-} else {
-    $entries = $wpdb->get_results(
-        "SELECT e.*, f.title as form_title 
-         FROM {$wpdb->prefix}spf_entries e 
-         LEFT JOIN {$wpdb->prefix}spf_forms f ON e.form_id = f.id 
-         WHERE $where_clause 
-         ORDER BY e.created_at DESC"
-    );
-}
-
 // Get all forms for filter
 $forms = $wpdb->get_results("SELECT id, title FROM {$wpdb->prefix}spf_forms ORDER BY title ASC");
 
@@ -104,7 +50,7 @@ $unread_entries = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}spf_entrie
                 <form method="get" class="spf-filters-form">
                     <input type="hidden" name="page" value="syntekpro-forms-entries">
                     
-                    <select name="form_id">
+                    <select name="form_id" id="spf-entries-form">
                         <option value=""><?php _e('All Forms', 'syntekpro-forms'); ?></option>
                         <?php foreach ($forms as $form): ?>
                             <option value="<?php echo $form->id; ?>" <?php selected($form_id, $form->id); ?>>
@@ -113,15 +59,16 @@ $unread_entries = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}spf_entrie
                         <?php endforeach; ?>
                     </select>
                     
-                    <select name="status">
+                    <select name="status" id="spf-entries-status">
                         <option value=""><?php _e('All Statuses', 'syntekpro-forms'); ?></option>
                         <option value="unread" <?php selected($status, 'unread'); ?>><?php _e('Unread', 'syntekpro-forms'); ?></option>
                         <option value="read" <?php selected($status, 'read'); ?>><?php _e('Read', 'syntekpro-forms'); ?></option>
                     </select>
 
-                    <input type="search" name="s" value="<?php echo esc_attr($search); ?>" placeholder="<?php esc_attr_e('Search entries', 'syntekpro-forms'); ?>">
-                    <input type="date" name="date_from" value="<?php echo esc_attr($date_from); ?>" placeholder="<?php esc_attr_e('From date', 'syntekpro-forms'); ?>">
-                    <input type="date" name="date_to" value="<?php echo esc_attr($date_to); ?>" placeholder="<?php esc_attr_e('To date', 'syntekpro-forms'); ?>">
+                    <input type="search" name="s" id="spf-entries-search" value="<?php echo esc_attr($search); ?>" placeholder="<?php esc_attr_e('Search entries', 'syntekpro-forms'); ?>">
+                    <input type="date" name="date_from" id="spf-entries-date-from" value="<?php echo esc_attr($date_from); ?>" placeholder="<?php esc_attr_e('From date', 'syntekpro-forms'); ?>">
+                    <input type="date" name="date_to" id="spf-entries-date-to" value="<?php echo esc_attr($date_to); ?>" placeholder="<?php esc_attr_e('To date', 'syntekpro-forms'); ?>">
+                    <input type="hidden" id="spf-entries-per-page" value="20">
                     
                     <button type="submit" class="button button-primary"><?php _e('Filter', 'syntekpro-forms'); ?></button>
                     <a href="<?php echo admin_url('admin.php?page=syntekpro-forms-entries'); ?>" class="button">
@@ -149,7 +96,7 @@ $unread_entries = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}spf_entrie
                         'date_from' => $date_from,
                         'date_to' => $date_to,
                     );
-                    $export_url = wp_nonce_url(add_query_arg($export_args, admin_url('admin.php')), 'spf_export_entries');
+                    $export_url = wp_nonce_url(add_query_arg($export_args, admin_url('admin.php')), 'spf_export_entries', 'nonce');
                     ?>
                     <a href="<?php echo esc_url($export_url); ?>" 
                        class="button button-secondary">
@@ -160,67 +107,13 @@ $unread_entries = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}spf_entrie
         </div>
     
     <!-- Entries Table -->
-    <?php if (empty($entries)): ?>
+    <div id="spf-entries-table-wrap">
         <div class="spf-empty-state">
             <div class="spf-empty-icon"><span class="dashicons dashicons-database"></span></div>
-            <p><?php _e('No entries found matching your criteria.', 'syntekpro-forms'); ?></p>
+            <p><?php _e('Loading entries…', 'syntekpro-forms'); ?></p>
         </div>
-    <?php else: ?>
-        <table class="wp-list-table widefat fixed striped spf-entries-table">
-            <thead>
-                <tr>
-                    <td id="cb" class="manage-column column-cb check-column">
-                        <label class="screen-reader-text" for="cb-select-all-1"><?php _e('Select All', 'syntekpro-forms'); ?></label>
-                        <input id="cb-select-all-1" type="checkbox">
-                    </td>
-                    <th class="column-id"><?php _e('ID', 'syntekpro-forms'); ?></th>
-                    <th><?php _e('Form Name', 'syntekpro-forms'); ?></th>
-                    <th><?php _e('Entry Data Preview', 'syntekpro-forms'); ?></th>
-                    <th><?php _e('Date Submitted', 'syntekpro-forms'); ?></th>
-                    <th class="column-status"><?php _e('Status', 'syntekpro-forms'); ?></th>
-                    <th class="column-actions"><?php _e('Actions', 'syntekpro-forms'); ?></th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($entries as $entry): 
-                    $entry_data = json_decode($entry->entry_data, true);
-                    $preview = '';
-                    $count = 0;
-                    if (is_array($entry_data)) {
-                        foreach ($entry_data as $key => $value) {
-                            if ($count >= 2) break;
-                            $preview .= '<span class="spf-preview-item"><strong>' . esc_html(ucfirst(str_replace('_', ' ', (string)$key))) . ':</strong> ';
-                            $preview .= esc_html(is_array($value) ? implode(', ', $value) : substr((string)$value, 0, 50)) . '</span>';
-                            $count++;
-                        }
-                    }
-                ?>
-                    <tr class="<?php echo $entry->status === 'unread' ? 'spf-unread-row' : ''; ?>" data-entry-id="<?php echo $entry->id; ?>">
-                        <th scope="row" class="check-column">
-                            <input type="checkbox" name="entry[]" value="<?php echo $entry->id; ?>" class="spf-entry-checkbox">
-                        </th>
-                        <td>#<?php echo $entry->id; ?></td>
-                        <td><strong><?php echo esc_html($entry->form_title); ?></strong><br><small><?php echo esc_html($entry->ip_address); ?></small></td>
-                        <td><div class="spf-entry-preview"><?php echo $preview; ?></div></td>
-                        <td><?php echo date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime((string)$entry->created_at)); ?></td>
-                        <td>
-                            <span class="spf-status-badge spf-status-<?php echo esc_attr($entry->status); ?>">
-                                <?php echo esc_html(ucfirst((string)$entry->status)); ?>
-                            </span>
-                        </td>
-                        <td class="spf-row-actions">
-                            <button class="button button-small spf-view-entry spf-tooltip" title="<?php _e('View full details', 'syntekpro-forms'); ?>" data-entry-id="<?php echo $entry->id; ?>">
-                                <span class="dashicons dashicons-visibility"></span>
-                            </button>
-                            <button class="button button-small spf-delete-entry spf-tooltip" title="<?php _e('Delete entry', 'syntekpro-forms'); ?>" data-entry-id="<?php echo $entry->id; ?>">
-                                <span class="dashicons dashicons-trash"></span>
-                            </button>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-    <?php endif; ?>
+    </div>
+    <div id="spf-entries-pagination"></div>
     </div>
 </div>
 
@@ -277,6 +170,10 @@ $unread_entries = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}spf_entrie
 .spf-row-actions { display: flex; gap: 5px; }
 .spf-row-actions .button { display: inline-flex; align-items: center; justify-content: center; }
 .spf-delete-entry:hover { color: #d63638; border-color: #d63638; }
+
+.spf-pagination { display: flex; gap: 12px; align-items: center; justify-content: flex-end; padding: 12px 20px; border-top: 1px solid #f0f0f1; background: #fcfcfc; }
+.spf-page-link { text-decoration: none; padding: 6px 12px; border: 1px solid #ccd0d4; border-radius: 4px; background: #fff; }
+.spf-page-info { font-size: 13px; color: #646970; }
 
 .spf-empty-state { text-align: center; padding: 80px 20px; color: #646970; }
 .spf-empty-icon .dashicons { font-size: 50px; width: 50px; height: 50px; color: #ccd0d4; margin-bottom: 15px; }

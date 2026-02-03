@@ -84,6 +84,7 @@ class SyntekPro_Forms_Builder {
         add_action('admin_head', array($this, 'admin_styles_fix'));
         add_filter('cron_schedules', array($this, 'register_cron_schedules'));
         add_action('spf_apply_data_retention', array($this, 'run_data_retention_cron'));
+        add_action('spf_fire_webhook', array($this, 'fire_webhook'), 10, 2);
 
         $this->ajax_handler->register_hooks();
         $this->entries->register_hooks();
@@ -126,20 +127,7 @@ class SyntekPro_Forms_Builder {
         dbDelta($entries_sql);
 
         update_option('spf_version', SPF_VERSION);
-        add_option('spf_settings', array(
-            'recaptcha_site_key' => '',
-            'recaptcha_secret_key' => '',
-            'recaptcha_invisible' => 0,
-            'default_theme' => 'classic',
-            'from_email' => get_option('admin_email'),
-            'from_name' => get_option('blogname'),
-            'delete_entries_on_uninstall' => 0,
-            'enable_ip_logging' => 1,
-            'anonymize_ip' => 0,
-            'data_retention_days' => 0,
-            'rate_limit_enabled' => 0,
-            'rate_limit_seconds' => 30
-        ));
+        add_option('spf_settings', $this->get_default_settings());
 
         if (!wp_next_scheduled('spf_apply_data_retention')) {
             wp_schedule_event(time() + HOUR_IN_SECONDS, 'spf_six_hours', 'spf_apply_data_retention');
@@ -149,7 +137,47 @@ class SyntekPro_Forms_Builder {
     public function check_version() {
         if (get_option('spf_version') !== SPF_VERSION) {
             $this->activate();
+
+            $current_settings = get_option('spf_settings', array());
+            if (!is_array($current_settings)) {
+                $current_settings = array();
+            }
+
+            $defaults = $this->get_default_settings();
+            $merged = wp_parse_args($current_settings, $defaults);
+
+            if ($merged !== $current_settings) {
+                update_option('spf_settings', $merged);
+            }
         }
+    }
+
+    private function get_default_settings() {
+        return array(
+            'license_key' => '',
+            'currency' => 'USD',
+            'enable_logging' => 0,
+            'default_theme' => 'classic',
+            'enable_toolbar_menu' => 1,
+            'enable_dashboard_widget' => 1,
+            'enable_background_updates' => 0,
+            'no_conflict_mode' => 0,
+            'enable_akismet' => 0,
+            'enable_data_collection' => 0,
+            'recaptcha_site_key' => '',
+            'recaptcha_secret_key' => '',
+            'recaptcha_invisible' => 0,
+            'enable_honeypot' => 1,
+            'from_email' => get_option('admin_email'),
+            'from_name' => get_option('blogname'),
+            'delete_entries_on_uninstall' => 0,
+            'enable_ip_logging' => 1,
+            'anonymize_ip' => 0,
+            'data_retention_days' => 0,
+            'rate_limit_enabled' => 0,
+            'rate_limit_seconds' => 30,
+            'force_enqueue_conditional_logic' => 0,
+        );
     }
 
     public function deactivate() {
@@ -286,6 +314,16 @@ class SyntekPro_Forms_Builder {
 
     private function should_enqueue_conditional_logic() {
         $should_enqueue = false;
+        $settings = get_option('spf_settings', array());
+        if (!is_array($settings)) {
+            $settings = array();
+        }
+        $force_enqueue_setting = !empty($settings['force_enqueue_conditional_logic']);
+        $force_enqueue_filter = apply_filters('syntekpro_forms_force_enqueue_conditional_logic', false);
+
+        if ($force_enqueue_setting || $force_enqueue_filter) {
+            $should_enqueue = true;
+        }
 
         if (is_singular()) {
             $post = get_post();
@@ -294,6 +332,25 @@ class SyntekPro_Forms_Builder {
                     $should_enqueue = true;
                 } elseif (function_exists('has_block') && has_block('syntekpro-forms/form-selector', $post)) {
                     $should_enqueue = true;
+                }
+            }
+        } elseif (!$should_enqueue) {
+            global $wp_query;
+            if (!empty($wp_query->posts)) {
+                foreach ((array) $wp_query->posts as $post) {
+                    if (!isset($post->post_content)) {
+                        continue;
+                    }
+
+                    if (has_shortcode($post->post_content, 'syntekpro_form')) {
+                        $should_enqueue = true;
+                        break;
+                    }
+
+                    if (function_exists('has_block') && has_block('syntekpro-forms/form-selector', $post)) {
+                        $should_enqueue = true;
+                        break;
+                    }
                 }
             }
         }
@@ -393,10 +450,15 @@ class SyntekPro_Forms_Builder {
 
         $limit = absint($settings['submission_limit']);
         if ($limit > 0) {
-            $count = (int) $wpdb->get_var($wpdb->prepare(
-                "SELECT COUNT(*) FROM {$wpdb->prefix}spf_entries WHERE form_id = %d",
-                $form_id
-            ));
+            $cache_key = 'spf_count_' . $form_id;
+            $count = get_transient($cache_key);
+            if ($count === false) {
+                $count = (int) $wpdb->get_var($wpdb->prepare(
+                    "SELECT COUNT(*) FROM {$wpdb->prefix}spf_entries WHERE form_id = %d",
+                    $form_id
+                ));
+                set_transient($cache_key, $count, 60);
+            }
 
             if ($count >= $limit) {
                 return array(
@@ -442,12 +504,20 @@ class SyntekPro_Forms_Builder {
                 continue;
             }
 
-            wp_remote_post($url, array(
-                'timeout' => 5,
-                'headers' => array('Content-Type' => 'application/json'),
-                'body' => wp_json_encode($payload),
-            ));
+            wp_schedule_single_event(time(), 'spf_fire_webhook', array($url, $payload));
         }
+    }
+
+    public function fire_webhook($url, $payload) {
+        if (empty($url) || empty($payload)) {
+            return;
+        }
+
+        wp_remote_post($url, array(
+            'timeout' => 5,
+            'headers' => array('Content-Type' => 'application/json'),
+            'body' => wp_json_encode($payload),
+        ));
     }
 
     public function build_success_payload($form_settings) {

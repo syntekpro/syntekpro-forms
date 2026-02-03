@@ -10,20 +10,6 @@ if (!defined('ABSPATH')) {
 class SyntekPro_Forms_Spam_Filter {
 
     /**
-     * Keeps track of the latest rate limit lock key for cleanup.
-     *
-     * @var string
-     */
-    private $rate_limit_lock_key = '';
-
-    /**
-     * Reset the stored lock reference so future releases know which key to target.
-     */
-    public function reset_rate_limit_reference() {
-        $this->rate_limit_lock_key = '';
-    }
-
-    /**
      * Build the transient key for a visitor IP.
      */
     public function get_rate_limit_lock_key($client_ip) {
@@ -53,19 +39,7 @@ class SyntekPro_Forms_Spam_Filter {
             return;
         }
 
-        $this->rate_limit_lock_key = $lock_key;
         set_transient($lock_key, time(), $seconds);
-    }
-
-    /**
-     * Release the current rate limit lock and optionally keep the transient.
-     */
-    public function release_rate_limit_lock($preserve_lock = false) {
-        if (!$preserve_lock && !empty($this->rate_limit_lock_key)) {
-            delete_transient($this->rate_limit_lock_key);
-        }
-
-        $this->rate_limit_lock_key = '';
     }
 
     /**
@@ -88,6 +62,7 @@ class SyntekPro_Forms_Spam_Filter {
         ));
 
         if (is_wp_error($request)) {
+            // Fail-open: network errors allow submission through. If you want fail-closed instead, change the return to true on WP_Error.
             return false;
         }
 
@@ -101,6 +76,10 @@ class SyntekPro_Forms_Spam_Filter {
      * Run the submission through Akismet if credentials are present.
      */
     public function check_akismet_spam($form, $data, $ip, $user_agent) {
+        if (!is_array($data)) {
+            return false;
+        }
+
         if (empty($ip)) {
             return false;
         }

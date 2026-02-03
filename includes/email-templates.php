@@ -25,13 +25,17 @@ class SPF_Email_Templates {
         $settings = get_option('spf_settings');
         $form_settings = json_decode((string)($form->settings ?? '{}'), true);
         
-        $notifications_enabled = isset($form_settings['notifications_enabled']) ? (int)$form_settings['notifications_enabled'] : 1;
+        $notifications_enabled = isset($form_settings['notify_enabled'])
+            ? (int) $form_settings['notify_enabled']
+            : (isset($form_settings['notifications_enabled']) ? (int) $form_settings['notifications_enabled'] : 1);
         if ($notifications_enabled === 0) {
             return;
         }
 
         $recipient_source = '';
-        if (!empty($form_settings['notification_emails'])) {
+        if (!empty($form_settings['notify_emails'])) {
+            $recipient_source = $form_settings['notify_emails'];
+        } elseif (!empty($form_settings['notification_emails'])) {
             $recipient_source = $form_settings['notification_emails'];
         } elseif (!empty($form_settings['notification_email'])) {
             // Legacy key

@@ -22,21 +22,22 @@
             }
 
             // Entries page initialization
-            if ($('.spf-entries-table').length > 0) {
+            if ($('#spf-entries-table-wrap').length > 0) {
                 this.initEntries();
             }
         },
 
         initEntries: function() {
             var self = this;
+            var $entriesWrap = $('#spf-entries-table-wrap');
 
             // Select All Checkbox
-            $('#cb-select-all-1').on('change', function() {
-                $('.spf-entry-checkbox').prop('checked', $(this).prop('checked'));
+            $entriesWrap.off('change', '#cb-select-all-1').on('change', '#cb-select-all-1', function() {
+                $entriesWrap.find('.spf-entry-checkbox').prop('checked', $(this).prop('checked'));
             });
 
             // Individual View Entry
-            $('.spf-view-entry').on('click', function() {
+            $entriesWrap.off('click', '.spf-view-entry').on('click', '.spf-view-entry', function() {
                 var entryId = $(this).data('entry-id');
                 var $row = $(this).closest('tr');
                 
@@ -93,7 +94,7 @@
             });
 
             // Delete Individual Entry
-            $('.spf-delete-entry').on('click', function() {
+            $entriesWrap.off('click', '.spf-delete-entry').on('click', '.spf-delete-entry', function() {
                 if (!confirm(spfAdmin.strings.confirmDelete)) return;
                 
                 var entryId = $(this).data('entry-id');
@@ -123,7 +124,7 @@
                 if (!action) return;
 
                 var selectedIds = [];
-                $('.spf-entry-checkbox:checked').each(function() {
+                $entriesWrap.find('.spf-entry-checkbox:checked').each(function() {
                     selectedIds.push($(this).val());
                 });
 
@@ -145,8 +146,8 @@
                         },
                         success: function(response) {
                             if (response.success) {
-                                $('.spf-entry-checkbox:checked').closest('tr').fadeOut(function() { $(this).remove(); });
-                                $('#cb-select-all-1').prop('checked', false);
+                                $entriesWrap.find('.spf-entry-checkbox:checked').closest('tr').fadeOut(function() { $(this).remove(); });
+                                $entriesWrap.find('#cb-select-all-1').prop('checked', false);
                             } else {
                                 alert(response.data);
                             }
@@ -155,7 +156,7 @@
                 } else if (action === 'mark_read') {
                     // Mark multiple as read
                     selectedIds.forEach(function(id) {
-                        var $row = $('tr[data-entry-id="' + id + '"]');
+                        var $row = $entriesWrap.find('tr[data-entry-id="' + id + '"]');
                         $.post(spfAdmin.ajaxurl, {
                             action: 'spf_mark_entry_read',
                             nonce: spfAdmin.nonce,
@@ -165,8 +166,8 @@
                             $row.find('.spf-status-badge').removeClass('spf-status-unread').addClass('spf-status-read').text('Read');
                         });
                     });
-                    $('.spf-entry-checkbox').prop('checked', false);
-                    $('#cb-select-all-1').prop('checked', false);
+                    $entriesWrap.find('.spf-entry-checkbox').prop('checked', false);
+                    $entriesWrap.find('#cb-select-all-1').prop('checked', false);
                 }
             });
 
@@ -176,6 +177,175 @@
                     $('#spf-entry-modal').fadeOut();
                 }
             });
+
+            this.initEntriesSearch();
+        },
+
+        initEntriesSearch: function() {
+            var self = this;
+            var $filtersForm = $('.spf-filters-form');
+
+            if (!$filtersForm.length) {
+                return;
+            }
+
+            var debounceTimer;
+            $filtersForm.on('submit', function(e) {
+                e.preventDefault();
+                self.fetchEntries(1);
+            });
+
+            $('#spf-entries-search').on('input', function() {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(function() {
+                    self.fetchEntries(1);
+                }, 350);
+            });
+
+            $('#spf-entries-form, #spf-entries-status, #spf-entries-date-from, #spf-entries-date-to').on('change', function() {
+                self.fetchEntries(1);
+            });
+
+            $('#spf-entries-pagination').on('click', '.spf-page-link', function(e) {
+                e.preventDefault();
+                var page = parseInt($(this).data('page'), 10) || 1;
+                self.fetchEntries(page);
+            });
+
+            self.fetchEntries(1);
+        },
+
+        fetchEntries: function(page) {
+            var self = this;
+            var perPage = parseInt($('#spf-entries-per-page').val(), 10) || 20;
+
+            $.ajax({
+                url: spfAdmin.ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'spf_search_entries',
+                    nonce: spfAdmin.nonce,
+                    form_id: $('#spf-entries-form').val() || '',
+                    status: $('#spf-entries-status').val() || '',
+                    s: $('#spf-entries-search').val() || '',
+                    date_from: $('#spf-entries-date-from').val() || '',
+                    date_to: $('#spf-entries-date-to').val() || '',
+                    page: page || 1,
+                    per_page: perPage
+                },
+                beforeSend: function() {
+                    $('#spf-entries-table-wrap').addClass('spf-loading');
+                },
+                success: function(response) {
+                    if (!response.success) {
+                        alert(response.data || 'Failed to load entries');
+                        return;
+                    }
+
+                    self.renderEntriesTable(response.data.entries || []);
+                    self.renderEntriesPagination(response.data);
+                },
+                complete: function() {
+                    $('#spf-entries-table-wrap').removeClass('spf-loading');
+                }
+            });
+        },
+
+        renderEntriesTable: function(entries) {
+            var self = this;
+            var $wrap = $('#spf-entries-table-wrap');
+
+            if (!entries.length) {
+                $wrap.html('<div class="spf-empty-state"><div class="spf-empty-icon"><span class="dashicons dashicons-database"></span></div><p>No entries found matching your criteria.</p></div>');
+                return;
+            }
+
+            var html = '';
+            html += '<table class="wp-list-table widefat fixed striped spf-entries-table">';
+            html += '<thead><tr>';
+            html += '<td id="cb" class="manage-column column-cb check-column">';
+            html += '<label class="screen-reader-text" for="cb-select-all-1">Select All</label>';
+            html += '<input id="cb-select-all-1" type="checkbox">';
+            html += '</td>';
+            html += '<th class="column-id">ID</th>';
+            html += '<th>Form Name</th>';
+            html += '<th>Entry Data Preview</th>';
+            html += '<th>Date Submitted</th>';
+            html += '<th class="column-status">Status</th>';
+            html += '<th class="column-actions">Actions</th>';
+            html += '</tr></thead>';
+            html += '<tbody>';
+
+            entries.forEach(function(entry) {
+                var previewHtml = self.buildEntryPreview(entry.entry_data || {});
+                var status = (entry.status || 'unread');
+                var statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
+
+                html += '<tr class="' + (status === 'unread' ? 'spf-unread-row' : '') + '" data-entry-id="' + entry.id + '">';
+                html += '<th scope="row" class="check-column"><input type="checkbox" name="entry[]" value="' + entry.id + '" class="spf-entry-checkbox"></th>';
+                html += '<td>#' + entry.id + '</td>';
+                html += '<td><strong>' + self.escapeHtml(entry.form_title || '') + '</strong><br><small>' + self.escapeHtml(entry.ip_address || '') + '</small></td>';
+                html += '<td><div class="spf-entry-preview">' + previewHtml + '</div></td>';
+                html += '<td>' + self.escapeHtml(entry.created_at || '') + '</td>';
+                html += '<td><span class="spf-status-badge spf-status-' + self.escapeHtml(status) + '">' + self.escapeHtml(statusLabel) + '</span></td>';
+                html += '<td class="spf-row-actions">';
+                html += '<button class="button button-small spf-view-entry spf-tooltip" title="View full details" data-entry-id="' + entry.id + '"><span class="dashicons dashicons-visibility"></span></button>';
+                html += '<button class="button button-small spf-delete-entry spf-tooltip" title="Delete entry" data-entry-id="' + entry.id + '"><span class="dashicons dashicons-trash"></span></button>';
+                html += '</td>';
+                html += '</tr>';
+            });
+
+            html += '</tbody></table>';
+            $wrap.html(html);
+        },
+
+        renderEntriesPagination: function(data) {
+            var $pagination = $('#spf-entries-pagination');
+            if (!$pagination.length) {
+                return;
+            }
+
+            var page = parseInt(data.page, 10) || 1;
+            var totalPages = parseInt(data.total_pages, 10) || 1;
+
+            if (totalPages <= 1) {
+                $pagination.html('');
+                return;
+            }
+
+            var html = '<div class="spf-pagination">';
+            if (page > 1) {
+                html += '<a href="#" class="spf-page-link" data-page="' + (page - 1) + '">&laquo; Previous</a>';
+            }
+
+            html += '<span class="spf-page-info">Page ' + page + ' of ' + totalPages + '</span>';
+
+            if (page < totalPages) {
+                html += '<a href="#" class="spf-page-link" data-page="' + (page + 1) + '">Next &raquo;</a>';
+            }
+
+            html += '</div>';
+            $pagination.html(html);
+        },
+
+        buildEntryPreview: function(entryData) {
+            var self = this;
+            var html = '';
+            var count = 0;
+
+            if (entryData && typeof entryData === 'object') {
+                Object.keys(entryData).forEach(function(key) {
+                    if (count >= 2) {
+                        return;
+                    }
+                    var value = entryData[key];
+                    var displayValue = Array.isArray(value) ? value.join(', ') : String(value || '');
+                    html += '<span class="spf-preview-item"><strong>' + self.escapeHtml(key.replace(/_/g, ' ').replace(/\b\w/g, function(l) { return l.toUpperCase(); })) + ':</strong> ' + self.escapeHtml(displayValue.slice(0, 50)) + '</span>';
+                    count++;
+                });
+            }
+
+            return html;
         },
 
         initLivePreview: function() {
@@ -716,6 +886,8 @@
                         success_message: $('#spf-success-message').val(),
                         success_behavior: $('#spf-success-behavior').val(),
                         success_redirect_url: $('#spf-success-redirect-url').val(),
+                        notify_enabled: $('#spf-notifications-enabled').is(':checked') ? 1 : 0,
+                        notify_emails: $('#spf-notification-emails').val(),
                         notifications_enabled: $('#spf-notifications-enabled').is(':checked') ? 1 : 0,
                         notification_emails: $('#spf-notification-emails').val(),
                         submission_limit: $('#spf-submission-limit').val(),

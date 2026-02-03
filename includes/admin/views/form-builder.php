@@ -160,12 +160,16 @@ if ($form_id > 0) {
 
                         <h3><?php _e('Admin Notifications', 'syntekpro-forms'); ?></h3>
                         <div class="spf-setting-row">
-                            <?php $notifications_enabled = isset($settings_array['notifications_enabled']) ? (int)$settings_array['notifications_enabled'] : 1; ?>
+                            <?php
+                            $notifications_enabled = isset($settings_array['notify_enabled'])
+                                ? (int) $settings_array['notify_enabled']
+                                : (isset($settings_array['notifications_enabled']) ? (int) $settings_array['notifications_enabled'] : 1);
+                            ?>
                             <label><input type="checkbox" id="spf-notifications-enabled" <?php checked($notifications_enabled, 1); ?>> <?php _e('Send admin notification emails for this form', 'syntekpro-forms'); ?></label>
                         </div>
                         <div class="spf-setting-row">
                             <label><?php _e('Notification Recipients', 'syntekpro-forms'); ?></label>
-                            <input type="text" id="spf-notification-emails" value="<?php echo isset($settings_array['notification_emails']) ? esc_attr($settings_array['notification_emails']) : ''; ?>" placeholder="admin@example.com, manager@example.com">
+                            <input type="text" id="spf-notification-emails" value="<?php echo isset($settings_array['notify_emails']) ? esc_attr($settings_array['notify_emails']) : (isset($settings_array['notification_emails']) ? esc_attr($settings_array['notification_emails']) : ''); ?>" placeholder="admin@example.com, manager@example.com">
                             <p class="description"><?php _e('Comma-separated list. Leave blank to use the global admin email.', 'syntekpro-forms'); ?></p>
                         </div>
 

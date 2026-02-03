@@ -77,6 +77,10 @@ class SyntekPro_Forms_Ajax_Handler {
             $form_id = $wpdb->insert_id;
         }
 
+        if (!empty($wpdb->last_error)) {
+            wp_send_json_error('Database error: ' . $wpdb->last_error);
+        }
+
         wp_send_json_success(array(
             'form_id' => $form_id,
             'message' => __('Form saved successfully!', 'syntekpro-forms'),
@@ -93,23 +97,32 @@ class SyntekPro_Forms_Ajax_Handler {
         global $wpdb;
         $form_id = intval($_POST['form_id']);
 
-        $wpdb->delete(
+        $wpdb->query('START TRANSACTION');
+
+        $entries_result = $wpdb->delete(
             $wpdb->prefix . 'spf_entries',
             array('form_id' => $form_id),
             array('%d')
         );
 
-        $result = $wpdb->delete(
+        if ($entries_result === false) {
+            $wpdb->query('ROLLBACK');
+            wp_send_json_error('Failed to delete form entries');
+        }
+
+        $form_result = $wpdb->delete(
             $wpdb->prefix . 'spf_forms',
             array('id' => $form_id),
             array('%d')
         );
 
-        if ($result) {
-            wp_send_json_success('Form and related entries deleted successfully');
+        if ($form_result === false || $form_result === 0) {
+            $wpdb->query('ROLLBACK');
+            wp_send_json_error('Failed to delete form');
         }
 
-        wp_send_json_error('Failed to delete form');
+        $wpdb->query('COMMIT');
+        wp_send_json_success('Form and related entries deleted successfully');
     }
 
     public function ajax_duplicate_form() {
@@ -137,11 +150,16 @@ class SyntekPro_Forms_Ajax_Handler {
         $base_title = !empty($form->title) ? $form->title : __('Untitled Form', 'syntekpro-forms');
         $new_title = sprintf(__('%s (Copy)', 'syntekpro-forms'), $base_title);
         $counter = 2;
+        $max_attempts = 100;
 
         while ($wpdb->get_var($wpdb->prepare(
             "SELECT COUNT(*) FROM {$wpdb->prefix}spf_forms WHERE title = %s",
             $new_title
         ))) {
+            if ($counter > $max_attempts) {
+                wp_send_json_error(__('Could not generate a unique title.', 'syntekpro-forms'));
+            }
+
             $new_title = sprintf(__('%s (Copy %d)', 'syntekpro-forms'), $base_title, $counter);
             $counter++;
         }
@@ -200,8 +218,7 @@ class SyntekPro_Forms_Ajax_Handler {
         $settings = get_option('spf_settings');
         $client_ip = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '';
 
-        $this->spam_filter->reset_rate_limit_reference();
-
+        $lock_key = '';
         $rate_limit_seconds = isset($settings['rate_limit_seconds']) ? absint($settings['rate_limit_seconds']) : 0;
         if (!empty($settings['rate_limit_enabled']) && $rate_limit_seconds > 0 && !empty($client_ip)) {
             $lock_key = $this->spam_filter->get_rate_limit_lock_key($client_ip);
@@ -209,8 +226,6 @@ class SyntekPro_Forms_Ajax_Handler {
             if ($this->spam_filter->has_rate_limit_lock($lock_key)) {
                 $this->send_submission_error(sprintf(__('Please wait %d seconds before submitting again.', 'syntekpro-forms'), $rate_limit_seconds));
             }
-
-            $this->spam_filter->acquire_rate_limit_lock($lock_key, $rate_limit_seconds);
         }
 
         if (!empty($settings['recaptcha_site_key']) && !empty($settings['recaptcha_secret_key'])) {
@@ -346,12 +361,18 @@ class SyntekPro_Forms_Ajax_Handler {
 
         if ($result) {
             $entry_id = $wpdb->insert_id;
+
+            if (!empty($lock_key) && !empty($settings['rate_limit_enabled']) && $rate_limit_seconds > 0) {
+                $this->spam_filter->acquire_rate_limit_lock($lock_key, $rate_limit_seconds);
+            }
+
+            delete_transient('spf_count_' . $form_id);
+
             SPF_email_templates()->send_admin_notification($form, $sanitized_data, $entry_id);
             SPF_email_templates()->send_user_confirmation($form, $sanitized_data);
 
             $this->builder->trigger_form_webhooks($form, $sanitized_data, $entry_id, $form_settings);
 
-            $this->spam_filter->release_rate_limit_lock(true);
             wp_send_json_success($this->builder->build_success_payload($form_settings));
         }
 
@@ -407,6 +428,9 @@ class SyntekPro_Forms_Ajax_Handler {
         }
 
         $settings = get_option('spf_settings');
+        if (is_array($settings)) {
+            unset($settings['recaptcha_secret_key']);
+        }
         wp_send_json_success($settings);
     }
 
@@ -538,7 +562,6 @@ class SyntekPro_Forms_Ajax_Handler {
     }
 
     private function send_submission_error($message) {
-        $this->spam_filter->release_rate_limit_lock();
         wp_send_json_error($message);
     }
 }
