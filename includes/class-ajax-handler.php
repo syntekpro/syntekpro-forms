@@ -34,6 +34,15 @@ class SyntekPro_Forms_Ajax_Handler {
         add_action('wp_ajax_spf_export_settings', array($this, 'ajax_export_settings'));
         add_action('wp_ajax_spf_import_settings', array($this, 'ajax_import_settings'));
         add_action('wp_ajax_spf_preview_form', array($this, 'ajax_preview_form'));
+        add_action('wp_ajax_spf_bulk_action_forms', array($this, 'ajax_bulk_action_forms'));
+        add_action('wp_ajax_spf_get_form_settings', array($this, 'ajax_get_form_settings'));
+        add_action('wp_ajax_spf_trash_form', array($this, 'ajax_trash_form'));
+        add_action('wp_ajax_spf_get_form_preview', array($this, 'ajax_get_form_preview'));
+        // NEW: Form Builder Page AJAX Actions
+        add_action('wp_ajax_spf_get_recent_forms', array($this, 'ajax_get_recent_forms'));
+        add_action('wp_ajax_spf_get_posts_for_embed', array($this, 'ajax_get_posts_for_embed'));
+        add_action('wp_ajax_spf_insert_form_to_post', array($this, 'ajax_insert_form_to_post'));
+        add_action('wp_ajax_spf_create_post_with_form', array($this, 'ajax_create_post_with_form'));
     }
 
     public function ajax_save_form() {
@@ -456,6 +465,7 @@ class SyntekPro_Forms_Ajax_Handler {
             'enable_ip_logging'           => 'bool',
             'anonymize_ip'                => 'bool',
             'data_retention_days'         => 'int',
+            'trash_retention_days'        => 'int',
             'rate_limit_enabled'          => 'bool',
             'rate_limit_seconds'          => 'int',
             'enable_honeypot'             => 'bool',
@@ -563,5 +573,516 @@ class SyntekPro_Forms_Ajax_Handler {
 
     private function send_submission_error($message) {
         wp_send_json_error($message);
+    }
+
+    /**
+     * AJAX handler for bulk actions on forms
+     */
+    public function ajax_bulk_action_forms() {
+        check_ajax_referer('spf_admin_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(__('Unauthorized', 'syntekpro-forms'));
+        }
+
+        $action = isset($_POST['bulk_action']) ? sanitize_text_field($_POST['bulk_action']) : '';
+        $form_ids = isset($_POST['form_ids']) ? array_map('intval', (array)$_POST['form_ids']) : [];
+
+        if (empty($form_ids)) {
+            wp_send_json_error(__('No forms selected', 'syntekpro-forms'));
+        }
+
+        global $wpdb;
+        $table = $wpdb->prefix . 'spf_forms';
+        $ids_placeholder = implode(',', array_fill(0, count($form_ids), '%d'));
+
+        switch ($action) {
+            case 'mark_active':
+                $wpdb->query($wpdb->prepare(
+                    "UPDATE {$table} SET status = 'active' WHERE id IN ({$ids_placeholder})",
+                    ...$form_ids
+                ));
+                wp_send_json_success(__('Forms marked as active', 'syntekpro-forms'));
+                break;
+
+            case 'mark_inactive':
+                $wpdb->query($wpdb->prepare(
+                    "UPDATE {$table} SET status = 'inactive' WHERE id IN ({$ids_placeholder})",
+                    ...$form_ids
+                ));
+                wp_send_json_success(__('Forms marked as inactive', 'syntekpro-forms'));
+                break;
+
+            case 'reset_views':
+                $wpdb->query($wpdb->prepare(
+                    "UPDATE {$table} SET views = 0 WHERE id IN ({$ids_placeholder})",
+                    ...$form_ids
+                ));
+                wp_send_json_success(__('Views reset', 'syntekpro-forms'));
+                break;
+
+            case 'delete_entries':
+                $entries_table = $wpdb->prefix . 'spf_entries';
+                $wpdb->query($wpdb->prepare(
+                    "DELETE FROM {$entries_table} WHERE form_id IN ({$ids_placeholder})",
+                    ...$form_ids
+                ));
+                wp_send_json_success(__('Entries deleted', 'syntekpro-forms'));
+                break;
+
+            case 'delete_forms':
+                $entries_table = $wpdb->prefix . 'spf_entries';
+                $wpdb->query('START TRANSACTION');
+
+                $entries_result = $wpdb->query($wpdb->prepare(
+                    "DELETE FROM {$entries_table} WHERE form_id IN ({$ids_placeholder})",
+                    ...$form_ids
+                ));
+
+                if ($entries_result === false) {
+                    $wpdb->query('ROLLBACK');
+                    wp_send_json_error(__('Failed to delete form entries', 'syntekpro-forms'));
+                }
+
+                $forms_result = $wpdb->query($wpdb->prepare(
+                    "DELETE FROM {$table} WHERE id IN ({$ids_placeholder})",
+                    ...$form_ids
+                ));
+
+                if ($forms_result === false) {
+                    $wpdb->query('ROLLBACK');
+                    wp_send_json_error(__('Failed to delete forms', 'syntekpro-forms'));
+                }
+
+                $wpdb->query('COMMIT');
+                wp_send_json_success(__('Forms deleted permanently', 'syntekpro-forms'));
+                break;
+
+            case 'trash':
+                $wpdb->query($wpdb->prepare(
+                    "UPDATE {$table} SET status = 'trash' WHERE id IN ({$ids_placeholder})",
+                    ...$form_ids
+                ));
+                wp_send_json_success(__('Forms moved to trash', 'syntekpro-forms'));
+                break;
+
+            default:
+                wp_send_json_error(__('Invalid action', 'syntekpro-forms'));
+        }
+    }
+
+    /**
+     * AJAX handler to get form settings
+     */
+    public function ajax_get_form_settings() {
+        check_ajax_referer('spf_admin_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(__('Unauthorized', 'syntekpro-forms'));
+        }
+
+        $form_id = isset($_POST['form_id']) ? intval($_POST['form_id']) : 0;
+
+        if (!$form_id) {
+            wp_send_json_error(__('Invalid form ID', 'syntekpro-forms'));
+        }
+
+        global $wpdb;
+        $table = $wpdb->prefix . 'spf_forms';
+        $form = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$table} WHERE id = %d", $form_id));
+
+        if (!$form) {
+            wp_send_json_error(__('Form not found', 'syntekpro-forms'));
+        }
+
+        $settings = json_decode($form->settings, true);
+        if (!is_array($settings)) {
+            $settings = [];
+        }
+
+        $settings['status'] = $form->status;
+        $settings['title'] = $form->title;
+
+        wp_send_json_success($settings);
+    }
+
+    /**
+     * AJAX handler to trash a form
+     */
+    public function ajax_trash_form() {
+        check_ajax_referer('spf_admin_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(__('Unauthorized', 'syntekpro-forms'));
+        }
+
+        $form_id = isset($_POST['form_id']) ? intval($_POST['form_id']) : 0;
+
+        if (!$form_id) {
+            wp_send_json_error(__('Invalid form ID', 'syntekpro-forms'));
+        }
+
+        global $wpdb;
+        $table = $wpdb->prefix . 'spf_forms';
+        
+        $result = $wpdb->update(
+            $table,
+            ['status' => 'trash'],
+            ['id' => $form_id],
+            ['%s'],
+            ['%d']
+        );
+
+        if ($result === false) {
+            wp_send_json_error(__('Failed to trash form', 'syntekpro-forms'));
+        }
+
+        wp_send_json_success(__('Form moved to trash', 'syntekpro-forms'));
+    }
+
+    /**
+     * AJAX handler to get form preview HTML
+     */
+    public function ajax_get_form_preview() {
+        check_ajax_referer('spf_admin_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(__('Unauthorized', 'syntekpro-forms'));
+        }
+
+        $form_id = isset($_POST['form_id']) ? sanitize_text_field($_POST['form_id']) : 0;
+        $is_template = isset($_POST['is_template']) && ($_POST['is_template'] === 'true' || $_POST['is_template'] === true || $_POST['is_template'] === '1');
+
+        if (!$form_id) {
+            wp_send_json_error(__('Invalid form ID', 'syntekpro-forms'));
+        }
+
+        // If it's a template preview, generate preview from template
+        if ($is_template) {
+            if (!class_exists('SyntekPro_Forms_Templates')) {
+                require_once plugin_dir_path(__FILE__) . 'admin/templates.php';
+            }
+            
+            $templates = SyntekPro_Forms_Templates::get_templates();
+            $template_id = $form_id; // In this case, form_id is actually template_id
+            
+            if (!isset($templates[$template_id])) {
+                wp_send_json_error(__('Template not found', 'syntekpro-forms'));
+            }
+            
+            $template = $templates[$template_id];
+            
+            // Generate preview HTML from template structure
+            ob_start();
+            ?>
+            <div class="spf-form-preview-wrapper">
+                <div class="spf-form-container spf-theme-<?php echo esc_attr($template['settings']['theme'] ?? 'modern'); ?>" style="max-width: 600px; margin: 0 auto;">
+                    <form class="spf-form spf-preview-form" style="padding: 30px; background: <?php echo esc_attr($template['settings']['bg_color'] ?? '#ffffff'); ?>; border-radius: <?php echo esc_attr($template['settings']['border_radius'] ?? '8'); ?>px;">
+                        <h2 style="margin-bottom: 20px; color: <?php echo esc_attr($template['settings']['primary_color'] ?? '#0073aa'); ?>;">
+                            <?php echo esc_html($template['title']); ?>
+                        </h2>
+                        <p style="margin-bottom: 30px; color: #666;">
+                            <?php echo esc_html($template['description']); ?>
+                        </p>
+                        
+                        <?php foreach ($template['fields'] as $field): ?>
+                            <div class="spf-field-group" style="margin-bottom: 20px;">
+                                <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+                                    <?php echo esc_html($field['label']); ?>
+                                    <?php if (isset($field['required']) && $field['required']): ?>
+                                        <span style="color: <?php echo esc_attr($template['settings']['primary_color'] ?? '#dc3545'); ?>;">*</span>
+                                    <?php endif; ?>
+                                </label>
+                                
+                                <?php
+                                $field_style = 'width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;';
+                                
+                                switch ($field['type']):
+                                    case 'textarea':
+                                        ?>
+                                        <textarea 
+                                            name="<?php echo esc_attr($field['name']); ?>" 
+                                            placeholder="<?php echo esc_attr($field['placeholder'] ?? ''); ?>"
+                                            rows="4"
+                                            style="<?php echo $field_style; ?>"
+                                            disabled
+                                        ></textarea>
+                                        <?php
+                                        break;
+                                    
+                                    case 'select':
+                                        ?>
+                                        <select name="<?php echo esc_attr($field['name']); ?>" style="<?php echo $field_style; ?>" disabled>
+                                            <option value="">-- Select --</option>
+                                            <?php if (isset($field['options'])): ?>
+                                                <?php foreach ($field['options'] as $option): ?>
+                                                    <option value="<?php echo esc_attr($option); ?>"><?php echo esc_html($option); ?></option>
+                                                <?php endforeach; ?>
+                                            <?php endif; ?>
+                                        </select>
+                                        <?php
+                                        break;
+                                    
+                                    case 'radio':
+                                        ?>
+                                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                                            <?php if (isset($field['options'])): ?>
+                                                <?php foreach ($field['options'] as $option): ?>
+                                                    <label style="display: flex; align-items: center; font-weight: normal;">
+                                                        <input 
+                                                            type="radio" 
+                                                            name="<?php echo esc_attr($field['name']); ?>" 
+                                                            value="<?php echo esc_attr($option); ?>"
+                                                            style="margin-right: 8px;"
+                                                            disabled
+                                                        >
+                                                        <?php echo esc_html($option); ?>
+                                                    </label>
+                                                <?php endforeach; ?>
+                                            <?php endif; ?>
+                                        </div>
+                                        <?php
+                                        break;
+                                    
+                                    case 'checkbox':
+                                        ?>
+                                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                                            <?php if (isset($field['options'])): ?>
+                                                <?php foreach ($field['options'] as $option): ?>
+                                                    <label style="display: flex; align-items: center; font-weight: normal;">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            name="<?php echo esc_attr($field['name']); ?>[]" 
+                                                            value="<?php echo esc_attr($option); ?>"
+                                                            style="margin-right: 8px;"
+                                                            disabled
+                                                        >
+                                                        <?php echo esc_html($option); ?>
+                                                    </label>
+                                                <?php endforeach; ?>
+                                            <?php endif; ?>
+                                        </div>
+                                        <?php
+                                        break;
+                                    
+                                    case 'file':
+                                        ?>
+                                        <input 
+                                            type="file" 
+                                            name="<?php echo esc_attr($field['name']); ?>"
+                                            style="<?php echo $field_style; ?>"
+                                            disabled
+                                        >
+                                        <?php
+                                        break;
+                                    
+                                    default:
+                                        // text, email, number, date, tel, url
+                                        ?>
+                                        <input 
+                                            type="<?php echo esc_attr($field['type']); ?>" 
+                                            name="<?php echo esc_attr($field['name']); ?>" 
+                                            placeholder="<?php echo esc_attr($field['placeholder'] ?? ''); ?>"
+                                            style="<?php echo $field_style; ?>"
+                                            disabled
+                                        >
+                                        <?php
+                                        break;
+                                endswitch;
+                                ?>
+                            </div>
+                        <?php endforeach; ?>
+                        
+                        <div style="text-align: <?php echo esc_attr($template['settings']['submit_align'] ?? 'left'); ?>; margin-top: 30px;">
+                            <button 
+                                type="button" 
+                                class="spf-submit-btn"
+                                style="padding: 12px 30px; 
+                                       background: <?php echo esc_attr($template['settings']['primary_color'] ?? '#0073aa'); ?>; 
+                                       color: white; 
+                                       border: none; 
+                                       border-radius: 4px; 
+                                       font-size: 16px; 
+                                       font-weight: 500;
+                                       cursor: not-allowed;
+                                       opacity: 0.8;"
+                                disabled
+                            >
+                                <?php echo esc_html($template['settings']['submit_button_text'] ?? 'Submit'); ?>
+                            </button>
+                        </div>
+                        
+                        <p style="margin-top: 15px; text-align: center; font-size: 13px; color: #999; font-style: italic;">
+                            <?php _e('This is a preview. The form is not functional.', 'syntekpro-forms'); ?>
+                        </p>
+                    </form>
+                </div>
+            </div>
+            <?php
+            $html = ob_get_clean();
+            
+            wp_send_json_success(array('html' => $html));
+        }
+
+        // Regular form preview
+        $form_id = intval($form_id);
+        global $wpdb;
+        $table = $wpdb->prefix . 'spf_forms';
+        $form = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$table} WHERE id = %d", $form_id));
+
+        if (!$form) {
+            wp_send_json_error(__('Form not found', 'syntekpro-forms'));
+        }
+
+        // Capture the form output
+        ob_start();
+        echo do_shortcode('[syntekpro_form id="' . $form_id . '"]');
+        $html = ob_get_clean();
+
+        wp_send_json_success(array('html' => $html));
+    }
+
+    /**
+     * NEW: Get recent forms for dropdown
+     */
+    public function ajax_get_recent_forms() {
+        check_ajax_referer('spf_admin_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(__('Unauthorized', 'syntekpro-forms'));
+        }
+
+        global $wpdb;
+        $table = $wpdb->prefix . 'spf_forms';
+        
+        $forms = $wpdb->get_results($wpdb->prepare(
+            "SELECT id, title FROM {$table} WHERE status IN (%s, %s) ORDER BY updated_at DESC LIMIT %d",
+            'active',
+            'inactive',
+            15
+        ));
+
+        wp_send_json_success($forms ?: array());
+    }
+
+    /**
+     * NEW: Insert form into existing post/page
+     */
+    public function ajax_insert_form_to_post() {
+        check_ajax_referer('spf_admin_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(__('Unauthorized', 'syntekpro-forms'));
+        }
+
+        $post_id = intval($_POST['post_id']);
+        $form_id = intval($_POST['form_id']);
+
+        if (!$post_id || !$form_id) {
+            wp_send_json_error(__('Missing required fields', 'syntekpro-forms'));
+        }
+
+        // Get the post
+        $post = get_post($post_id);
+        if (!$post) {
+            wp_send_json_error(__('Post not found', 'syntekpro-forms'));
+        }
+
+        // Append shortcode to post content
+        $shortcode = '[syntekpro_form id="' . $form_id . '"]';
+        $new_content = $post->post_content . "\n\n" . $shortcode;
+
+        // Update post
+        $update_result = wp_update_post(array(
+            'ID' => $post_id,
+            'post_content' => $new_content
+        ));
+
+        if (is_wp_error($update_result)) {
+            wp_send_json_error(__('Error updating post', 'syntekpro-forms'));
+        }
+
+        $edit_url = get_edit_post_link($post_id, 'raw');
+        wp_send_json_success(array('edit_url' => $edit_url));
+    }
+
+    /**
+     * NEW: Get posts/pages for embed dropdown
+     */
+    public function ajax_get_posts_for_embed() {
+        check_ajax_referer('spf_admin_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(__('Unauthorized', 'syntekpro-forms'));
+        }
+
+        $post_type = isset($_POST['post_type']) ? sanitize_text_field($_POST['post_type']) : 'page';
+        
+        if (!in_array($post_type, array('post', 'page'))) {
+            wp_send_json_error(__('Invalid post type', 'syntekpro-forms'));
+        }
+
+        $args = array(
+            'post_type' => $post_type,
+            'post_status' => array('publish', 'draft', 'pending', 'private'),
+            'posts_per_page' => 100,
+            'orderby' => 'modified',
+            'order' => 'DESC'
+        );
+
+        $posts = get_posts($args);
+        
+        if (empty($posts)) {
+            wp_send_json_success(array());
+        }
+
+        $results = array();
+        foreach ($posts as $post) {
+            $results[] = array(
+                'ID' => $post->ID,
+                'post_title' => $post->post_title ? $post->post_title : __('(no title)', 'syntekpro-forms'),
+                'post_status' => $post->post_status
+            );
+        }
+
+        wp_send_json_success($results);
+    }
+
+    /**
+     * NEW: Create new post/page and insert form
+     */
+    public function ajax_create_post_with_form() {
+        check_ajax_referer('spf_admin_nonce', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(__('Unauthorized', 'syntekpro-forms'));
+        }
+
+        $post_type = sanitize_text_field($_POST['post_type']);
+        $title = sanitize_text_field($_POST['title']);
+        $form_id = intval($_POST['form_id']);
+
+        if (!$title || !$form_id || !in_array($post_type, array('post', 'page'))) {
+            wp_send_json_error(__('Missing or invalid fields', 'syntekpro-forms'));
+        }
+
+        // Create new post
+        $shortcode = '[syntekpro_form id="' . $form_id . '"]';
+        $post_data = array(
+            'post_title' => $title,
+            'post_content' => $shortcode,
+            'post_type' => $post_type,
+            'post_status' => 'draft',
+            'post_author' => get_current_user_id()
+        );
+
+        $post_id = wp_insert_post($post_data);
+
+        if (is_wp_error($post_id)) {
+            wp_send_json_error(__('Error creating post', 'syntekpro-forms'));
+        }
+
+        $edit_url = get_edit_post_link($post_id, 'raw');
+        wp_send_json_success(array('edit_url' => $edit_url));
     }
 }

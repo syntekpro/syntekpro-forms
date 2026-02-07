@@ -2,6 +2,62 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.1] - 2026-02-08
+
+### Added
+- Redesigned Add Fields menu with 3-column grid layout, icons on top, text below
+- Organized fields into 3 collapsible sections: Standard Fields (12), Advanced Fields (12), Post Fields (7)
+- Added 19 new field types: Hidden, HTML, Section, Page Break, Multiple Choice, Image Choice, Name, Time, Phone, Address, Website, CAPTCHA, List, Multi Select, Consent, Post Title, Post Body, Post Excerpt, Post Tags, Post Category, Post Image, Custom Field
+- Full rendering and processing for all new field types with preview functionality
+- Dynamic list field with "Add Item" button functionality
+- Drag hint message in Add Fields section
+- Form Canvas badge moved to top and centered
+- Icons added to all styling labels with clean box design
+- Tab headers (Add Fields, Form Settings, Styling) redesigned with icons on top and square boxes
+- Consistent dropdown arrow styling across all sections
+- Fully functional embed modal with post/page loading
+- Icon added to Embed button
+
+### Changed
+- Field type icons reduced to 16px (half original size)
+- Field boxes made perfect square with aspect-ratio: 1/1
+- Styling labels redesigned to match field box aesthetic with icons
+- Field section headers use same dropdown arrow as form settings
+- Form Canvas badge minimized to reduce vertical space
+- All dropdowns now have unified arrow styling and positioning
+- Tab buttons now display as square boxes with icon on top, text below
+
+### Fixed
+- Styling labels no longer shake on hover (removed all animations and pointer events)
+- Dropdown arrow now appears correctly in Standard/Advanced/Post field sections
+- Embed modal now loads and displays available posts/pages
+- Form save confirmation message now displays properly in builder page
+- Embed button icon now displays correctly (changed to dashicons-media-code)
+
+## [1.3.0] - 2026-02-03
+
+### Added
+- Completely redesigned Forms list page with enhanced UI and functionality.
+- Status filter tabs (All, Active, Inactive, Trash) with item counts.
+- Search functionality for forms with dedicated search bar and button.
+- Bulk actions dropdown: Mark As Active, Mark As Inactive, Reset Views, Permanently Delete Entries, Move to Trash.
+- Sortable table columns: Status, Title, ID, Entries, Views, and Conversion rate.
+- Views tracking - automatically tracks how many times each form is displayed.
+- Conversion rate calculation (Entries/Views percentage).
+- Row hover actions: Edit, Settings, Entries, Preview, Duplicate, Trash.
+- Settings modal showing Form Settings and Confirmations tabs.
+- Preview modal for quick form preview without leaving the list page.
+- Select all checkbox functionality for bulk operations.
+- Red "Add New" button styling (changed from blue).
+
+### Changed
+- Forms list page heading changed from "Forms List" to "Forms".
+- Table structure completely redesigned with better column organization.
+- Improved row actions displayed on hover instead of inline buttons.
+
+### Fixed
+- Database schema updated to include views column in forms table.
+
 ## [1.2.9] - 2026-02-03
 
 ### Added

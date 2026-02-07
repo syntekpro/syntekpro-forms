@@ -49,6 +49,12 @@ if ($availability['status'] !== 'open') {
     return;
 }
 
+// Track form view
+$wpdb->query($wpdb->prepare(
+    "UPDATE {$wpdb->prefix}spf_forms SET views = views + 1 WHERE id = %d",
+    $form_id
+));
+
 $plugin_settings = get_option('spf_settings');
 
 // Attributes Overrides (Gutenberg/Shortcode)
@@ -222,8 +228,18 @@ if (empty($steps)) {
                             case 'email':
                             case 'number':
                             case 'date':
+                            case 'phone':
+                            case 'website':
+                            case 'time':
+                            case 'post-title':
+                            case 'post-tags':
+                            case 'post-custom-field':
+                                $input_type = $field['type'];
+                                if ($input_type === 'website') $input_type = 'url';
+                                if ($input_type === 'phone') $input_type = 'tel';
+                                if (strpos($input_type, 'post-') === 0) $input_type = 'text';
                                 ?>
-                                <input type="<?php echo esc_attr($field['type']); ?>" 
+                                <input type="<?php echo esc_attr($input_type); ?>" 
                                        id="spf-field-<?php echo esc_attr($field['id']); ?>"
                                        name="<?php echo esc_attr($field['name']); ?>"
                                        class="spf-field-input"
@@ -234,17 +250,21 @@ if (empty($steps)) {
                                 break;
                             
                             case 'textarea':
+                            case 'post-body':
+                            case 'post-excerpt':
+                                $rows = ($field['type'] === 'post-body') ? 10 : 5;
                                 ?>
                                 <textarea id="spf-field-<?php echo esc_attr($field['id']); ?>"
                                           name="<?php echo esc_attr($field['name']); ?>"
                                           class="spf-field-textarea"
                                           placeholder="<?php echo esc_attr($field['placeholder'] ?? ''); ?>"
-                                          rows="5"
+                                          rows="<?php echo esc_attr($rows); ?>"
                                           <?php echo !empty($field['required']) ? 'required' : ''; ?>><?php echo esc_textarea($field_val); ?></textarea>
                                 <?php
                                 break;
                             
                             case 'select':
+                            case 'post-category':
                                 ?>
                                 <select id="spf-field-<?php echo esc_attr($field['id']); ?>"
                                         name="<?php echo esc_attr($field['name']); ?>"
@@ -264,7 +284,30 @@ if (empty($steps)) {
                                 <?php
                                 break;
                             
+                            case 'multi-select':
+                                $field_vals = is_array($field_val) ? $field_val : explode(',', (string)$field_val);
+                                ?>
+                                <select id="spf-field-<?php echo esc_attr($field['id']); ?>"
+                                        name="<?php echo esc_attr($field['name']); ?>[]"
+                                        class="spf-field-select"
+                                        multiple
+                                        style="height: 120px;"
+                                        <?php echo !empty($field['required']) ? 'required' : ''; ?>
+                                        >
+                                    <?php if (!empty($field['options']) && is_array($field['options'])): ?>
+                                        <?php foreach ($field['options'] as $option): ?>
+                                            <option value="<?php echo esc_attr($option); ?>" <?php selected(in_array($option, $field_vals)); ?>
+                                                >
+                                                <?php echo esc_html($option); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </select>
+                                <?php
+                                break;
+                            
                             case 'radio':
+                            case 'multiple-choice':
                                 ?>
                                 <div class="spf-radio-group">
                                     <?php if (!empty($field['options']) && is_array($field['options'])): ?>
@@ -306,12 +349,174 @@ if (empty($steps)) {
                                 break;
                             
                             case 'file':
+                            case 'post-image':
+                                $accept = ($field['type'] === 'post-image') ? 'image/*' : '';
                                 ?>
                                 <input type="file" 
                                        id="spf-field-<?php echo esc_attr($field['id']); ?>"
                                        name="<?php echo esc_attr($field['name']); ?>"
                                        class="spf-field-file"
+                                       <?php if ($accept): ?>accept="<?php echo esc_attr($accept); ?>"<?php endif; ?>
                                        <?php echo !empty($field['required']) ? 'required' : ''; ?>>
+                                <?php
+                                break;
+                            
+                            case 'hidden':
+                                ?>
+                                <input type="hidden" 
+                                       id="spf-field-<?php echo esc_attr($field['id']); ?>"
+                                       name="<?php echo esc_attr($field['name']); ?>"
+                                       value="<?php echo esc_attr($field_val); ?>">
+                                <?php
+                                break;
+                            
+                            case 'html':
+                            case 'section':
+                            case 'page':
+                                ?>
+                                <div class="spf-<?php echo esc_attr($field['type']); ?>-field">
+                                    <?php if ($field['type'] === 'html'): ?>
+                                        <?php echo wp_kses_post($field['description'] ?? ''); ?>
+                                    <?php elseif ($field['type'] === 'section'): ?>
+                                        <hr class="spf-section-divider">
+                                    <?php elseif ($field['type'] === 'page'): ?>
+                                        <div class="spf-page-break"></div>
+                                    <?php endif; ?>
+                                </div>
+                                <?php
+                                break;
+                            
+                            case 'name':
+                                ?>
+                                <div class="spf-name-field">
+                                    <input type="text" 
+                                           id="spf-field-<?php echo esc_attr($field['id']); ?>-first"
+                                           name="<?php echo esc_attr($field['name']); ?>[first]"
+                                           class="spf-field-input"
+                                           placeholder="<?php _e('First Name', 'syntekpro-forms'); ?>"
+                                           style="width: 48%; margin-right: 4%;"
+                                           <?php echo !empty($field['required']) ? 'required' : ''; ?>>
+                                    <input type="text" 
+                                           id="spf-field-<?php echo esc_attr($field['id']); ?>-last"
+                                           name="<?php echo esc_attr($field['name']); ?>[last]"
+                                           class="spf-field-input"
+                                           placeholder="<?php _e('Last Name', 'syntekpro-forms'); ?>"
+                                           style="width: 48%;"
+                                           <?php echo !empty($field['required']) ? 'required' : ''; ?>>
+                                </div>
+                                <?php
+                                break;
+                            
+                            case 'address':
+                                ?>
+                                <div class="spf-address-field">
+                                    <input type="text" 
+                                           name="<?php echo esc_attr($field['name']); ?>[street]"
+                                           class="spf-field-input"
+                                           placeholder="<?php _e('Street Address', 'syntekpro-forms'); ?>"
+                                           style="margin-bottom: 8px;"
+                                           <?php echo !empty($field['required']) ? 'required' : ''; ?>>
+                                    <div style="display: flex; gap: 8px;">
+                                        <input type="text" 
+                                               name="<?php echo esc_attr($field['name']); ?>[city]"
+                                               class="spf-field-input"
+                                               placeholder="<?php _e('City', 'syntekpro-forms'); ?>"
+                                               style="flex: 1;"
+                                               <?php echo !empty($field['required']) ? 'required' : ''; ?>>
+                                        <input type="text" 
+                                               name="<?php echo esc_attr($field['name']); ?>[state]"
+                                               class="spf-field-input"
+                                               placeholder="<?php _e('State', 'syntekpro-forms'); ?>"
+                                               style="flex: 1;"
+                                               <?php echo !empty($field['required']) ? 'required' : ''; ?>>
+                                        <input type="text" 
+                                               name="<?php echo esc_attr($field['name']); ?>[zip]"
+                                               class="spf-field-input"
+                                               placeholder="<?php _e('ZIP', 'syntekpro-forms'); ?>"
+                                               style="flex: 1;"
+                                               <?php echo !empty($field['required']) ? 'required' : ''; ?>>
+                                    </div>
+                                </div>
+                                <?php
+                                break;
+                            
+                            case 'image-choice':
+                                ?>
+                                <div class="spf-image-choice-group">
+                                    <?php if (!empty($field['options']) && is_array($field['options'])): ?>
+                                        <?php foreach ($field['options'] as $index2 => $option): ?>
+                                            <?php 
+                                            $opt_label = is_array($option) ? ($option['label'] ?? 'Choice') : $option;
+                                            $opt_image = is_array($option) ? ($option['image'] ?? '') : '';
+                                            ?>
+                                            <label class="spf-image-choice-label" style="display: inline-block; margin: 10px; text-align: center; cursor: pointer;">
+                                                <div class="spf-image-choice-img" style="width: 120px; height: 120px; border: 2px solid #ddd; border-radius: 8px; overflow: hidden; margin-bottom: 8px;">
+                                                    <?php if ($opt_image): ?>
+                                                        <img src="<?php echo esc_url($opt_image); ?>" alt="<?php echo esc_attr($opt_label); ?>" style="width: 100%; height: 100%; object-fit: cover;">
+                                                    <?php else: ?>
+                                                        <div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #f5f5f5;">
+                                                            <span class="dashicons dashicons-format-image" style="font-size: 48px; color: #ccc;"></span>
+                                                        </div>
+                                                    <?php endif; ?>
+                                                </div>
+                                                <input type="radio" 
+                                                       id="spf-field-<?php echo esc_attr($field['id'] . '-' . $index2); ?>"
+                                                       name="<?php echo esc_attr($field['name']); ?>"
+                                                       value="<?php echo esc_attr($opt_label); ?>"
+                                                       <?php echo !empty($field['required']) ? 'required' : ''; ?>>
+                                                <?php echo esc_html($opt_label); ?>
+                                            </label>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </div>
+                                <?php
+                                break;
+                            
+                            case 'captcha':
+                                // Simple honeypot CAPTCHA
+                                ?>
+                                <div class="spf-captcha-field" style="background: #f9f9f9; padding: 20px; border: 1px solid #ddd; border-radius: 8px; text-align: center;">
+                                    <p><?php _e('Please verify you are human:', 'syntekpro-forms'); ?></p>
+                                    <label>
+                                        <?php $captcha_answer = rand(1, 10) + rand(1, 10); ?>
+                                        <?php _e('What is', 'syntekpro-forms'); ?> <?php echo ($captcha_answer - rand(1, 5)); ?> + <?php echo rand(1, 5); ?>?
+                                        <input type="text" 
+                                               name="<?php echo esc_attr($field['name']); ?>"
+                                               class="spf-field-input"
+                                               required
+                                               style="width: 80px; margin-left: 10px;">
+                                    </label>
+                                    <input type="hidden" name="<?php echo esc_attr($field['name']); ?>_answer" value="<?php echo esc_attr($captcha_answer); ?>">
+                                </div>
+                                <?php
+                                break;
+                            
+                            case 'list':
+                                ?>
+                                <div class="spf-list-field" data-field-id="<?php echo esc_attr($field['id']); ?>">
+                                    <div class="spf-list-items">
+                                        <input type="text" 
+                                               name="<?php echo esc_attr($field['name']); ?>[]" 
+                                               class="spf-field-input" 
+                                               placeholder="<?php echo esc_attr($field['placeholder'] ?? 'Item 1'); ?>" 
+                                               style="margin-bottom: 5px;">
+                                    </div>
+                                    <button type="button" class="spf-add-list-item" style="margin-top: 5px;"><?php _e('+ Add Item', 'syntekpro-forms'); ?></button>
+                                </div>
+                                <?php
+                                break;
+                            
+                            case 'consent':
+                                $consent_text = $field['description'] ?? __('I agree to the terms and conditions', 'syntekpro-forms');
+                                ?>
+                                <label class="spf-consent-label">
+                                    <input type="checkbox" 
+                                           id="spf-field-<?php echo esc_attr($field['id']); ?>"
+                                           name="<?php echo esc_attr($field['name']); ?>"
+                                           value="yes"
+                                           <?php echo !empty($field['required']) ? 'required' : ''; ?>>
+                                    <?php echo wp_kses_post($consent_text); ?>
+                                </label>
                                 <?php
                                 break;
                         }

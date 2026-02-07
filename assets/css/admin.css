@@ -1,5 +1,23 @@
 /* Advanced Forms Builder - Admin Styles */
 
+/* GLOBAL BUTTON COLOR OVERRIDE - ALL BUTTONS RED */
+:root {
+    --wp-admin-button-primary-color: #dc3232 !important;
+    --wp-admin-button-primary-hover: #e74c3c !important;
+}
+
+.button-primary {
+    background-color: #dc3232 !important;
+    border-color: #c82333 !important;
+    color: #fff !important;
+}
+
+.button-primary:hover,
+.button-primary:focus {
+    background-color: #e74c3c !important;
+    border-color: #b81a23 !important;
+}
+
 /* Common Admin Header */
 .spf-admin-header {
     display: flex;
@@ -87,8 +105,8 @@ div.wrap.spf-settings-page {
 .spf-admin-header-right .button-primary,
 .spf-admin-content-card .button-primary,
 .spf-builder-container .button-primary {
-    background: #2271b1 !important;
-    border-color: #2271b1 !important;
+    background: #dc3232 !important;
+    border-color: #c82333 !important;
     color: #fff !important;
 }
 
@@ -106,9 +124,10 @@ div.wrap.spf-settings-page {
 .spf-admin-header-right .button-primary:hover,
 .spf-admin-content-card .button-primary:hover,
 .spf-builder-container .button-primary:hover {
-    background: #135e96 !important;
-    border-color: #135e96 !important;
-    box-shadow: 0 4px 8px rgba(34, 113, 177, 0.3) !important;
+    background: #e74c3c !important;
+    border-color: #b81a23 !important;
+    box-shadow: 0 4px 12px rgba(220, 50, 50, 0.3) !important;
+    transform: translateY(-2px) !important;
 }
 
 /* Sidebar Menu Titles Hover */
@@ -119,16 +138,16 @@ div.wrap.spf-settings-page {
 
 .spf-tab-btn:hover,
 .spf-settings-tab-btn:hover {
-    background: #e7f0f7 !important;
-    color: #2271b1 !important;
+    background: #fee8e8 !important;
+    color: #dc3232 !important;
     padding-left: 25px !important;
 }
 
 .spf-tab-btn.active,
 .spf-settings-tab-btn.active {
     background: #fff !important;
-    color: #2271b1 !important;
-    border-left: 4px solid #2271b1 !important;
+    color: #dc3232 !important;
+    border-left: 4px solid #dc3232 !important;
     padding-left: 25px !important;
 }
 
@@ -160,7 +179,7 @@ div.wrap.spf-settings-page {
 }
 
 .spf-admin-footer .spf-footer-brand:hover {
-    color: #135e96;
+    color: #dc3232;
 }
 
 .spf-admin-footer .spf-footer-icon {
@@ -232,9 +251,9 @@ div.wrap.spf-settings-page {
 }
 
 .spf-field-type:hover {
-    background: #0073aa;
+    background: #dc3232;
     color: #fff;
-    border-color: #0073aa;
+    border-color: #dc3232;
 }
 
 .spf-field-type .dashicons {
@@ -295,11 +314,11 @@ div.wrap.spf-settings-page {
 }
 
 .spf-field-item:hover {
-    border-color: #0073aa;
+    border-color: #dc3232;
 }
 
 .spf-field-item.active {
-    border-color: #0073aa;
+    border-color: #dc3232;
 }
 
 /* Settings Page Tabs */
@@ -340,13 +359,13 @@ div.wrap.spf-settings-page {
 
 .spf-settings-tab-btn:hover {
     background: #f0f0f1;
-    color: #2271b1;
+    color: #dc3232;
 }
 
 .spf-settings-tab-btn.active {
     background: #fff;
-    color: #2271b1;
-    border-right: 3px solid #2271b1;
+    color: #dc3232;
+    border-right: 3px solid #dc3232;
     margin-right: -1px;
 }
 
@@ -477,7 +496,7 @@ div.wrap.spf-settings-page {
 }
 
 .spf-footer-logo {
-    height: 56px;
+    height: 45px;
     width: auto;
     vertical-align: middle;
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -489,8 +508,8 @@ div.wrap.spf-settings-page {
 }
 
 .spf-badge {
-    background: #2271b1;
-    color: #fff;
+    background: #dc3232 !important;
+    color: #fff !important;
     padding: 2px 8px;
     border-radius: 4px;
     font-size: 11px;
@@ -501,7 +520,7 @@ div.wrap.spf-settings-page {
 /* Tooltip & Help */
 .spf-help-link {
     font-size: 12px;
-    color: #2271b1;
+    color: #dc3232;
     text-decoration: none;
 }
 
@@ -646,6 +665,16 @@ div.wrap.spf-settings-page {
     border-left: 4px solid;
     margin: 15px 0;
     border-radius: 3px;
+    position: relative;
+    z-index: 999;
+}
+
+/* Notification in form builder - special positioning */
+.spf-form-builder-wrap .spf-notification {
+    margin: 0;
+    border-radius: 0;
+    border-left-width: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .spf-notification.success {
@@ -658,6 +687,12 @@ div.wrap.spf-settings-page {
     background: #f8d7da;
     border-color: #dc3545;
     color: #721c24;
+}
+
+.spf-notification p {
+    margin: 0;
+    padding: 0;
+    font-weight: 500;
 }
 
 .spf-form-fields-canvas.spf-theme-modern .spf-field-item {
@@ -696,8 +731,8 @@ div.wrap.spf-settings-page {
 }
 
 .spf-form-fields.drag-over {
-    background: #e8f4f8;
-    border-color: #0073aa;
+    background: #fee8e8;
+    border-color: #dc3232;
 }
 
 /* Loading State */
@@ -716,7 +751,7 @@ div.wrap.spf-settings-page {
     height: 20px;
     margin: -10px 0 0 -10px;
     border: 2px solid #f3f3f3;
-    border-top: 2px solid #0073aa;
+    border-top: 2px solid #dc3232;
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
@@ -800,13 +835,35 @@ body.folded .spf-modal {
     max-height: calc(85vh - 70px);
 }
 .spf-modal-close {
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     font-size: 24px;
+    line-height: 1;
     cursor: pointer;
-    color: #646970;
-    transition: color 0.2s;
+    color: #fff;
+    background: #dc3232;
+    border: 1px solid #c82333;
+    border-radius: 4px;
+    padding: 0;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(220, 50, 50, 0.2);
 }
 .spf-modal-close:hover {
-    color: #d63638;
+    background: #e74c3c;
+    border-color: #b81a23;
+    box-shadow: 0 4px 12px rgba(220, 50, 50, 0.3);
+    transform: translateY(-2px);
+}
+.spf-modal-close:active {
+    box-shadow: 0 1px 2px rgba(220, 50, 50, 0.2);
+    transform: translateY(0);
+}
+.spf-modal-close:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(220, 50, 50, 0.35);
 }
 
 /* Template Grid Styles */
@@ -835,7 +892,7 @@ body.folded .spf-modal {
     overflow: hidden;
 }
 .spf-template-item:hover {
-    border-color: #2271b1;
+    border-color: #dc3232;
     transform: translateY(-5px);
     box-shadow: 0 10px 20px rgba(0,0,0,0.1);
 }
@@ -857,8 +914,8 @@ body.folded .spf-modal {
 .spf-template-icon {
     width: 60px;
     height: 60px;
-    background: #f0f7ff;
-    color: #2271b1;
+    background: #fee8e8;
+    color: #dc3232;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -871,7 +928,7 @@ body.folded .spf-modal {
     height: 32px;
 }
 .spf-template-item:hover .spf-template-icon {
-    background: #2271b1;
+    background: #dc3232;
     color: #fff;
 }
 .spf-template-info {
@@ -908,7 +965,7 @@ body.folded .spf-modal {
 }
 .spf-detail-label {
     font-weight: 700;
-    color: #2271b1;
+    color: #dc3232;
     margin-bottom: 8px;
     font-size: 13px;
     text-transform: uppercase;
@@ -929,4 +986,66 @@ body.folded .spf-modal {
     .spf-template-grid {
         grid-template-columns: 1fr;
     }
+}
+/* FORCE RED BUTTON COLORS - COMPREHENSIVE OVERRIDE */
+button.button-primary {
+    background-color: #dc3232 !important;
+    border-color: #c82333 !important;
+    color: #fff !important;
+}
+
+button.button-primary:hover,
+button.button-primary:focus {
+    background-color: #e74c3c !important;
+    border-color: #b81a23 !important;
+    box-shadow: 0 4px 12px rgba(220, 50, 50, 0.3) !important;
+}
+
+a.button,
+a.button-primary {
+    background-color: #dc3232 !important;
+    border-color: #c82333 !important;
+    color: #fff !important;
+}
+
+a.button:hover,
+a.button-primary:hover,
+a.button:focus,
+a.button-primary:focus {
+    background-color: #e74c3c !important;
+    border-color: #b81a23 !important;
+    box-shadow: 0 4px 12px rgba(220, 50, 50, 0.3) !important;
+}
+
+input[type="submit"],
+input[type="button"].button-primary {
+    background-color: #dc3232 !important;
+    border-color: #c82333 !important;
+    color: #fff !important;
+}
+
+input[type="submit"]:hover,
+input[type="button"].button-primary:hover {
+    background-color: #e74c3c !important;
+    border-color: #b81a23 !important;
+    box-shadow: 0 4px 12px rgba(220, 50, 50, 0.3) !important;
+}
+
+/* Badge version number */
+.spf-badge {
+    background: #dc3232 !important;
+    color: #fff !important;
+}
+
+/* All button-like elements */
+.wrap .button-primary {
+    background-color: #dc3232 !important;
+    border-color: #c82333 !important;
+    color: #fff !important;
+}
+
+.wrap .button-primary:hover,
+.wrap .button-primary:focus {
+    background-color: #e74c3c !important;
+    border-color: #b81a23 !important;
 }

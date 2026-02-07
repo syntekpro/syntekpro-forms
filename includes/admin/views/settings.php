@@ -32,6 +32,7 @@ if (isset($_POST['spf_save_settings']) && check_admin_referer('spf_settings_nonc
         'enable_ip_logging' => isset($_POST['enable_ip_logging']) ? 1 : 0,
         'anonymize_ip' => isset($_POST['anonymize_ip']) ? 1 : 0,
         'data_retention_days' => isset($_POST['data_retention_days']) ? absint($_POST['data_retention_days']) : 0,
+        'trash_retention_days' => isset($_POST['trash_retention_days']) ? absint($_POST['trash_retention_days']) : 40,
         'rate_limit_enabled' => isset($_POST['rate_limit_enabled']) ? 1 : 0,
         'rate_limit_seconds' => isset($_POST['rate_limit_seconds']) ? absint($_POST['rate_limit_seconds']) : 0
     );
@@ -62,6 +63,7 @@ $defaults = array(
     'enable_ip_logging' => 1,
     'anonymize_ip' => 0,
     'data_retention_days' => 0,
+    'trash_retention_days' => 40,
     'rate_limit_enabled' => 0,
     'rate_limit_seconds' => 30
 );
@@ -308,6 +310,12 @@ $tutorial_url = esc_url(plugins_url('docs/TUTORIAL.md', SPF_PLUGIN_FILE));
                             </div>
 
                             <div class="spf-setting-field">
+                                <label class="spf-setting-label"><?php _e('Auto-Clear Trash (days)', 'syntekpro-forms'); ?></label>
+                                <input type="number" min="0" name="trash_retention_days" value="<?php echo esc_attr($settings['trash_retention_days']); ?>" class="small-text">
+                                <p class="spf-setting-description"><?php _e('Permanently delete forms in Trash after this many days. Set to 0 to keep trashed forms indefinitely.', 'syntekpro-forms'); ?></p>
+                            </div>
+
+                            <div class="spf-setting-field">
                                 <label>
                                     <input type="checkbox" name="rate_limit_enabled" value="1" <?php checked($settings['rate_limit_enabled'], 1); ?>>
                                     <strong><?php _e('Enable Rate Limiting', 'syntekpro-forms'); ?></strong>
@@ -431,7 +439,7 @@ $tutorial_url = esc_url(plugins_url('docs/TUTORIAL.md', SPF_PLUGIN_FILE));
 <div class="spf-admin-footer" style="background:#f8ebb4;border:1px solid #ccd0d4;border-radius:4px;padding:10px 20px;margin-top:20px;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 1px rgba(0,0,0,0.04);">
     <a class="spf-footer-brand" href="https://syntekpro.com" target="_blank" rel="noopener noreferrer">
         <span><?php _e('Powered by', 'syntekpro-forms'); ?></span>
-        <img src="<?php echo SPF_PLUGIN_URL; ?>assets/images/SYNTEK%20PRO%20LOGO%20Transparent%20Icon%20500x150.png" class="spf-footer-icon" alt="SyntekPro" style="height:32px !important;width:32px !important;max-height:32px !important;max-width:32px !important;object-fit:contain;display:inline-block;vertical-align:middle;">
+        <img src="<?php echo SPF_PLUGIN_URL; ?>assets/images/SYNTEK%20PRO%20LOGO%20Transparent%20Icon%20500x150.png" class="spf-footer-icon" alt="SyntekPro" style="height:45px !important;width:auto !important;max-height:45px !important;max-width:150px !important;object-fit:contain;display:inline-block;vertical-align:middle;">
     </a>
 </div>
 

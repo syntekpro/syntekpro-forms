@@ -3,7 +3,7 @@
  * Plugin Name: SyntekPro Forms
  * Plugin URI: https://syntekpro.com
  * Description: Professional WordPress form builder with drag & drop interface, Gutenberg support, and advanced entry management
- * Version: 1.2.9
+ * Version: 1.3.1
  * Author: SyntekPro
  * Author URI: https://syntekpro.com
  * License: GPL v2 or later
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('SPF_VERSION', '1.2.9');
+define('SPF_VERSION', '1.3.1');
 define('SPF_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SPF_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('SPF_PLUGIN_FILE', __FILE__);
@@ -105,6 +105,7 @@ class SyntekPro_Forms_Builder {
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             status varchar(20) DEFAULT 'active',
+            views bigint(20) DEFAULT 0,
             PRIMARY KEY  (id)
         ) $charset_collate;";
 
@@ -174,6 +175,7 @@ class SyntekPro_Forms_Builder {
             'enable_ip_logging' => 1,
             'anonymize_ip' => 0,
             'data_retention_days' => 0,
+            'trash_retention_days' => 40,
             'rate_limit_enabled' => 0,
             'rate_limit_seconds' => 30,
             'force_enqueue_conditional_logic' => 0,
@@ -203,20 +205,11 @@ class SyntekPro_Forms_Builder {
 
         add_submenu_page(
             'syntekpro-forms',
-            __('All Forms', 'syntekpro-forms'),
-            __('All Forms', 'syntekpro-forms'),
-            'manage_options',
-            'syntekpro-forms-all',
-            array($this, 'render_forms_page')
-        );
-
-        add_submenu_page(
-            'syntekpro-forms',
             __('Add New', 'syntekpro-forms'),
             __('Add New', 'syntekpro-forms'),
             'manage_options',
-            'admin.php?page=syntekpro-forms-all&add-new=1',
-            null
+            'syntekpro-forms-add-new',
+            array($this, 'render_add_new_page')
         );
 
         add_submenu_page(
@@ -267,14 +260,88 @@ class SyntekPro_Forms_Builder {
             'spf-admin-css',
             SPF_PLUGIN_URL . 'assets/css/admin.css',
             array(),
-            SPF_VERSION
+            SPF_VERSION . time()  // Force cache bust
         );
+
+        // Add critical inline CSS to force red buttons - override WordPress defaults
+        wp_add_inline_style('spf-admin-css', '
+            .spf-admin-list-wrap .button-primary,
+            .spf-form-builder-wrap .button-primary,
+            .spf-settings-page .button-primary,
+            .spf-admin-page .button-primary,
+            .wrap .button-primary {
+                background-color: #dc3232 !important;
+                border-color: #c82333 !important;
+                color: #fff !important;
+            }
+            
+            .spf-admin-list-wrap .button-primary:hover,
+            .spf-admin-list-wrap .button-primary:focus,
+            .spf-form-builder-wrap .button-primary:hover,
+            .spf-form-builder-wrap .button-primary:focus,
+            .spf-settings-page .button-primary:hover,
+            .spf-settings-page .button-primary:focus,
+            .spf-admin-page .button-primary:hover,
+            .spf-admin-page .button-primary:focus,
+            .wrap .button-primary:hover,
+            .wrap .button-primary:focus {
+                background-color: #e74c3c !important;
+                border-color: #b81a23 !important;
+                box-shadow: 0 4px 12px rgba(220, 50, 50, 0.3) !important;
+            }
+            
+            /* Badge styling */
+            .spf-badge,
+            .spf-version-badge {
+                background-color: #dc3232 !important;
+                color: #fff !important;
+                border-color: #c82333 !important;
+            }
+            
+            .spf-badge:hover,
+            .spf-version-badge:hover {
+                background-color: #e74c3c !important;
+                border-color: #b81a23 !important;
+            }
+            
+            /* All anchor buttons */
+            a.button,
+            a.button-primary {
+                background-color: #dc3232 !important;
+                border-color: #c82333 !important;
+            }
+            
+            a.button:hover,
+            a.button-primary:hover,
+            a.button:focus,
+            a.button-primary:focus {
+                background-color: #e74c3c !important;
+                border-color: #b81a23 !important;
+            }
+            
+            /* Input buttons */
+            input[type="submit"].button,
+            input[type="submit"].button-primary,
+            input[type="button"].button,
+            input[type="button"].button-primary {
+                background-color: #dc3232 !important;
+                border-color: #c82333 !important;
+            }
+            
+            input[type="submit"].button:hover,
+            input[type="submit"].button-primary:hover,
+            input[type="button"].button:hover,
+            input[type="button"].button-primary:hover {
+                background-color: #e74c3c !important;
+                border-color: #b81a23 !important;
+            }
+        ');
 
         wp_enqueue_script(
             'spf-admin-js',
             SPF_PLUGIN_URL . 'assets/js/admin.js',
             array('jquery', 'jquery-ui-sortable'),
-            SPF_VERSION,
+            SPF_VERSION . time(),  // Force cache bust
             true
         );
 
@@ -366,6 +433,31 @@ class SyntekPro_Forms_Builder {
         $view_file = SPF_PLUGIN_DIR . 'includes/admin/views/forms-list.php';
         if (file_exists($view_file)) {
             include $view_file;
+        }
+    }
+
+    public function render_add_new_page() {
+        $view_file = SPF_PLUGIN_DIR . 'includes/admin/views/forms-list.php';
+        if (file_exists($view_file)) {
+            include $view_file;
+            // Auto-open template modal via inline script
+            echo "<script type='text/javascript'>
+            (function() {
+                var showModal = function() {
+                    if (typeof jQuery !== 'undefined') {
+                        var $ = jQuery;
+                        $('#spf-template-modal').css('display', 'flex').hide().fadeIn();
+                    } else {
+                        setTimeout(showModal, 100);
+                    }
+                };
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', showModal);
+                } else {
+                    showModal();
+                }
+            })();
+            </script>";
         }
     }
 
@@ -610,6 +702,31 @@ class SyntekPro_Forms_Builder {
         ));
     }
 
+    private function apply_trash_retention($settings) {
+        if (!isset($settings['trash_retention_days'])) {
+            return;
+        }
+
+        $days = absint($settings['trash_retention_days']);
+        if ($days === 0) {
+            return;
+        }
+
+        global $wpdb;
+        $forms_table = $wpdb->prefix . 'spf_forms';
+        $entries_table = $wpdb->prefix . 'spf_entries';
+
+        $wpdb->query($wpdb->prepare(
+            "DELETE FROM {$entries_table} WHERE form_id IN (SELECT id FROM {$forms_table} WHERE status = 'trash' AND updated_at < (NOW() - INTERVAL %d DAY))",
+            $days
+        ));
+
+        $wpdb->query($wpdb->prepare(
+            "DELETE FROM {$forms_table} WHERE status = 'trash' AND updated_at < (NOW() - INTERVAL %d DAY)",
+            $days
+        ));
+    }
+
     public function run_data_retention_cron() {
         $settings = get_option('spf_settings', array());
         if (!is_array($settings)) {
@@ -617,6 +734,7 @@ class SyntekPro_Forms_Builder {
         }
 
         $this->apply_data_retention($settings);
+        $this->apply_trash_retention($settings);
     }
 
     public function register_cron_schedules($schedules) {
@@ -655,7 +773,7 @@ class SyntekPro_Forms_Builder {
 
         $wp_admin_bar->add_node(array(
             'id'    => 'syntekpro-forms',
-            'title' => '<img src="' . SPF_PLUGIN_URL . 'assets/images/Syntekpro%20Forms%20Grey%20Favicons.png" style="height:28px; width:auto; vertical-align:middle; margin-right:5px; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.2));"> Forms',
+            'title' => '<img src="' . SPF_PLUGIN_URL . 'assets/images/Syntekpro%20Forms%20Grey%20Favicons.png" style="height:25px; width:auto; vertical-align:middle; margin-right:5px; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.2));"> Forms',
             'href'  => admin_url('admin.php?page=syntekpro-forms'),
             'meta'  => array('title' => __('SyntekPro Forms', 'syntekpro-forms')),
         ));
@@ -779,10 +897,10 @@ class SyntekPro_Forms_Builder {
             #toplevel_page_syntekpro-forms .wp-menu-image img,
             .folded #toplevel_page_syntekpro-forms .wp-menu-image img {
                 padding: 0;
-                width: 28px;
-                height: 28px;
-                max-width: 28px;
-                max-height: 28px;
+                width: 25px;
+                height: 25px;
+                max-width: 25px;
+                max-height: 25px;
                 object-fit: contain;
                 filter: brightness(1.2);
                 vertical-align: middle;
@@ -790,8 +908,8 @@ class SyntekPro_Forms_Builder {
             }
             #wpadminbar #wp-admin-bar-syntekpro-forms .wp-admin-bar-item img,
             #wpadminbar #wp-admin-bar-syntekpro-forms .ab-icon img {
-                max-width: 32px !important;
-                max-height: 28px !important;
+                max-width: 25px !important;
+                max-height: 25px !important;
                 height: auto !important;
                 width: auto !important;
                 vertical-align: middle;

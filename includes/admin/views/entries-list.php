@@ -120,7 +120,7 @@ $unread_entries = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}spf_entrie
 <div class="spf-admin-footer" style="background:#f8ebb4;border:1px solid #ccd0d4;border-radius:4px;padding:10px 20px;margin-top:20px;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 1px rgba(0,0,0,0.04);">
     <a class="spf-footer-brand" href="https://syntekpro.com" target="_blank" rel="noopener noreferrer">
         <span><?php _e('Powered by', 'syntekpro-forms'); ?></span>
-        <img src="<?php echo SPF_PLUGIN_URL; ?>assets/images/SYNTEK%20PRO%20LOGO%20Transparent%20Icon%20500x150.png" class="spf-footer-icon" alt="SyntekPro" style="height:32px !important;width:32px !important;max-height:32px !important;max-width:32px !important;object-fit:contain;display:inline-block;vertical-align:middle;">
+        <img src="<?php echo SPF_PLUGIN_URL; ?>assets/images/SYNTEK%20PRO%20LOGO%20Transparent%20Icon%20500x150.png" class="spf-footer-icon" alt="SyntekPro" style="height:45px !important;width:auto !important;max-height:45px !important;max-width:150px !important;object-fit:contain;display:inline-block;vertical-align:middle;">
     </a>
 </div>
 
@@ -161,7 +161,7 @@ $unread_entries = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}spf_entrie
     font-weight: 600;
     text-transform: uppercase;
 }
-.spf-status-read { background: #e7f5fe; color: #2271b1; }
+.spf-status-read { background: #fff8f8; color: #dc3232; }
 .spf-status-unread { background: #fcf0ad; color: #856404; }
 
 .spf-entry-preview { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #646970; }

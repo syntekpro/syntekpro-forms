@@ -15,6 +15,7 @@
             this.initFormSubmission();
             this.initValidation();
             this.initSteps();
+            this.initDynamicFields();
 
             // Global callback for reCAPTCHA
             window.spfRecaptchaCallback = function(token) {
@@ -373,6 +374,22 @@
             }
             $progress.find('.spf-progress-label').text(label);
         }
+    };
+    
+    // Initialize dynamic fields (list field)
+    SPF_Frontend.initDynamicFields = function() {
+        // List field - Add Item button
+        $(document).on('click', '.spf-add-list-item', function() {
+            var $listField = $(this).closest('.spf-list-field');
+            var $itemsContainer = $listField.find('.spf-list-items');
+            var $firstInput = $itemsContainer.find('input').first();
+            var fieldName = $firstInput.attr('name');
+            var itemCount = $itemsContainer.find('input').length + 1;
+            
+            var $newInput = $('<input type="text" name="' + fieldName + '" class="spf-field-input" placeholder="Item ' + itemCount + '" style="margin-bottom: 5px;">');
+            $itemsContainer.append($newInput);
+            $newInput.focus();
+        });
     };
     
     // Initialize on document ready

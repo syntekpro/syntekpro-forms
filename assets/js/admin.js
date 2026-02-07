@@ -16,6 +16,7 @@
                 this.initSync();
                 this.initFormBuilder();
                 this.initFieldTypes();
+                this.initFieldSections();
                 this.initFormSave();
                 this.initFormActions();
                 this.initLivePreview();
@@ -477,7 +478,7 @@
             }
             
             $('#spf-form-fields').sortable({
-                handle: '.spf-field-header',
+                handle: '.spf-field-sort-handle',
                 placeholder: 'spf-field-placeholder',
                 opacity: 0.6,
                 update: function() {
@@ -540,6 +541,20 @@
             });
         },
         
+        initFieldSections: function() {
+            var self = this;
+            
+            // Handle collapsible field sections
+            $('.spf-field-section-header').on('click', function() {
+                var $header = $(this);
+                var section = $header.data('section');
+                var $content = $('[data-section-content="' + section + '"]');
+                
+                $header.toggleClass('collapsed');
+                $content.toggleClass('collapsed');
+            });
+        },
+        
         createField: function(type) {
             var timestamp = Date.now();
             var randomStr = Math.random().toString(36).substr(2, 5);
@@ -560,8 +575,39 @@
                 options: []
             };
             
-            if (['select', 'radio', 'checkbox'].indexOf(type) !== -1) {
+            // Field types that need options
+            if (['select', 'radio', 'checkbox', 'multiple-choice', 'multi-select', 'post-category'].indexOf(type) !== -1) {
                 field.options = ['Option 1', 'Option 2', 'Option 3'];
+            }
+            
+            // Image choice needs special structure
+            if (type === 'image-choice') {
+                field.options = [
+                    {label: 'Choice 1', image: ''},
+                    {label: 'Choice 2', image: ''},
+                    {label: 'Choice 3', image: ''}
+                ];
+            }
+            
+            // Name field needs sub-fields
+            if (type === 'name') {
+                field.format = 'first-last'; // or 'first-middle-last'
+                field.subfields = {
+                    first_name: true,
+                    middle_name: false,
+                    last_name: true
+                };
+            }
+            
+            // Address field needs sub-fields
+            if (type === 'address') {
+                field.subfields = {
+                    street: true,
+                    city: true,
+                    state: true,
+                    zip: true,
+                    country: true
+                };
             }
 
             if (type === 'step') {
@@ -579,10 +625,27 @@
                 'email': 'Enter email address...',
                 'textarea': 'Enter your message...',
                 'number': 'Enter number...',
+                'phone': 'Enter phone number...',
+                'website': 'https://example.com',
+                'date': 'Select date...',
+                'time': 'Select time...',
+                'hidden': '',
+                'html': '',
+                'section': '',
+                'page': '',
+                'name': 'Enter name...',
+                'address': 'Enter address...',
+                'captcha': '',
+                'list': 'Add items...',
+                'consent': '',
+                'post-title': 'Enter post title...',
+                'post-body': 'Enter post content...',
+                'post-excerpt': 'Enter excerpt...',
+                'post-tags': 'Enter tags separated by commas...',
+                'post-custom-field': 'Enter value...',
                 'select': '',
                 'radio': '',
                 'checkbox': '',
-                'date': '',
                 'file': '',
                 'step': ''
             };
@@ -591,15 +654,37 @@
         
         getFieldLabel: function(type) {
             var labels = {
-                'text': 'Text Field',
-                'email': 'Email Address',
-                'textarea': 'Message',
+                'text': 'Single Line Text',
+                'email': 'Email',
+                'textarea': 'Paragraph Text',
                 'number': 'Number',
-                'select': 'Select Option',
-                'radio': 'Radio Choice',
-                'checkbox': 'Checkbox Options',
+                'select': 'Drop Down',
+                'radio': 'Radio Buttons',
+                'checkbox': 'Checkboxes',
+                'hidden': 'Hidden Field',
+                'html': 'HTML Block',
+                'section': 'Section Break',
+                'page': 'Page Break',
+                'multiple-choice': 'Multiple Choice',
+                'image-choice': 'Image Choice',
+                'name': 'Name',
                 'date': 'Date',
+                'time': 'Time',
+                'phone': 'Phone',
+                'address': 'Address',
+                'website': 'Website URL',
                 'file': 'File Upload',
+                'captcha': 'CAPTCHA',
+                'list': 'List',
+                'multi-select': 'Multi Select',
+                'consent': 'Consent',
+                'post-title': 'Post Title',
+                'post-body': 'Post Body',
+                'post-excerpt': 'Post Excerpt',
+                'post-tags': 'Post Tags',
+                'post-category': 'Post Category',
+                'post-image': 'Post Featured Image',
+                'post-custom-field': 'Custom Field',
                 'step': 'Step'
             };
             return labels[type] || 'Field';
@@ -616,10 +701,11 @@
         renderField: function(field) {
             var html = '<div class="spf-field-item" data-field-id="' + field.id + '">';
             html += '<div class="spf-field-header">';
-            html += '<span class="spf-field-title"><span class="dashicons dashicons-sort"></span> ' + this.escapeHtml(field.label) + ' (' + field.type + ')</span>';
+            html += '<div class="spf-field-sort-handle"><span class="dashicons dashicons-arrow-up-alt2"></span><span class="dashicons dashicons-arrow-down-alt2"></span></div>';
+            html += '<span class="spf-field-title">' + this.escapeHtml(field.label) + ' <small>(' + field.type + ')</small></span>';
             html += '<div class="spf-field-actions">';
-            html += '<button type="button" class="button button-small spf-edit-field spf-tooltip" title="Edit field settings">Edit</button>';
-            html += '<button type="button" class="button button-small spf-delete-field spf-tooltip" title="Remove this field">Delete</button>';
+            html += '<button type="button" class="spf-action-btn spf-edit-field spf-tooltip" title="Edit"><span class="dashicons dashicons-edit"></span></button>';
+            html += '<button type="button" class="spf-action-btn spf-delete-field spf-tooltip" title="Delete"><span class="dashicons dashicons-trash"></span></button>';
             html += '</div>';
             html += '</div>';
             html += '<div class="spf-field-body">';
@@ -634,6 +720,10 @@
             var html = '';
             if (field.type === 'step') {
                 html += '<div class="spf-step-preview">' + this.escapeHtml(field.label || 'Step') + '</div>';
+            } else if (field.type === 'section' || field.type === 'page') {
+                html += '<div class="spf-section-preview">' + this.escapeHtml(field.label || field.type) + '</div>';
+            } else if (field.type === 'html') {
+                html += '<div class="spf-html-preview">[HTML Content]</div>';
             } else {
                 html += '<label>' + this.escapeHtml(field.label);
                 // CRITICAL FIX: Check boolean properly
@@ -647,13 +737,52 @@
                 case 'text':
                 case 'email':
                 case 'number':
-                case 'date':
-                    html += '<input type="' + field.type + '" placeholder="' + this.escapeHtml(field.placeholder || '') + '" disabled>';
+                case 'phone':
+                case 'website':
+                case 'post-title':
+                case 'post-tags':
+                case 'post-custom-field':
+                    html += '<input type="text" placeholder="' + this.escapeHtml(field.placeholder || '') + '" disabled>';
                     break;
+                
                 case 'textarea':
+                case 'post-body':
+                case 'post-excerpt':
                     html += '<textarea placeholder="' + this.escapeHtml(field.placeholder || '') + '" rows="3" disabled></textarea>';
                     break;
+                
+                case 'date':
+                    html += '<input type="date" disabled>';
+                    break;
+                
+                case 'time':
+                    html += '<input type="time" disabled>';
+                    break;
+                
+                case 'hidden':
+                    html += '<div class="spf-hidden-field-preview">[Hidden field - not visible to users]</div>';
+                    break;
+                
+                case 'name':
+                    html += '<div class="spf-name-field-preview">';
+                    html += '<input type="text" placeholder="First Name" disabled style="width: 48%; margin-right: 4%;">';
+                    html += '<input type="text" placeholder="Last Name" disabled style="width: 48%;">';
+                    html += '</div>';
+                    break;
+                
+                case 'address':
+                    html += '<div class="spf-address-field-preview">';
+                    html += '<input type="text" placeholder="Street Address" disabled style="margin-bottom: 8px;">';
+                    html += '<div style="display: flex; gap: 8px;">';
+                    html += '<input type="text" placeholder="City" disabled style="flex: 1;">';
+                    html += '<input type="text" placeholder="State" disabled style="flex: 1;">';
+                    html += '<input type="text" placeholder="ZIP" disabled style="flex: 1;">';
+                    html += '</div>';
+                    html += '</div>';
+                    break;
+                
                 case 'select':
+                case 'post-category':
                     html += '<select disabled><option>-- Select --</option>';
                     if (field.options) {
                         field.options.forEach(function(opt) {
@@ -662,23 +791,73 @@
                     }
                     html += '</select>';
                     break;
-                case 'radio':
-                case 'checkbox':
+                
+                case 'multi-select':
+                    html += '<select multiple disabled style="height: 80px;"><option>-- Select Multiple --</option>';
                     if (field.options) {
                         field.options.forEach(function(opt) {
-                            html += '<label style="display: block; margin: 5px 0;"><input type="' + field.type + '" disabled> ' + opt + '</label>';
+                            html += '<option>' + opt + '</option>';
+                        });
+                    }
+                    html += '</select>';
+                    break;
+                
+                case 'radio':
+                case 'checkbox':
+                case 'multiple-choice':
+                    if (field.options) {
+                        field.options.forEach(function(opt) {
+                            var inputType = (field.type === 'multiple-choice' || field.type === 'radio') ? 'radio' : 'checkbox';
+                            html += '<label style="display: block; margin: 5px 0;"><input type="' + inputType + '" disabled> ' + opt + '</label>';
                         });
                     }
                     break;
+                
+                case 'image-choice':
+                    html += '<div class="spf-image-choice-preview">';
+                    if (field.options) {
+                        field.options.forEach(function(opt) {
+                            html += '<div class="spf-image-option" style="display: inline-block; margin: 5px; text-align: center;">';
+                            html += '<div style="width: 80px; height: 80px; border: 2px dashed #ddd; background: #f9f9f9; display: flex; align-items: center; justify-content: center; margin-bottom: 5px;">';
+                            html += '<span class="dashicons dashicons-format-image" style="font-size: 24px; color: #ccc;"></span>';
+                            html += '</div>';
+                            html += '<label><input type="radio" disabled> ' + (opt.label || 'Choice') + '</label>';
+                            html += '</div>';
+                        });
+                    }
+                    html += '</div>';
+                    break;
+                
                 case 'file':
+                case 'post-image':
                     html += '<input type="file" disabled>';
                     break;
+                
+                case 'captcha':
+                    html += '<div class="spf-captcha-preview" style="background: #f0f0f0; padding: 15px; text-align: center; border: 1px solid #ddd;">';
+                    html += '<span class="dashicons dashicons-shield" style="font-size: 32px; color: #666;"></span>';
+                    html += '<p style="margin: 10px 0 0;">CAPTCHA Verification</p>';
+                    html += '</div>';
+                    break;
+                
+                case 'list':
+                    html += '<div class="spf-list-preview">';
+                    html += '<input type="text" placeholder="Item 1" disabled style="margin-bottom: 5px;">';
+                    html += '<input type="text" placeholder="Item 2" disabled>';
+                    html += '<button type="button" disabled style="margin-top: 5px;">+ Add Item</button>';
+                    html += '</div>';
+                    break;
+                
+                case 'consent':
+                    html += '<label style="display: block;"><input type="checkbox" disabled> I agree to the terms and conditions</label>';
+                    break;
+                
                 case 'step':
                     html += '<div class="spf-step-divider">' + this.escapeHtml(field.description || 'Step break') + '</div>';
                     break;
             }
             
-            if (field.description) {
+            if (field.description && field.type !== 'step') {
                 html += '<p class="description">' + this.escapeHtml(field.description) + '</p>';
             }
             
@@ -734,15 +913,16 @@
                 return;
             }
 
-            // Ensure we are on the "Fields" tab to show the edit menu if it was hidden or if on another tab
-            // Actually, the field settings are in the right sidebar, which is always visible.
-            // But we might want to make sure the right sidebar is visible if it was hidden (though it's not currently)
-            
             $('.spf-field-item').removeClass('active');
             $('.spf-field-item[data-field-id="' + fieldId + '"]').addClass('active');
             
-            var settingsHtml = '<div class="spf-field-settings-header"><h3><span class="dashicons dashicons-admin-tools"></span> Field Settings</h3></div>';
-            settingsHtml += '<div class="spf-field-settings-content">';
+            var settingsHtml = '<div class="spf-field-settings-content">';
+            
+            // Section 1: Basic Information (default open)
+            settingsHtml += '<div class="spf-settings-section active">';
+            settingsHtml += '<div class="spf-section-header"><h4>Basic Information <span class="dashicons dashicons-arrow-down-alt2"></span></h4></div>';
+            settingsHtml += '<div class="spf-section-body">';
+            
             settingsHtml += '<div class="spf-setting-row">';
             settingsHtml += '<label>Field Label</label>';
             settingsHtml += '<input type="text" class="spf-setting-label" value="' + this.escapeHtml(fieldData.label || '') + '">';
@@ -759,37 +939,74 @@
                 settingsHtml += '<input type="text" class="spf-setting-placeholder" value="' + this.escapeHtml(fieldData.placeholder || '') + '">';
                 settingsHtml += '</div>';
             }
+            settingsHtml += '</div></div>'; // End Basic Information
+
+            // Section 2: Options (conditional)
+            if (['select', 'radio', 'checkbox'].indexOf(fieldData.type) !== -1) {
+                settingsHtml += '<div class="spf-settings-section">';
+                settingsHtml += '<div class="spf-section-header"><h4>Field Options <span class="dashicons dashicons-arrow-down-alt2"></span></h4></div>';
+                settingsHtml += '<div class="spf-section-body">';
+                settingsHtml += '<div class="spf-setting-row">';
+                settingsHtml += '<label>Choices (one per line)</label>';
+                settingsHtml += '<textarea class="spf-setting-options" rows="5" style="font-family: monospace; font-size: 13px;">' + this.escapeHtml(fieldData.options ? fieldData.options.join('\n') : '') + '</textarea>';
+                settingsHtml += '</div>';
+                settingsHtml += '</div></div>';
+            }
+
+            // Section 3: Advanced Settings
+            settingsHtml += '<div class="spf-settings-section">';
+            settingsHtml += '<div class="spf-section-header"><h4>Advanced & Validation <span class="dashicons dashicons-arrow-down-alt2"></span></h4></div>';
+            settingsHtml += '<div class="spf-section-body">';
             
             settingsHtml += '<div class="spf-setting-row">';
-            settingsHtml += '<label>Description</label>';
-            settingsHtml += '<textarea class="spf-setting-description">' + this.escapeHtml(fieldData.description || '') + '</textarea>';
+            settingsHtml += '<label>Description/Help Text</label>';
+            settingsHtml += '<textarea class="spf-setting-description" rows="3">' + this.escapeHtml(fieldData.description || '') + '</textarea>';
             settingsHtml += '</div>';
             
             if (fieldData.type !== 'step') {
                 settingsHtml += '<div class="spf-setting-row">';
-                // CRITICAL FIX: Check boolean value properly
                 var isChecked = (fieldData.required === true) ? ' checked' : '';
-                settingsHtml += '<label><input type="checkbox" class="spf-setting-required"' + isChecked + '> Required Field</label>';
+                settingsHtml += '<label style="display: flex; align-items: center; gap: 8px; text-transform: none; font-weight: 500;"><input type="checkbox" class="spf-setting-required"' + isChecked + '> Required Field</label>';
                 settingsHtml += '</div>';
             }
-            
-            if (['select', 'radio', 'checkbox'].indexOf(fieldData.type) !== -1) {
-                settingsHtml += '<div class="spf-setting-row">';
-                settingsHtml += '<label>Options (one per line)</label>';
-                settingsHtml += '<textarea class="spf-setting-options" rows="5">' + this.escapeHtml(fieldData.options ? fieldData.options.join('\n') : '') + '</textarea>';
-                settingsHtml += '</div>';
-            }
-            
-            settingsHtml += '<button type="button" class="button button-primary button-large spf-save-field-settings" data-field-id="' + fieldId + '"><span class="dashicons dashicons-saved"></span> Save Settings</button>';
+            settingsHtml += '</div></div>'; // End Advanced
+
+            settingsHtml += '<div style="margin: 20px; display: flex; justify-content: flex-end;">';
+            settingsHtml += '<button type="button" class="spf-submit-button spf-save-field-settings" data-field-id="' + fieldId + '">Save Settings</button>';
+            settingsHtml += '</div>';
             settingsHtml += '</div>'; // End content
             
             var $settingsPanel = $('#spf-field-settings');
             if ($settingsPanel.length) {
-                $settingsPanel.html(settingsHtml); // Replace entire panel content to include header
+                $settingsPanel.html(settingsHtml); 
+                
+                // Show field settings window and slide up other panes
+                var $sidebar = $('.spf-sidebar');
+                var $fieldWindow = $('#spf-field-settings-window');
+                
+                if (!$fieldWindow.is(':visible')) {
+                    $sidebar.find('.spf-sidebar-tabs').slideUp(200);
+                    $sidebar.find('.spf-sidebar-content').slideUp(200);
+                    $fieldWindow.slideDown(200);
+                }
                 
                 $settingsPanel.find('.spf-save-field-settings').on('click', function(e) {
                     e.preventDefault();
                     self.saveFieldSettings(fieldId);
+                });
+
+                // Initialize accordion state: open first section only
+                var $sections = $settingsPanel.find('.spf-settings-section');
+                $sections.removeClass('active').find('.spf-section-body').hide();
+                $sections.first().addClass('active').find('.spf-section-body').show();
+
+                // Add toggle functionality for field settings sections (accordion style)
+                $settingsPanel.find('.spf-section-header').on('click', function() {
+                    var $section = $(this).parent('.spf-settings-section');
+                    var $container = $section.parent();
+                    $container.find('.spf-settings-section').not($section).removeClass('active').find('.spf-section-body').slideUp(200);
+                    $section.toggleClass('active');
+                    $section.find('.spf-section-body').slideToggle(200);
                 });
             }
         },
@@ -938,7 +1155,21 @@
             
             var $notification = $('<div class="notice notice-' + type + ' spf-notification is-dismissible"><p>' + message + '</p></div>');
             
-            $('.wrap h1').after($notification);
+            // Check if we're on the form builder page
+            if ($('.spf-form-builder-wrap').length > 0) {
+                // Insert after the top navigation bar in the form builder
+                $('.spf-builder-top-nav').after($notification);
+            } else if ($('.wrap h1').length > 0) {
+                // Standard WordPress admin page
+                $('.wrap h1').after($notification);
+            } else {
+                // Fallback: prepend to .wrap or body
+                if ($('.wrap').length > 0) {
+                    $('.wrap').prepend($notification);
+                } else {
+                    $('body').prepend($notification);
+                }
+            }
             
             if (type === 'success') {
                 setTimeout(function() {
@@ -967,6 +1198,318 @@
                 // In a real scenario, this might open a specific preview URL
                 var previewUrl = spfAdmin.ajaxurl + '?action=spf_preview_form&form_id=' + formId + '&nonce=' + spfAdmin.nonce;
                 window.open(previewUrl, '_blank');
+            });
+
+            // NEW: Tab switching in right sidebar
+            $(document).off('click', '.spf-tab-btn').on('click', '.spf-tab-btn', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                var tabName = $(this).data('tab');
+                var $sidebar = $(this).closest('.spf-sidebar');
+                var $fieldWindow = $('#spf-field-settings-window');
+                
+                if ($fieldWindow.is(':visible')) {
+                    $fieldWindow.slideUp(200);
+                    $sidebar.find('.spf-sidebar-tabs').slideDown(200);
+                    $sidebar.find('.spf-sidebar-content').slideDown(200);
+                }
+                
+                $sidebar.find('.spf-tab-btn').removeClass('active');
+                $(this).addClass('active');
+                
+                $sidebar.find('.spf-tab-content').removeClass('active');
+                $sidebar.find('#spf-tab-' + tabName).addClass('active');
+            });
+
+            // NEW: Collapsible sidebar panels (H3) with accordion behavior
+            var initPanelAccordion = function() {
+                $('.spf-settings-panel').each(function() {
+                    var $panel = $(this);
+                    var $headers = $panel.find('h3');
+
+                    $headers.each(function(index) {
+                        var $header = $(this);
+                        var $content = $header.next('.spf-panel-collapsible-content');
+                        if (!$content.length) return;
+                        if (index === 0) {
+                            $header.removeClass('collapsed');
+                            $content.show();
+                        } else {
+                            $header.addClass('collapsed');
+                            $content.hide();
+                        }
+                    });
+                });
+            };
+
+            initPanelAccordion();
+
+            $(document).on('click', '.spf-settings-panel h3', function() {
+                var $panel = $(this).closest('.spf-settings-panel');
+                var $content = $(this).next('.spf-panel-collapsible-content');
+                if (!$content.length) return;
+
+                $panel.find('h3').not(this).addClass('collapsed').next('.spf-panel-collapsible-content').slideUp(200);
+                $(this).toggleClass('collapsed');
+                $content.slideToggle(200);
+            });
+
+            // Close Field Settings Window
+            $(document).off('click', '.spf-field-settings-close').on('click', '.spf-field-settings-close', function() {
+                var $sidebar = $('.spf-sidebar');
+                $('#spf-field-settings-window').slideUp(200);
+                $sidebar.find('.spf-sidebar-tabs').slideDown(200);
+                $sidebar.find('.spf-sidebar-content').slideDown(200);
+            });
+
+            // NEW: Recent Forms Dropdown Toggle
+            $(document).off('click', '#spf-recent-forms-toggle').on('click', '#spf-recent-forms-toggle', function(e) {
+                e.preventDefault();
+                var $dropdown = $('#spf-recent-forms-dropdown');
+                $dropdown.toggle();
+                
+                if ($dropdown.is(':visible')) {
+                    self.loadRecentForms();
+                }
+            });
+
+            // Close dropdown when clicking outside
+            $(document).on('click.spf-dropdown-close', function(e) {
+                if (!$(e.target).closest('.spf-nav-recent-forms').length) {
+                    $('#spf-recent-forms-dropdown').hide();
+                }
+            });
+
+            // NEW: Search recent forms
+            $(document).off('keyup', '#spf-forms-search').on('keyup', '#spf-forms-search', function() {
+                var searchTerm = $(this).val().toLowerCase();
+                $('#spf-forms-list .spf-dropdown-item').each(function() {
+                    var text = $(this).text().toLowerCase();
+                    $(this).toggle(text.indexOf(searchTerm) > -1);
+                });
+            });
+
+            // NEW: Embed Button
+            $(document).off('click', '#spf-embed-form-btn').on('click', '#spf-embed-form-btn', function() {
+                $('#spf-embed-modal').show();
+            });
+
+            // NEW: Editor Preferences Button
+            $(document).off('click', '#spf-editor-preferences-btn').on('click', '#spf-editor-preferences-btn', function() {
+                $('#spf-editor-prefs-modal').show();
+                // Load saved preferences
+                var compactView = localStorage.getItem('spf-compact-view') === 'true';
+                var showFieldIds = localStorage.getItem('spf-show-field-ids') === 'true';
+                $('#spf-compact-view').prop('checked', compactView);
+                $('#spf-show-field-ids').prop('checked', showFieldIds).prop('disabled', !compactView);
+            });
+
+            // NEW: Modal close buttons
+            $(document).off('click', '.spf-modal-close, #spf-prefs-close').on('click', '.spf-modal-close, #spf-prefs-close', function() {
+                $(this).closest('.spf-modal').hide();
+            });
+
+            // Close modal when clicking outside
+            $(document).off('click', '.spf-modal').on('click', '.spf-modal', function(e) {
+                if (e.target === this) {
+                    $(this).hide();
+                }
+            });
+
+            // NEW: Embed Modal Tabs
+            $(document).off('click', '.spf-embed-tab-btn').on('click', '.spf-embed-tab-btn', function() {
+                var tabName = $(this).data('tab');
+                
+                $('.spf-embed-tab-btn').removeClass('active');
+                $(this).addClass('active');
+                
+                $('.spf-embed-tab-content').removeClass('active');
+                $('#spf-embed-' + tabName).addClass('active');
+                
+                // Load posts/pages when switching to post-page tab
+                if (tabName === 'post-page') {
+                    self.loadPostsForEmbed($('input[name="embed-post-type"]:checked').val());
+                }
+            });
+            
+            // NEW: Load posts when post type changes
+            $(document).off('change', 'input[name="embed-post-type"]').on('change', 'input[name="embed-post-type"]', function() {
+                var postType = $(this).val();
+                self.loadPostsForEmbed(postType);
+            });
+
+            // NEW: Copy Shortcode
+            $(document).off('click', '#spf-copy-shortcode').on('click', '#spf-copy-shortcode', function() {
+                var text = $('#spf-shortcode-copy').text();
+                self.copyToClipboard(text, $(this));
+            });
+
+            // NEW: Copy PHP Code
+            $(document).off('click', '#spf-copy-php-code').on('click', '#spf-copy-php-code', function() {
+                var text = 'echo ' + $('#spf-shortcode-copy').text() + ';';
+                self.copyToClipboard(text, $(this));
+            });
+
+            // NEW: Insert to Existing Post/Page
+            $(document).off('click', '#spf-insert-to-post').on('click', '#spf-insert-to-post', function() {
+                var postType = $('input[name="embed-post-type"]:checked').val();
+                var postId = $('#spf-select-post').val();
+                var formId = $('#spf-form-id').val();
+                
+                if (!postId) {
+                    alert('Please select a post/page');
+                    return;
+                }
+                
+                $.ajax({
+                    url: spfAdmin.ajaxurl,
+                    type: 'POST',
+                    data: {
+                        action: 'spf_insert_form_to_post',
+                        nonce: spfAdmin.nonce,
+                        post_id: postId,
+                        form_id: formId
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            self.showNotification('Form inserted successfully!', 'success');
+                            setTimeout(function() {
+                                window.location.href = response.data.edit_url;
+                            }, 1500);
+                        } else {
+                            self.showNotification(response.data || 'Error inserting form', 'error');
+                        }
+                    },
+                    error: function() {
+                        self.showNotification('Error inserting form', 'error');
+                    }
+                });
+            });
+
+            // NEW: Create New Post/Page and Insert
+            $(document).off('click', '#spf-create-and-insert').on('click', '#spf-create-and-insert', function() {
+                var postType = $('input[name="create-type"]:checked').val();
+                var title = $('#spf-create-title').val();
+                var formId = $('#spf-form-id').val();
+                
+                if (!title.trim()) {
+                    alert('Please enter a title');
+                    return;
+                }
+                
+                $.ajax({
+                    url: spfAdmin.ajaxurl,
+                    type: 'POST',
+                    data: {
+                        action: 'spf_create_post_with_form',
+                        nonce: spfAdmin.nonce,
+                        post_type: postType,
+                        title: title,
+                        form_id: formId
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            self.showNotification('Post created successfully!', 'success');
+                            setTimeout(function() {
+                                window.location.href = response.data.edit_url;
+                            }, 1500);
+                        } else {
+                            self.showNotification(response.data || 'Error creating post', 'error');
+                        }
+                    },
+                    error: function() {
+                        self.showNotification('Error creating post', 'error');
+                    }
+                });
+            });
+
+            // NEW: Save Editor Preferences
+            $(document).off('change', '#spf-compact-view').on('change', '#spf-compact-view', function() {
+                localStorage.setItem('spf-compact-view', $(this).is(':checked'));
+                $('#spf-show-field-ids').prop('disabled', !$(this).is(':checked'));
+            });
+
+            $(document).off('change', '#spf-show-field-ids').on('change', '#spf-show-field-ids', function() {
+                localStorage.setItem('spf-show-field-ids', $(this).is(':checked'));
+            });
+        },
+
+        // NEW: Load Recent Forms
+        loadRecentForms: function() {
+            var $list = $('#spf-forms-list');
+            $list.html('<div class="spf-loading">Loading forms...</div>');
+            
+            $.ajax({
+                url: spfAdmin.ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'spf_get_recent_forms',
+                    nonce: spfAdmin.nonce
+                },
+                success: function(response) {
+                    if (response.success && response.data.length > 0) {
+                        var html = '';
+                        $.each(response.data, function(i, form) {
+                            html += '<a href="?page=syntekpro-forms&action=edit&form_id=' + form.id + '" class="spf-dropdown-item">';
+                            html += form.title + ' <small style="color:#999;">#' + form.id + '</small>';
+                            html += '</a>';
+                        });
+                        $list.html(html);
+                    } else {
+                        $list.html('<div class="spf-loading">No forms found</div>');
+                    }
+                }
+            });
+        },
+
+        // NEW: Copy to Clipboard
+        copyToClipboard: function(text, $btn) {
+            var originalText = $btn.html();
+            navigator.clipboard.writeText(text).then(function() {
+                $btn.html('<span class="dashicons dashicons-yes"></span> Copied!');
+                setTimeout(function() {
+                    $btn.html(originalText);
+                }, 2000);
+            }).catch(function(err) {
+                // Fallback for older browsers
+                var $textarea = $('<textarea>').val(text).appendTo('body');
+                $textarea[0].select();
+                document.execCommand('copy');
+                $textarea.remove();
+                $btn.html('<span class="dashicons dashicons-yes"></span> Copied!');
+                setTimeout(function() {
+                    $btn.html(originalText);
+                }, 2000);
+            });
+        },
+        
+        loadPostsForEmbed: function(postType) {
+            var $select = $('#spf-select-post');
+            $select.html('<option value="">Loading...</option>');
+            
+            $.ajax({
+                url: spfAdmin.ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'spf_get_posts_for_embed',
+                    nonce: spfAdmin.nonce,
+                    post_type: postType
+                },
+                success: function(response) {
+                    if (response.success && response.data.length > 0) {
+                        var html = '<option value="">-- Choose One --</option>';
+                        $.each(response.data, function(i, post) {
+                            html += '<option value="' + post.ID + '">' + post.post_title + ' (ID: ' + post.ID + ')</option>';
+                        });
+                        $select.html(html);
+                    } else {
+                        $select.html('<option value="">No ' + postType + 's found</option>');
+                    }
+                },
+                error: function() {
+                    $select.html('<option value="">Error loading ' + postType + 's</option>');
+                }
             });
         },
         
