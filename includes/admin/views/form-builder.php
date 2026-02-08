@@ -1152,7 +1152,6 @@ var spfFormData = {
     background: #fff;
     border: 1px solid #e5e7eb;
     border-radius: 6px;
-    pointer-events: none;
     user-select: none;
 }
 
@@ -1255,7 +1254,6 @@ var spfFormData = {
 .spf-field-settings-window {
     background: #fff;
     border-bottom: 1px solid #eef1f4;
-    max-height: 80vh;
     display: flex;
     flex-direction: column;
     margin-bottom: 0;
@@ -1264,7 +1262,7 @@ var spfFormData = {
 
 .spf-field-settings-window-body {
     flex: 1;
-    overflow-y: auto;
+    overflow-y: visible;
     scrollbar-width: thin;
     scrollbar-color: #c3c8ce #f1f1f1;
 }
@@ -1366,7 +1364,6 @@ var spfFormData = {
     background: #fff;
     border: 1px solid #e5e7eb;
     border-radius: 6px;
-    pointer-events: none;
     user-select: none;
 }
 

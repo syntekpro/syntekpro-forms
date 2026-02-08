@@ -4,6 +4,7 @@
  * Plugin URI: https://syntekpro.com
  * Description: Professional WordPress form builder with drag & drop interface, Gutenberg support, and advanced entry management
  * Version: 1.3.1
+ * Update URI: https://github.com/syntekpro/syntekpro-forms
  * Author: SyntekPro
  * Author URI: https://syntekpro.com
  * License: GPL v2 or later
@@ -21,6 +22,16 @@ define('SPF_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SPF_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('SPF_PLUGIN_FILE', __FILE__);
 define('SPF_ADDONS_DIR', SPF_PLUGIN_DIR . 'addons/');
+// GitHub updater (set this to "owner/repo")
+if (!defined('SPF_GITHUB_REPO')) {
+    define('SPF_GITHUB_REPO', 'syntekpro/syntekpro-forms');
+}
+if (!defined('SPF_GITHUB_API')) {
+    define('SPF_GITHUB_API', SPF_GITHUB_REPO ? 'https://api.github.com/repos/' . SPF_GITHUB_REPO . '/releases/latest' : '');
+}
+if (!defined('SPF_GITHUB_REPO_URL')) {
+    define('SPF_GITHUB_REPO_URL', SPF_GITHUB_REPO ? 'https://github.com/' . SPF_GITHUB_REPO : '');
+}
 
 // Include dependencies (with error handling)
 if (file_exists(SPF_PLUGIN_DIR . 'includes/admin/templates.php')) {
@@ -85,6 +96,9 @@ class SyntekPro_Forms_Builder {
         add_filter('cron_schedules', array($this, 'register_cron_schedules'));
         add_action('spf_apply_data_retention', array($this, 'run_data_retention_cron'));
         add_action('spf_fire_webhook', array($this, 'fire_webhook'), 10, 2);
+        add_filter('pre_set_site_transient_update_plugins', array($this, 'check_github_update'));
+        add_filter('plugins_api', array($this, 'github_plugin_info'), 10, 3);
+        add_filter('upgrader_post_install', array($this, 'github_upgrader_post_install'), 10, 3);
 
         $this->ajax_handler->register_hooks();
         $this->entries->register_hooks();
@@ -188,6 +202,150 @@ class SyntekPro_Forms_Builder {
 
     public function load_textdomain() {
         load_plugin_textdomain('syntekpro-forms', false, dirname(plugin_basename(__FILE__)) . '/languages');
+    }
+
+    private function get_github_repo() {
+        $repo = SPF_GITHUB_REPO;
+        $repo = apply_filters('spf_github_repo', $repo);
+        return is_string($repo) ? trim($repo) : '';
+    }
+
+    private function get_github_release() {
+        $repo = $this->get_github_repo();
+        if (empty($repo)) {
+            return null;
+        }
+
+        $cache_key = 'spf_github_release_' . md5($repo);
+        $cached = get_transient($cache_key);
+        if ($cached !== false) {
+            return $cached;
+        }
+
+        $api_url = 'https://api.github.com/repos/' . $repo . '/releases/latest';
+        $response = wp_remote_get($api_url, array(
+            'timeout' => 15,
+            'headers' => array(
+                'Accept' => 'application/vnd.github+json',
+                'User-Agent' => 'SyntekPro-Forms-Updater'
+            )
+        ));
+
+        if (is_wp_error($response)) {
+            set_transient($cache_key, null, MINUTE_IN_SECONDS * 10);
+            return null;
+        }
+
+        $code = wp_remote_retrieve_response_code($response);
+        if ((int) $code !== 200) {
+            set_transient($cache_key, null, MINUTE_IN_SECONDS * 10);
+            return null;
+        }
+
+        $body = wp_remote_retrieve_body($response);
+        $data = json_decode($body);
+        if (empty($data) || empty($data->tag_name)) {
+            set_transient($cache_key, null, MINUTE_IN_SECONDS * 10);
+            return null;
+        }
+
+        set_transient($cache_key, $data, HOUR_IN_SECONDS);
+        return $data;
+    }
+
+    public function check_github_update($transient) {
+        if (!is_object($transient)) {
+            return $transient;
+        }
+
+        $repo = $this->get_github_repo();
+        if (empty($repo)) {
+            return $transient;
+        }
+
+        $release = $this->get_github_release();
+        if (empty($release)) {
+            return $transient;
+        }
+
+        $current_version = SPF_VERSION;
+        $latest_version = ltrim((string) $release->tag_name, 'v');
+
+        if (version_compare($latest_version, $current_version, '<=')) {
+            return $transient;
+        }
+
+        $plugin_basename = plugin_basename(SPF_PLUGIN_FILE);
+        $package = !empty($release->zipball_url) ? $release->zipball_url : '';
+
+        $transient->response[$plugin_basename] = (object) array(
+            'slug' => dirname($plugin_basename),
+            'plugin' => $plugin_basename,
+            'new_version' => $latest_version,
+            'url' => !empty($release->html_url) ? $release->html_url : SPF_GITHUB_REPO_URL,
+            'package' => $package
+        );
+
+        return $transient;
+    }
+
+    public function github_plugin_info($result, $action, $args) {
+        if ($action !== 'plugin_information') {
+            return $result;
+        }
+
+        $plugin_basename = plugin_basename(SPF_PLUGIN_FILE);
+        if (empty($args->slug) || $args->slug !== dirname($plugin_basename)) {
+            return $result;
+        }
+
+        $repo = $this->get_github_repo();
+        if (empty($repo)) {
+            return $result;
+        }
+
+        $release = $this->get_github_release();
+        if (empty($release)) {
+            return $result;
+        }
+
+        $latest_version = ltrim((string) $release->tag_name, 'v');
+
+        return (object) array(
+            'name' => 'SyntekPro Forms',
+            'slug' => dirname($plugin_basename),
+            'version' => $latest_version,
+            'author' => '<a href="https://syntekpro.com">SyntekPro</a>',
+            'homepage' => !empty($release->html_url) ? $release->html_url : SPF_GITHUB_REPO_URL,
+            'requires' => '5.8',
+            'tested' => get_bloginfo('version'),
+            'sections' => array(
+                'description' => !empty($release->body) ? wp_kses_post(wpautop($release->body)) : 'GitHub release update.',
+                'changelog' => !empty($release->body) ? wp_kses_post(wpautop($release->body)) : ''
+            ),
+            'download_link' => !empty($release->zipball_url) ? $release->zipball_url : ''
+        );
+    }
+
+    public function github_upgrader_post_install($response, $hook_extra, $result) {
+        if (empty($hook_extra['plugin']) || $hook_extra['plugin'] !== plugin_basename(SPF_PLUGIN_FILE)) {
+            return $response;
+        }
+
+        global $wp_filesystem;
+        if (empty($wp_filesystem)) {
+            return $response;
+        }
+
+        $plugin_folder = WP_PLUGIN_DIR . '/' . dirname(plugin_basename(SPF_PLUGIN_FILE));
+        if (!isset($result['destination']) || $result['destination'] === $plugin_folder) {
+            return $response;
+        }
+
+        $wp_filesystem->move($result['destination'], $plugin_folder);
+        $result['destination'] = $plugin_folder;
+
+        return $response;
     }
 
     public function add_admin_menu() {
