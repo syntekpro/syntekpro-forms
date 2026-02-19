@@ -6,6 +6,27 @@
 if (!defined('ABSPATH')) {
     exit;
 }
+
+global $wpdb;
+
+$theme = wp_get_theme();
+$timezone = wp_timezone_string();
+if ($timezone === '') {
+    $timezone = sprintf('UTC%s', get_option('gmt_offset') ? get_option('gmt_offset') : '+0');
+}
+
+$system_info = array(
+    __('Plugin Version', 'syntekpro-forms') => defined('SPF_VERSION') ? SPF_VERSION : __('N/A', 'syntekpro-forms'),
+    __('WordPress Version', 'syntekpro-forms') => get_bloginfo('version'),
+    __('PHP Version', 'syntekpro-forms') => phpversion(),
+    __('Database Version', 'syntekpro-forms') => method_exists($wpdb, 'db_version') ? $wpdb->db_version() : __('N/A', 'syntekpro-forms'),
+    __('Active Theme', 'syntekpro-forms') => $theme->get('Name') . ' ' . $theme->get('Version'),
+    __('Site URL', 'syntekpro-forms') => home_url(),
+    __('Timezone', 'syntekpro-forms') => $timezone,
+    __('Memory Limit', 'syntekpro-forms') => defined('WP_MEMORY_LIMIT') ? WP_MEMORY_LIMIT : ini_get('memory_limit'),
+    __('WP Debug', 'syntekpro-forms') => (defined('WP_DEBUG') && WP_DEBUG) ? __('Enabled', 'syntekpro-forms') : __('Disabled', 'syntekpro-forms'),
+    __('Multisite', 'syntekpro-forms') => is_multisite() ? __('Yes', 'syntekpro-forms') : __('No', 'syntekpro-forms'),
+);
 ?>
 <div class="wrap spf-admin-page spf-settings-page">
     <div class="spf-admin-header">
@@ -16,8 +37,8 @@ if (!defined('ABSPATH')) {
         <div class="spf-admin-header-right"></div>
     </div>
 
-    <div class="spf-admin-page-title-wrap" style="margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:center;">
-        <h1 class="spf-admin-page-title" style="display:flex;align-items:center;gap:10px;">
+    <div class="spf-admin-page-title-wrap spf-page-toolbar">
+        <h1 class="spf-admin-page-title spf-title-with-icon">
             <span class="dashicons dashicons-info"></span>
             <?php esc_html_e('About SyntekPro Forms', 'syntekpro-forms'); ?>
         </h1>
@@ -26,7 +47,7 @@ if (!defined('ABSPATH')) {
         </a>
     </div>
 
-    <p class="description" style="max-width:820px;">
+    <p class="description spf-about-intro">
         <?php esc_html_e('SyntekPro Forms is a professional form builder for WordPress that blends drag & drop ease with the flexibility of Gutenberg blocks and shortcodes.', 'syntekpro-forms'); ?>
     </p>
 
@@ -55,6 +76,20 @@ if (!defined('ABSPATH')) {
                 );
                 ?>
             </p>
+        </div>
+
+        <div class="spf-about-card spf-system-info-card">
+            <h2><?php esc_html_e('System Information', 'syntekpro-forms'); ?></h2>
+            <table class="spf-system-info-table" role="table">
+                <tbody>
+                <?php foreach ($system_info as $label => $value): ?>
+                    <tr>
+                        <th scope="row"><?php echo esc_html($label); ?></th>
+                        <td><?php echo esc_html((string) $value); ?></td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
         </div>
     </div>
 </div>

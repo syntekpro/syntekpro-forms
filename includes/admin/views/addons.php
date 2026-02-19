@@ -332,8 +332,8 @@ if (count($featured_addons) < 3) {
         <div class="spf-admin-header-right"></div>
     </div>
 
-    <div class="spf-admin-page-title-wrap" style="display:flex;justify-content:space-between;align-items:center;">
-        <h1 class="spf-admin-page-title" style="display:flex;align-items:center;gap:10px;">
+    <div class="spf-admin-page-title-wrap spf-page-toolbar">
+        <h1 class="spf-admin-page-title spf-title-with-icon">
             <span class="dashicons dashicons-admin-plugins"></span>
             <?php _e('SyntekPro Forms Add-ons', 'syntekpro-forms'); ?>
         </h1>

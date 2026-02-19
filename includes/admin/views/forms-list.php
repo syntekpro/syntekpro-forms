@@ -78,16 +78,16 @@ $trash_count = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}spf_forms WHE
         </div>
     </div>
 
-    <div class="spf-admin-page-title-wrap" style="margin-bottom: 20px;">
-        <h1 class="wp-heading-inline" style="display: inline-block; margin-right: 15px;"><?php _e('Forms', 'syntekpro-forms'); ?></h1>
+    <div class="spf-admin-page-title-wrap spf-page-toolbar">
+        <h1 class="wp-heading-inline spf-admin-page-title"><?php _e('Forms', 'syntekpro-forms'); ?></h1>
         <button type="button" class="button spf-add-new-btn" id="spf-add-new-form">
             <?php _e('Add New', 'syntekpro-forms'); ?>
         </button>
     </div>
 
     <!-- Status Tabs and Search Bar -->
-    <div class="spf-tablenav-top" style="margin-bottom: 15px;">
-        <ul class="subsubsub" style="float: left; margin: 0;">
+    <div class="spf-tablenav-top spf-forms-top-nav">
+        <ul class="subsubsub spf-forms-status-tabs">
             <li><a href="<?php echo admin_url('admin.php?page=syntekpro-forms'); ?>" class="<?php echo $current_status === 'all' ? 'current' : ''; ?>">
                 <?php _e('All', 'syntekpro-forms'); ?> <span class="count">(<?php echo $all_count; ?>)</span>
             </a> |</li>
@@ -102,17 +102,16 @@ $trash_count = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}spf_forms WHE
             </a></li>
         </ul>
 
-        <div class="spf-search-box" style="float: right;">
+        <div class="spf-search-box spf-forms-search-box">
             <form method="get" action="<?php echo admin_url('admin.php'); ?>">
                 <input type="hidden" name="page" value="syntekpro-forms">
                 <?php if ($current_status !== 'all'): ?>
                     <input type="hidden" name="status" value="<?php echo esc_attr($current_status); ?>">
                 <?php endif; ?>
-                <input type="search" name="s" value="<?php echo esc_attr($search_query); ?>" placeholder="<?php _e('Search forms...', 'syntekpro-forms'); ?>" style="width: 250px;">
+                <input type="search" name="s" value="<?php echo esc_attr($search_query); ?>" placeholder="<?php _e('Search forms...', 'syntekpro-forms'); ?>">
                 <button type="submit" class="button"><?php _e('Search Form', 'syntekpro-forms'); ?></button>
             </form>
         </div>
-        <div style="clear: both;"></div>
     </div>
     
     <div class="spf-admin-content-card">

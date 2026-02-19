@@ -7,6 +7,8 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+global $wpdb;
+
 // Handle form submission
 if (isset($_POST['spf_save_settings']) && check_admin_referer('spf_settings_nonce')) {
     $post_data = wp_unslash($_POST);
@@ -70,6 +72,23 @@ $defaults = array(
 );
 $settings = wp_parse_args($settings, $defaults);
 $tutorial_url = esc_url(plugins_url('docs/TUTORIAL.md', SPF_PLUGIN_FILE));
+
+$settings_theme = wp_get_theme();
+$settings_timezone = wp_timezone_string();
+if ($settings_timezone === '') {
+    $settings_timezone = sprintf('UTC%s', get_option('gmt_offset') ? get_option('gmt_offset') : '+0');
+}
+
+$settings_system_info = array(
+    __('Plugin Version', 'syntekpro-forms') => defined('SPF_VERSION') ? SPF_VERSION : __('N/A', 'syntekpro-forms'),
+    __('WordPress Version', 'syntekpro-forms') => get_bloginfo('version'),
+    __('PHP Version', 'syntekpro-forms') => phpversion(),
+    __('Database Version', 'syntekpro-forms') => method_exists($wpdb, 'db_version') ? $wpdb->db_version() : __('N/A', 'syntekpro-forms'),
+    __('Active Theme', 'syntekpro-forms') => $settings_theme->get('Name') . ' ' . $settings_theme->get('Version'),
+    __('Timezone', 'syntekpro-forms') => $settings_timezone,
+    __('Memory Limit', 'syntekpro-forms') => defined('WP_MEMORY_LIMIT') ? WP_MEMORY_LIMIT : ini_get('memory_limit'),
+    __('WP Debug', 'syntekpro-forms') => (defined('WP_DEBUG') && WP_DEBUG) ? __('Enabled', 'syntekpro-forms') : __('Disabled', 'syntekpro-forms'),
+);
 ?>
 
 <div class="wrap spf-settings-page">
@@ -80,14 +99,14 @@ $tutorial_url = esc_url(plugins_url('docs/TUTORIAL.md', SPF_PLUGIN_FILE));
             <img src="<?php echo SPF_PLUGIN_URL; ?>assets/images/Syntekpro%20Forms%20Logo.png" class="spf-admin-logo" alt="SyntekPro">
         </div>
         <div class="spf-admin-header-right">
-            <a href="<?php echo $tutorial_url; ?>" target="_blank" class="button button-primary" style="display:inline-flex;align-items:center;gap:6px;">
+            <a href="<?php echo $tutorial_url; ?>" target="_blank" class="button button-primary spf-inline-icon-btn">
                 <span class="dashicons dashicons-book"></span>
                 <?php _e('Open Full Tutorial', 'syntekpro-forms'); ?>
             </a>
         </div>
     </div>
 
-    <div class="spf-admin-page-title-wrap" style="display: flex; justify-content: space-between; align-items: center;">
+    <div class="spf-admin-page-title-wrap spf-page-toolbar">
         <h2 class="spf-admin-page-title"><?php _e('SyntekPro Forms Settings', 'syntekpro-forms'); ?></h2>
         <span class="spf-badge"><?php _e('v', 'syntekpro-forms'); ?><?php echo SPF_VERSION; ?></span>
     </div>
@@ -380,15 +399,32 @@ $tutorial_url = esc_url(plugins_url('docs/TUTORIAL.md', SPF_PLUGIN_FILE));
                 <!-- About Tab -->
                 <div id="spf-settings-tab-about" class="spf-settings-tab-pane">
                     <h2><span class="dashicons dashicons-info"></span> <?php _e('About SyntekPro Forms', 'syntekpro-forms'); ?></h2>
-                    
-                    <div class="spf-about-card">
-                        <div class="spf-about-logo" style="margin-bottom: 25px; text-align: center; background: #fff; padding: 20px; border-radius: 8px; border: 1px solid #eee; display: inline-block; width: 100%; box-sizing: border-box;">
-                            <img src="<?php echo SPF_PLUGIN_URL; ?>assets/images/Syntekpro%20Forms%20Logo.png" alt="SyntekPro Forms Logo" style="max-width: 300px; height: auto;">
-                        </div>
-                        <h3><?php _e('Professional Form Builder for WordPress', 'syntekpro-forms'); ?></h3>
-                        <p><?php _e('Thank you for choosing SyntekPro Forms. We are dedicated to providing the best form building experience for WordPress users.', 'syntekpro-forms'); ?></p>
-                        
 
+                    <div class="spf-about-grid">
+                        <div class="spf-about-card">
+                            <div class="spf-about-logo">
+                                <img src="<?php echo SPF_PLUGIN_URL; ?>assets/images/Syntekpro%20Forms%20Logo.png" alt="SyntekPro Forms Logo">
+                            </div>
+                            <h3><?php _e('Professional Form Builder for WordPress', 'syntekpro-forms'); ?></h3>
+                            <p><?php _e('Thank you for choosing SyntekPro Forms. Build high-converting forms, manage entries faster, and run your forms with dependable performance.', 'syntekpro-forms'); ?></p>
+                            <p>
+                                <a href="<?php echo esc_url(admin_url('admin.php?page=syntekpro-forms-about')); ?>" class="button button-secondary"><?php _e('Open Full About Page', 'syntekpro-forms'); ?></a>
+                            </p>
+                        </div>
+
+                        <div class="spf-about-card spf-system-info-card">
+                            <h3><?php _e('System Information', 'syntekpro-forms'); ?></h3>
+                            <table class="spf-system-info-table" role="table">
+                                <tbody>
+                                <?php foreach ($settings_system_info as $label => $value): ?>
+                                    <tr>
+                                        <th scope="row"><?php echo esc_html($label); ?></th>
+                                        <td><?php echo esc_html((string) $value); ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 

@@ -22,14 +22,14 @@ $base_url = admin_url('admin.php?page=syntekpro-forms-webhook-queue');
         <div class="spf-admin-header-right"></div>
     </div>
 
-    <div class="spf-admin-page-title-wrap" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
-        <h1 class="spf-admin-page-title" style="display:flex;align-items:center;gap:10px;">
+    <div class="spf-admin-page-title-wrap spf-page-toolbar">
+        <h1 class="spf-admin-page-title spf-title-with-icon">
             <span class="dashicons dashicons-update"></span>
             <?php esc_html_e('Webhook Retry Manager', 'syntekpro-forms'); ?>
         </h1>
 
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            <form method="post" style="display:inline;">
+        <div class="spf-nav-right">
+            <form method="post" class="spf-inline-form">
                 <?php wp_nonce_field('spf_webhook_queue_action', 'spf_webhook_queue_nonce'); ?>
                 <input type="hidden" name="spf_webhook_queue_action" value="run_processor_now">
                 <button type="submit" class="button button-primary"><?php esc_html_e('Run Processor Now', 'syntekpro-forms'); ?></button>
@@ -40,7 +40,7 @@ $base_url = admin_url('admin.php?page=syntekpro-forms-webhook-queue');
 
     <p class="description"><?php esc_html_e('Queued webhooks are retried automatically with backoff. Use this page to monitor failures and retry manually.', 'syntekpro-forms'); ?></p>
 
-    <div class="spf-addon-summary-grid" style="margin-bottom:16px;">
+    <div class="spf-addon-summary-grid spf-summary-grid-spaced">
         <div class="spf-addon-summary-card"><h3><?php esc_html_e('All', 'syntekpro-forms'); ?></h3><p class="spf-addon-summary-number"><?php echo esc_html((string) ($stats['all'] ?? 0)); ?></p></div>
         <div class="spf-addon-summary-card"><h3><?php esc_html_e('Failed', 'syntekpro-forms'); ?></h3><p class="spf-addon-summary-number"><?php echo esc_html((string) ($stats['failed'] ?? 0)); ?></p></div>
         <div class="spf-addon-summary-card"><h3><?php esc_html_e('Pending', 'syntekpro-forms'); ?></h3><p class="spf-addon-summary-number"><?php echo esc_html((string) ($stats['pending'] ?? 0)); ?></p></div>

@@ -308,13 +308,13 @@
                 html += '<tr class="' + (status === 'unread' ? 'spf-unread-row' : '') + '" data-entry-id="' + entry.id + '">';
                 html += '<th scope="row" class="check-column"><input type="checkbox" name="entry[]" value="' + entry.id + '" class="spf-entry-checkbox"></th>';
                 html += '<td>#' + entry.id + '</td>';
-                html += '<td><strong>' + self.escapeHtml(entry.form_title || '') + '</strong><br><small>' + self.escapeHtml(entry.ip_address || '') + '</small></td>';
+                html += '<td><div class="spf-entry-form-meta"><strong>' + self.escapeHtml(entry.form_title || '') + '</strong><small>' + self.escapeHtml(entry.ip_address || '') + '</small></div></td>';
                 html += '<td><div class="spf-entry-preview">' + previewHtml + '</div></td>';
                 html += '<td>' + self.escapeHtml(entry.created_at || '') + '</td>';
                 html += '<td><span class="spf-status-badge spf-status-' + self.escapeHtml(status) + '">' + self.escapeHtml(statusLabel) + '</span></td>';
                 html += '<td class="spf-row-actions">';
-                html += '<button class="button button-small spf-view-entry spf-tooltip" title="View full details" data-entry-id="' + entry.id + '"><span class="dashicons dashicons-visibility"></span></button>';
-                html += '<button class="button button-small spf-delete-entry spf-tooltip" title="Delete entry" data-entry-id="' + entry.id + '"><span class="dashicons dashicons-trash"></span></button>';
+                html += '<button class="button button-small spf-entry-action spf-entry-action-view spf-view-entry spf-tooltip" title="View full details" data-entry-id="' + entry.id + '"><span class="dashicons dashicons-visibility"></span><span>View</span></button>';
+                html += '<button class="button button-small spf-entry-action spf-entry-action-delete spf-delete-entry spf-tooltip" title="Delete entry" data-entry-id="' + entry.id + '"><span class="dashicons dashicons-trash"></span><span>Delete</span></button>';
                 html += '</td>';
                 html += '</tr>';
             });
@@ -833,7 +833,7 @@
                 html += '<label>' + this.escapeHtml(field.label);
                 // CRITICAL FIX: Check boolean properly
                 if (field.required === true) {
-                    html += ' <span class="spf-required">*</span>';
+                    html += ' <span class="spf-required">(Required)</span>';
                 }
                 html += '</label>';
             }
@@ -1068,6 +1068,12 @@
 
             $('.spf-field-item').removeClass('active');
             $('.spf-field-item[data-field-id="' + fieldId + '"]').addClass('active');
+
+            var $sidebar = $('.spf-sidebar');
+            $sidebar.find('.spf-tab-btn').removeClass('active');
+            $sidebar.find('.spf-tab-btn[data-tab="field-settings"]').addClass('active');
+            $sidebar.find('.spf-tab-content').removeClass('active');
+            $sidebar.find('#spf-tab-field-settings').addClass('active');
             
             var settingsHtml = '<div class="spf-field-settings-content">';
             
@@ -1136,16 +1142,6 @@
             var $settingsPanel = $('#spf-field-settings');
             if ($settingsPanel.length) {
                 $settingsPanel.html(settingsHtml); 
-                
-                // Show field settings window and slide up other panes
-                var $sidebar = $('.spf-sidebar');
-                var $fieldWindow = $('#spf-field-settings-window');
-                
-                if (!$fieldWindow.is(':visible')) {
-                    $sidebar.find('.spf-sidebar-tabs').slideUp(200);
-                    $sidebar.find('.spf-sidebar-content').slideUp(200);
-                    $fieldWindow.slideDown(200);
-                }
                 
                 $settingsPanel.find('.spf-save-field-settings').on('click', function(e) {
                     e.preventDefault();
@@ -1380,13 +1376,6 @@
                 
                 var tabName = $(this).data('tab');
                 var $sidebar = $(this).closest('.spf-sidebar');
-                var $fieldWindow = $('#spf-field-settings-window');
-                
-                if ($fieldWindow.is(':visible')) {
-                    $fieldWindow.slideUp(200);
-                    $sidebar.find('.spf-sidebar-tabs').slideDown(200);
-                    $sidebar.find('.spf-sidebar-content').slideDown(200);
-                }
                 
                 $sidebar.find('.spf-tab-btn').removeClass('active');
                 $(this).addClass('active');
@@ -1426,14 +1415,6 @@
                 $panel.find('h3').not(this).addClass('collapsed').next('.spf-panel-collapsible-content').slideUp(200);
                 $(this).toggleClass('collapsed');
                 $content.slideToggle(200);
-            });
-
-            // Close Field Settings Window
-            $(document).off('click', '.spf-field-settings-close').on('click', '.spf-field-settings-close', function() {
-                var $sidebar = $('.spf-sidebar');
-                $('#spf-field-settings-window').slideUp(200);
-                $sidebar.find('.spf-sidebar-tabs').slideDown(200);
-                $sidebar.find('.spf-sidebar-content').slideDown(200);
             });
 
             // NEW: Recent Forms Dropdown Toggle

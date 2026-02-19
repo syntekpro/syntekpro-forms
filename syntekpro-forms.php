@@ -1467,7 +1467,11 @@ class SyntekPro_Forms_Builder {
         if ($forms_count === 0 && $entries_count === 0) {
             echo '<div style="padding:14px;border:1px dashed #c3c4c7;border-radius:6px;background:#fff;">';
             echo '<p style="margin:0 0 10px;font-size:13px;">' . esc_html__("Don't have a form yet. Add one to start collecting entries.", 'syntekpro-forms') . '</p>';
-            echo '<a href="' . esc_url(admin_url('admin.php?page=syntekpro-forms-add-new')) . '" class="button button-primary">' . esc_html__('Add Form', 'syntekpro-forms') . '</a>';
+            echo '<p style="margin:0 0 10px;">';
+            echo '<a href="' . esc_url(admin_url('admin.php?page=syntekpro-forms-add-new')) . '" class="button button-primary" style="margin-right: 8px;">' . esc_html__('Add Form', 'syntekpro-forms') . '</a>';
+            echo '<a href="' . esc_url(admin_url('admin.php?page=syntekpro-forms')) . '" class="button button-secondary" style="margin-right: 8px;">' . esc_html__('View All Forms', 'syntekpro-forms') . '</a>';
+            echo '<a href="' . esc_url(admin_url('admin.php?page=syntekpro-forms-entries')) . '" class="button button-secondary">' . esc_html__('View All Entries', 'syntekpro-forms') . '</a>';
+            echo '</p>';
             echo '</div>';
             return;
         }
@@ -1475,7 +1479,8 @@ class SyntekPro_Forms_Builder {
         if (empty($entries)) {
             echo '<div style="padding:12px;border:1px solid #dcdcde;border-radius:6px;background:#fff;">';
             echo '<p style="margin:0 0 10px;">' . esc_html__('No entries yet. Your forms are ready to collect submissions.', 'syntekpro-forms') . '</p>';
-            echo '<a href="' . esc_url(admin_url('admin.php?page=syntekpro-forms')) . '" class="button button-secondary">' . esc_html__('View Forms', 'syntekpro-forms') . '</a>';
+            echo '<a href="' . esc_url(admin_url('admin.php?page=syntekpro-forms')) . '" class="button button-secondary" style="margin-right: 8px;">' . esc_html__('View All Forms', 'syntekpro-forms') . '</a>';
+            echo '<a href="' . esc_url(admin_url('admin.php?page=syntekpro-forms-entries')) . '" class="button button-secondary">' . esc_html__('View All Entries', 'syntekpro-forms') . '</a>';
             echo '</div>';
             return;
         }
@@ -1505,7 +1510,10 @@ class SyntekPro_Forms_Builder {
             echo '</li>';
         }
         echo '</ul>';
-        echo '<p style="margin-top: 15px; text-align: right;"><a href="' . esc_url(admin_url('admin.php?page=syntekpro-forms-entries')) . '" class="button button-secondary">' . esc_html__('View All Entries', 'syntekpro-forms') . '</a></p>';
+        echo '<p style="margin-top: 15px; text-align: right;">';
+        echo '<a href="' . esc_url(admin_url('admin.php?page=syntekpro-forms')) . '" class="button button-secondary" style="margin-right: 8px;">' . esc_html__('View All Forms', 'syntekpro-forms') . '</a>';
+        echo '<a href="' . esc_url(admin_url('admin.php?page=syntekpro-forms-entries')) . '" class="button button-secondary">' . esc_html__('View All Entries', 'syntekpro-forms') . '</a>';
+        echo '</p>';
     }
 
     public function render_dashboard_widget() {
@@ -1519,7 +1527,11 @@ class SyntekPro_Forms_Builder {
         ");
 
         if (empty($entries)) {
-            echo '<p>' . __('No entries yet.', 'syntekpro-forms') . '</p>';
+            echo '<div style="padding:12px;border:1px solid #dcdcde;border-radius:6px;background:#fff;">';
+            echo '<p style="margin:0 0 10px;">' . esc_html__('No entries yet.', 'syntekpro-forms') . '</p>';
+            echo '<a href="' . esc_url(admin_url('admin.php?page=syntekpro-forms')) . '" class="button button-secondary" style="margin-right: 8px;">' . esc_html__('View All Forms', 'syntekpro-forms') . '</a>';
+            echo '<a href="' . esc_url(admin_url('admin.php?page=syntekpro-forms-entries')) . '" class="button button-secondary">' . esc_html__('View All Entries', 'syntekpro-forms') . '</a>';
+            echo '</div>';
             return;
         }
 
@@ -1547,7 +1559,10 @@ class SyntekPro_Forms_Builder {
             echo '</li>';
         }
         echo '</ul>';
-        echo '<p style="margin-top: 15px; text-align: right;"><a href="' . admin_url('admin.php?page=syntekpro-forms-entries') . '" class="button button-secondary">' . __('View All Entries', 'syntekpro-forms') . '</a></p>';
+        echo '<p style="margin-top: 15px; text-align: right;">';
+        echo '<a href="' . esc_url(admin_url('admin.php?page=syntekpro-forms')) . '" class="button button-secondary" style="margin-right: 8px;">' . esc_html__('View All Forms', 'syntekpro-forms') . '</a>';
+        echo '<a href="' . esc_url(admin_url('admin.php?page=syntekpro-forms-entries')) . '" class="button button-secondary">' . esc_html__('View All Entries', 'syntekpro-forms') . '</a>';
+        echo '</p>';
     }
 
     public function admin_styles_fix() {

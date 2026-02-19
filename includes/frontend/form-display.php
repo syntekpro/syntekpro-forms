@@ -261,7 +261,7 @@ if (empty($steps)) {
                             <label for="spf-field-<?php echo esc_attr($field['id']); ?>" class="spf-field-label">
                                 <?php echo esc_html($field['label']); ?>
                                 <?php if (!empty($field['required'])): ?>
-                                    <span class="spf-required">*</span>
+                                    <span class="spf-required">(<?php _e('Required', 'syntekpro-forms'); ?>)</span>
                                 <?php endif; ?>
                             </label>
                         <?php endif; ?>

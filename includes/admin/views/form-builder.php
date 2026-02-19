@@ -184,19 +184,6 @@ if ($form_id > 0) {
 
         <!-- Right Sidebar - Tabs (Add Fields | Form Settings | Styling | Field Settings) -->
         <div class="spf-sidebar spf-sidebar-right">
-            <!-- Field Settings Window (Moved inside to push content) -->
-            <div id="spf-field-settings-window" class="spf-field-settings-window" style="display: none;">
-                <div class="spf-field-settings-window-header">
-                    <h3><?php _e('Field Settings', 'syntekpro-forms'); ?></h3>
-                    <button type="button" class="spf-field-settings-close" aria-label="<?php esc_attr_e('Close', 'syntekpro-forms'); ?>">&times;</button>
-                </div>
-                <div class="spf-field-settings-window-body" id="spf-field-settings">
-                    <div class="spf-no-field-selected">
-                        <p><?php _e('Select a field on the canvas to edit its settings.', 'syntekpro-forms'); ?></p>
-                    </div>
-                </div>
-            </div>
-
             <div class="spf-sidebar-tabs">
                 <button type="button" class="spf-tab-btn active" data-tab="fields">
                     <span class="dashicons dashicons-plus-alt"></span>
@@ -209,6 +196,10 @@ if ($form_id > 0) {
                 <button type="button" class="spf-tab-btn" data-tab="styling">
                     <span class="dashicons dashicons-admin-customizer"></span>
                     <span class="spf-tab-label"><?php _e('Styling', 'syntekpro-forms'); ?></span>
+                </button>
+                <button type="button" class="spf-tab-btn" data-tab="field-settings">
+                    <span class="dashicons dashicons-admin-tools"></span>
+                    <span class="spf-tab-label"><?php _e('Field Settings', 'syntekpro-forms'); ?></span>
                 </button>
             </div>
 
@@ -589,6 +580,14 @@ if ($form_id > 0) {
                                     <option value="right" <?php selected(isset($settings_array['submit_align']) ? $settings_array['submit_align'] : 'left', 'right'); ?>><?php _e('Right', 'syntekpro-forms'); ?></option>
                                 </select>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="spf-tab-field-settings" class="spf-tab-content">
+                    <div class="spf-field-settings-window-body" id="spf-field-settings">
+                        <div class="spf-no-field-selected">
+                            <p><?php _e('Select a field on the canvas to edit its settings.', 'syntekpro-forms'); ?></p>
                         </div>
                     </div>
                 </div>
@@ -2147,6 +2146,15 @@ var spfFormData = {
     color: #1d2327;
 }
 
+.spf-field-body .spf-required {
+    font-size: 9px;
+    font-weight: 500;
+    color: #b4232a;
+    margin-left: 8px;
+    text-transform: none;
+    white-space: nowrap;
+}
+
 .spf-field-body input,
 .spf-field-body textarea,
 .spf-field-body select {
@@ -2200,8 +2208,88 @@ var spfFormData = {
 .spf-nav-btn,
 .spf-nav-right .button {
     font-size: 12px !important;
-    min-height: 30px;
+    min-height: 32px;
     padding: 5px 10px !important;
+}
+
+.spf-builder-ux-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+}
+
+.spf-builder-ux-left,
+.spf-builder-ux-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.spf-builder-device-group,
+.spf-builder-zoom-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px;
+    background: #f6f7f7;
+    border: 1px solid #dcdcde;
+    border-radius: 6px;
+}
+
+.spf-builder-ux-toolbar .button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    margin: 0;
+    border-radius: 5px;
+    border-color: #c3c4c7;
+    line-height: 1.2;
+}
+
+.spf-builder-ux-toolbar .button .dashicons {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+}
+
+.spf-builder-device-group .spf-device-btn {
+    min-width: 96px;
+}
+
+.spf-builder-device-group .spf-device-btn.is-active {
+    background: #f0f6fc !important;
+    border-color: #2271b1 !important;
+    color: #2271b1 !important;
+}
+
+.spf-builder-device-group .spf-device-btn.is-active .dashicons {
+    color: #2271b1;
+}
+
+.spf-builder-zoom-group .spf-zoom-btn {
+    min-width: 32px;
+    padding: 0 !important;
+}
+
+#spf-zoom-level {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 56px;
+    height: 32px;
+    padding: 0 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #1d2327;
+}
+
+#spf-undo-btn,
+#spf-redo-btn {
+    min-width: 78px;
 }
 
 .spf-action-btn {
@@ -2234,9 +2322,43 @@ var spfFormData = {
     .spf-builder-top-nav {
         flex-wrap: wrap;
     }
+
+    .spf-builder-ux-toolbar {
+        flex-wrap: wrap;
+    }
+
+    .spf-builder-ux-left,
+    .spf-builder-ux-right {
+        width: 100%;
+    }
+
+    .spf-builder-ux-right {
+        justify-content: flex-end;
+    }
 }
 
 @media (max-width: 768px) {
+    .spf-builder-ux-left {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .spf-builder-device-group,
+    .spf-builder-zoom-group {
+        width: 100%;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .spf-builder-device-group .spf-device-btn {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .spf-builder-ux-right {
+        justify-content: center;
+    }
+
     .spf-modal-content {
         padding: 20px;
         max-width: 100%;

@@ -1446,3 +1446,486 @@ body.spf-builder-fullscreen-mode .spf-form-builder-wrap {
     border-radius: 0 !important;
     min-height: 100vh;
 }
+
+/* Unified admin page polish (Entries/About/Settings) */
+.spf-page-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.spf-inline-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.spf-inline-form {
+    display: inline;
+}
+
+.spf-summary-grid-spaced {
+    margin-bottom: 16px;
+}
+
+.spf-title-with-icon {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.spf-page-stats {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.spf-stat-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #fff;
+    border: 1px solid #dcdcde;
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 12px;
+    color: #50575e;
+}
+
+.spf-stat-pill strong {
+    color: #1d2327;
+    font-size: 14px;
+}
+
+.spf-entries-shell .spf-admin-page-title-wrap {
+    margin-bottom: 14px;
+}
+
+.spf-entries-card {
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.spf-entries-toolbar-panel {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 14px 16px;
+    background: #fcfcfc;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.spf-toolbar-block {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.spf-toolbar-block-filters {
+    flex: 1 1 auto;
+}
+
+.spf-toolbar-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #646970;
+    text-transform: uppercase;
+    letter-spacing: .35px;
+}
+
+.spf-toolbar-actions {
+    align-items: flex-end;
+    margin-left: auto;
+    min-width: 280px;
+}
+
+.spf-forms-top-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 15px;
+}
+
+.spf-forms-status-tabs {
+    float: none;
+    margin: 0;
+}
+
+.spf-forms-search-box {
+    float: none;
+}
+
+.spf-forms-search-box form {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.spf-forms-search-box input[type="search"] {
+    width: 250px;
+}
+
+.spf-filters-form {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 0;
+}
+
+.spf-filter-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.spf-filter-group-grow {
+    flex: 1 1 360px;
+}
+
+#spf-entries-search {
+    min-width: 260px;
+}
+
+.spf-filters-form select,
+.spf-filters-form input[type="search"],
+.spf-filters-form input[type="date"],
+.spf-bulk-actions select {
+    min-height: 34px;
+    margin: 0;
+}
+
+.spf-filter-select,
+.spf-bulk-select {
+    min-width: 150px;
+}
+
+.spf-filter-date {
+    min-width: 150px;
+}
+
+.spf-btn-filter,
+.spf-btn-reset,
+.spf-btn-apply,
+.spf-export-btn {
+    min-height: 34px;
+    white-space: nowrap;
+}
+
+.spf-entries-toolbar-panel .spf-nav-right {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.spf-bulk-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-right: 0;
+}
+
+.spf-export-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.spf-entries-shell .spf-list-table-nav .button:hover,
+.spf-entries-shell .spf-list-table-nav .button:focus {
+    transform: none !important;
+}
+
+#spf-entries-table-wrap {
+    padding: 0 16px 8px;
+}
+
+.spf-entries-table {
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    overflow: hidden;
+    table-layout: auto;
+    margin-top: 12px;
+}
+
+.spf-entries-table thead th {
+    background: #f6f7f7;
+    padding: 14px 12px;
+    font-weight: 600;
+    color: #1d2327;
+}
+
+.spf-entries-table tbody td {
+    padding: 14px 12px;
+    vertical-align: middle;
+}
+
+.spf-entries-table tbody tr {
+    border-bottom: 1px solid #f0f0f1;
+}
+
+.spf-unread-row {
+    background-color: #f0f6fc !important;
+}
+
+.spf-entry-form-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.spf-entry-form-meta strong {
+    font-size: 13px;
+    color: #1d2327;
+}
+
+.spf-entry-form-meta small {
+    font-size: 11px;
+    color: #646970;
+}
+
+.spf-status-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.spf-status-read {
+    background: #f2f3f5;
+    color: #3c434a;
+}
+
+.spf-status-unread {
+    background: #fff1c7;
+    color: #8a5800;
+}
+
+.spf-entry-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+    color: #50575e;
+}
+
+.spf-preview-item {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 360px;
+}
+
+.spf-row-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.spf-row-actions .button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.spf-entry-action {
+    gap: 4px;
+    min-height: 28px;
+    padding: 4px 8px !important;
+    font-size: 12px;
+}
+
+.spf-entry-action .dashicons {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+}
+
+.spf-entry-action-delete:hover {
+    color: #d63638;
+    border-color: #d63638;
+}
+
+.spf-delete-entry:hover {
+    color: #d63638;
+    border-color: #d63638;
+}
+
+.spf-pagination {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 12px 20px;
+    border-top: 1px solid #f0f0f1;
+    background: #fcfcfc;
+}
+
+#spf-entries-pagination {
+    padding: 0 16px 14px;
+}
+
+.spf-page-link {
+    text-decoration: none;
+    padding: 6px 12px;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+    background: #fff;
+}
+
+.spf-page-info {
+    font-size: 13px;
+    color: #646970;
+}
+
+.spf-empty-state {
+    text-align: center;
+    padding: 80px 20px;
+    color: #646970;
+}
+
+.spf-empty-icon .dashicons {
+    font-size: 50px;
+    width: 50px;
+    height: 50px;
+    color: #ccd0d4;
+    margin-bottom: 15px;
+}
+
+.spf-about-intro {
+    max-width: 860px;
+    margin-bottom: 18px;
+}
+
+.spf-settings-page .spf-about-grid,
+.spf-admin-page .spf-about-grid {
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+.spf-settings-page .spf-about-card,
+.spf-admin-page .spf-about-card {
+    text-align: left;
+    padding: 22px;
+}
+
+.spf-about-logo {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+    margin-bottom: 14px;
+}
+
+.spf-about-logo img {
+    max-width: 300px;
+    width: 100%;
+    height: auto;
+}
+
+.spf-system-info-card {
+    overflow: hidden;
+}
+
+.spf-system-info-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.spf-system-info-table th,
+.spf-system-info-table td {
+    border-bottom: 1px solid #f0f0f1;
+    padding: 10px 0;
+    font-size: 13px;
+    text-align: left;
+    vertical-align: top;
+}
+
+.spf-system-info-table th {
+    width: 42%;
+    color: #50575e;
+    font-weight: 600;
+}
+
+.spf-system-info-table td {
+    color: #1d2327;
+    word-break: break-word;
+}
+
+.spf-system-info-table tr:last-child th,
+.spf-system-info-table tr:last-child td {
+    border-bottom: 0;
+}
+
+@media (max-width: 900px) {
+    .spf-entries-toolbar-panel {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .spf-entries-toolbar-panel .spf-nav-left,
+    .spf-entries-toolbar-panel .spf-nav-right,
+    .spf-toolbar-actions {
+        width: 100%;
+        align-items: flex-start;
+        min-width: 0;
+    }
+
+    .spf-bulk-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .spf-filter-group,
+    .spf-filter-group-grow {
+        width: 100%;
+    }
+
+    .spf-filter-select,
+    .spf-filter-search,
+    .spf-filter-date,
+    .spf-bulk-select {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .spf-btn-filter,
+    .spf-btn-reset,
+    .spf-btn-apply,
+    .spf-export-btn {
+        width: auto;
+    }
+
+    #spf-entries-table-wrap {
+        padding: 0 10px 8px;
+    }
+
+    .spf-pagination {
+        justify-content: center;
+    }
+
+    .spf-forms-search-box,
+    .spf-forms-search-box form,
+    .spf-forms-search-box input[type="search"] {
+        width: 100%;
+    }
+
+    .spf-entry-action span:last-child {
+        display: none;
+    }
+}
