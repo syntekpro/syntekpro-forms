@@ -13,6 +13,11 @@ For a step-by-step walkthrough of every capability, see the comprehensive tutori
 2. Upload to `/wp-content/plugins/syntekpro-forms` directory
 3. Activate the plugin through the 'Plugins' menu in WordPress
 
+### Important Update Note
+
+- For upgrades, use a release ZIP that contains the root folder named exactly `syntekpro-forms`.
+- Do **not** upload GitHub source-code ZIPs (for example `syntekpro-forms-main.zip` or `syntekpro-forms-origin.zip`) because WordPress treats those as a new plugin folder and installs side-by-side.
+
 ## Features
 
 - **Drag & Drop Form Builder**: Build forms with an intuitive interface and advanced conditional logic.

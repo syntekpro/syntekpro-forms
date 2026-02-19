@@ -93,6 +93,7 @@ class SyntekPro_Forms_Builder {
         add_action('admin_bar_menu', array($this, 'add_admin_bar_menu'), 100);
         add_action('admin_init', array($this, 'handle_no_conflict_mode'));
         add_action('admin_head', array($this, 'admin_styles_fix'));
+        add_action('admin_notices', array($this, 'maybe_show_duplicate_install_notice'));
         add_filter('cron_schedules', array($this, 'register_cron_schedules'));
         add_action('spf_apply_data_retention', array($this, 'run_data_retention_cron'));
         add_action('spf_fire_webhook', array($this, 'fire_webhook'), 10, 2);
@@ -283,6 +284,37 @@ class SyntekPro_Forms_Builder {
         return $data;
     }
 
+    private function get_github_package_url($release) {
+        if (empty($release)) {
+            return '';
+        }
+
+        if (!empty($release->assets) && is_array($release->assets)) {
+            foreach ($release->assets as $asset) {
+                if (empty($asset) || empty($asset->name) || empty($asset->browser_download_url)) {
+                    continue;
+                }
+
+                $name = strtolower((string) $asset->name);
+                if (substr($name, -4) === '.zip' && strpos($name, 'syntekpro-forms') !== false) {
+                    return (string) $asset->browser_download_url;
+                }
+            }
+
+            foreach ($release->assets as $asset) {
+                if (empty($asset) || empty($asset->name) || empty($asset->browser_download_url)) {
+                    continue;
+                }
+                $name = strtolower((string) $asset->name);
+                if (substr($name, -4) === '.zip') {
+                    return (string) $asset->browser_download_url;
+                }
+            }
+        }
+
+        return !empty($release->zipball_url) ? (string) $release->zipball_url : '';
+    }
+
     public function check_github_update($transient) {
         if (!is_object($transient)) {
             return $transient;
@@ -306,7 +338,7 @@ class SyntekPro_Forms_Builder {
         }
 
         $plugin_basename = plugin_basename(SPF_PLUGIN_FILE);
-        $package = !empty($release->zipball_url) ? $release->zipball_url : '';
+        $package = $this->get_github_package_url($release);
 
         $transient->response[$plugin_basename] = (object) array(
             'slug' => dirname($plugin_basename),
@@ -353,7 +385,7 @@ class SyntekPro_Forms_Builder {
                 'description' => !empty($release->body) ? wp_kses_post(wpautop($release->body)) : 'GitHub release update.',
                 'changelog' => !empty($release->body) ? wp_kses_post(wpautop($release->body)) : ''
             ),
-            'download_link' => !empty($release->zipball_url) ? $release->zipball_url : ''
+            'download_link' => $this->get_github_package_url($release)
         );
     }
 
@@ -372,10 +404,57 @@ class SyntekPro_Forms_Builder {
             return $response;
         }
 
-        $wp_filesystem->move($result['destination'], $plugin_folder);
+        if ($wp_filesystem->is_dir($plugin_folder)) {
+            $wp_filesystem->delete($plugin_folder, true);
+        }
+
+        $moved = $wp_filesystem->move($result['destination'], $plugin_folder, true);
+        if (!$moved) {
+            return new WP_Error('spf_update_move_failed', __('SyntekPro Forms update failed while replacing plugin directory.', 'syntekpro-forms'));
+        }
+
         $result['destination'] = $plugin_folder;
 
-        return $response;
+        return $result;
+    }
+
+    public function maybe_show_duplicate_install_notice() {
+        if (!current_user_can('manage_options')) {
+            return;
+        }
+
+        if (!function_exists('get_plugins')) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+
+        $plugins = get_plugins();
+        if (empty($plugins) || !is_array($plugins)) {
+            return;
+        }
+
+        $current = plugin_basename(SPF_PLUGIN_FILE);
+        $duplicates = array();
+
+        foreach ($plugins as $file => $data) {
+            if ($file === $current) {
+                continue;
+            }
+
+            $text_domain = isset($data['TextDomain']) ? (string) $data['TextDomain'] : '';
+            $name = isset($data['Name']) ? (string) $data['Name'] : '';
+
+            if ($text_domain === 'syntekpro-forms' || stripos($name, 'SyntekPro Forms') !== false) {
+                $duplicates[] = $file;
+            }
+        }
+
+        if (empty($duplicates)) {
+            return;
+        }
+
+        echo '<div class="notice notice-warning"><p>'
+            . esc_html__('Multiple SyntekPro Forms plugin folders were detected. Keep only one plugin install (syntekpro-forms) to ensure updates replace the existing version.', 'syntekpro-forms')
+            . '</p></div>';
     }
 
     public function add_admin_menu() {
