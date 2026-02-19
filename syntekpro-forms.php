@@ -3,7 +3,7 @@
  * Plugin Name: SyntekPro Forms
  * Plugin URI: https://syntekpro.com
  * Description: Professional WordPress form builder with drag & drop interface, Gutenberg support, and advanced entry management
- * Version: 1.3.1
+ * Version: 1.4.0
  * Update URI: https://github.com/syntekpro/syntekpro-forms
  * Author: SyntekPro
  * Author URI: https://syntekpro.com
@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('SPF_VERSION', '1.3.1');
+define('SPF_VERSION', '1.4.0');
 define('SPF_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SPF_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('SPF_PLUGIN_FILE', __FILE__);
@@ -96,9 +96,10 @@ class SyntekPro_Forms_Builder {
         add_filter('cron_schedules', array($this, 'register_cron_schedules'));
         add_action('spf_apply_data_retention', array($this, 'run_data_retention_cron'));
         add_action('spf_fire_webhook', array($this, 'fire_webhook'), 10, 2);
-        add_filter('pre_set_site_transient_update_plugins', array($this, 'check_github_update'));
-        add_filter('plugins_api', array($this, 'github_plugin_info'), 10, 3);
-        add_filter('upgrader_post_install', array($this, 'github_upgrader_post_install'), 10, 3);
+    add_filter('pre_set_site_transient_update_plugins', array($this, 'check_github_update'));
+    add_filter('plugins_api', array($this, 'github_plugin_info'), 10, 3);
+    add_filter('upgrader_post_install', array($this, 'github_upgrader_post_install'), 10, 3);
+    add_action('spf_process_webhook_queue', array($this, 'process_webhook_queue'));
 
         $this->ajax_handler->register_hooks();
         $this->entries->register_hooks();
@@ -137,15 +138,43 @@ class SyntekPro_Forms_Builder {
             KEY form_id  (form_id)
         ) $charset_collate;";
 
+        $webhook_queue_table = $wpdb->prefix . 'spf_webhook_queue';
+        $webhook_queue_sql = "CREATE TABLE $webhook_queue_table (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            form_id bigint(20) DEFAULT 0,
+            entry_id bigint(20) DEFAULT 0,
+            webhook_url text NOT NULL,
+            payload longtext NOT NULL,
+            status varchar(20) DEFAULT 'pending',
+            attempts int(11) DEFAULT 0,
+            max_attempts int(11) DEFAULT 5,
+            next_attempt_at datetime DEFAULT NULL,
+            last_attempt_at datetime DEFAULT NULL,
+            response_code int(11) DEFAULT NULL,
+            response_body text,
+            error_message text,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY status_next_attempt (status, next_attempt_at),
+            KEY form_id (form_id),
+            KEY entry_id (entry_id)
+        ) $charset_collate;";
+
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
         dbDelta($forms_sql);
         dbDelta($entries_sql);
+        dbDelta($webhook_queue_sql);
 
         update_option('spf_version', SPF_VERSION);
         add_option('spf_settings', $this->get_default_settings());
 
         if (!wp_next_scheduled('spf_apply_data_retention')) {
             wp_schedule_event(time() + HOUR_IN_SECONDS, 'spf_six_hours', 'spf_apply_data_retention');
+        }
+
+        if (!wp_next_scheduled('spf_process_webhook_queue')) {
+            wp_schedule_event(time() + MINUTE_IN_SECONDS, 'spf_five_minutes', 'spf_process_webhook_queue');
         }
     }
 
@@ -198,6 +227,7 @@ class SyntekPro_Forms_Builder {
 
     public function deactivate() {
         wp_clear_scheduled_hook('spf_apply_data_retention');
+        wp_clear_scheduled_hook('spf_process_webhook_queue');
     }
 
     public function load_textdomain() {
@@ -404,6 +434,33 @@ class SyntekPro_Forms_Builder {
             'manage_options',
             'syntekpro-forms-addons',
             array($this, 'render_addons_page')
+        );
+
+        add_submenu_page(
+            'syntekpro-forms',
+            __('Webhook Queue', 'syntekpro-forms'),
+            __('Webhook Queue', 'syntekpro-forms'),
+            'manage_options',
+            'syntekpro-forms-webhook-queue',
+            array($this, 'render_webhook_queue_page')
+        );
+
+        add_submenu_page(
+            'syntekpro-forms',
+            __('About', 'syntekpro-forms'),
+            __('About', 'syntekpro-forms'),
+            'manage_options',
+            'syntekpro-forms-about',
+            array($this, 'render_about_page')
+        );
+
+        add_submenu_page(
+            'syntekpro-forms',
+            __('Other Plugins', 'syntekpro-forms'),
+            __('Other Plugins', 'syntekpro-forms'),
+            'manage_options',
+            'syntekpro-forms-other-plugins',
+            array($this, 'render_other_plugins_page')
         );
     }
 
@@ -648,6 +705,100 @@ class SyntekPro_Forms_Builder {
         }
     }
 
+    public function render_webhook_queue_page() {
+        if (!current_user_can('manage_options')) {
+            wp_die(__('Unauthorized', 'syntekpro-forms'));
+        }
+
+        global $wpdb;
+        $table = $this->get_webhook_queue_table();
+
+        if (isset($_POST['spf_webhook_queue_action'])) {
+            check_admin_referer('spf_webhook_queue_action', 'spf_webhook_queue_nonce');
+            $action = sanitize_text_field(wp_unslash($_POST['spf_webhook_queue_action']));
+
+            if ($action === 'retry_item' && !empty($_POST['item_id'])) {
+                $item_id = absint($_POST['item_id']);
+                if ($item_id > 0) {
+                    $wpdb->update(
+                        $table,
+                        array(
+                            'status' => 'pending',
+                            'attempts' => 0,
+                            'next_attempt_at' => current_time('mysql'),
+                            'error_message' => null,
+                            'response_code' => null,
+                            'response_body' => null,
+                        ),
+                        array('id' => $item_id),
+                        array('%s', '%d', '%s', '%s', '%s', '%s'),
+                        array('%d')
+                    );
+                    $this->schedule_webhook_queue_processor();
+                }
+            }
+
+            if ($action === 'retry_failed') {
+                $wpdb->query(
+                    "UPDATE {$table}
+                     SET status = 'pending', attempts = 0, next_attempt_at = NOW(), error_message = NULL
+                     WHERE status = 'failed'"
+                );
+                $this->schedule_webhook_queue_processor();
+            }
+
+            if ($action === 'clear_success') {
+                $wpdb->query("DELETE FROM {$table} WHERE status = 'success'");
+            }
+
+            if ($action === 'run_processor_now') {
+                $this->process_webhook_queue();
+            }
+        }
+
+        $status = isset($_GET['status']) ? sanitize_text_field(wp_unslash($_GET['status'])) : 'failed';
+        $allowed = array('all', 'failed', 'pending', 'success');
+        if (!in_array($status, $allowed, true)) {
+            $status = 'failed';
+        }
+
+        $where = '';
+        $params = array();
+        if ($status !== 'all') {
+            $where = 'WHERE status = %s';
+            $params[] = $status;
+        }
+
+        $items_sql = "SELECT * FROM {$table} {$where} ORDER BY created_at DESC LIMIT 200";
+        $items = empty($params) ? $wpdb->get_results($items_sql) : $wpdb->get_results($wpdb->prepare($items_sql, $params));
+
+        $stats = array(
+            'all' => (int) $wpdb->get_var("SELECT COUNT(*) FROM {$table}"),
+            'failed' => (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$table} WHERE status = %s", 'failed')),
+            'pending' => (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$table} WHERE status = %s", 'pending')),
+            'success' => (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$table} WHERE status = %s", 'success')),
+        );
+
+        $view_file = SPF_PLUGIN_DIR . 'includes/admin/views/webhook-queue.php';
+        if (file_exists($view_file)) {
+            include $view_file;
+        }
+    }
+
+    public function render_about_page() {
+        $view_file = SPF_PLUGIN_DIR . 'includes/admin/views/about.php';
+        if (file_exists($view_file)) {
+            include $view_file;
+        }
+    }
+
+    public function render_other_plugins_page() {
+        $view_file = SPF_PLUGIN_DIR . 'includes/admin/views/other-plugins.php';
+        if (file_exists($view_file)) {
+            include $view_file;
+        }
+    }
+
     public function render_form_shortcode($atts) {
         $atts = shortcode_atts(array(
             'id' => 0
@@ -754,8 +905,10 @@ class SyntekPro_Forms_Builder {
                 continue;
             }
 
-            wp_schedule_single_event(time(), 'spf_fire_webhook', array($url, $payload));
+            $this->enqueue_webhook_request((int) $form->id, (int) $entry_id, $url, $payload);
         }
+
+        $this->schedule_webhook_queue_processor();
     }
 
     public function fire_webhook($url, $payload) {
@@ -763,11 +916,183 @@ class SyntekPro_Forms_Builder {
             return;
         }
 
-        wp_remote_post($url, array(
-            'timeout' => 5,
-            'headers' => array('Content-Type' => 'application/json'),
-            'body' => wp_json_encode($payload),
+        $this->enqueue_webhook_request(0, 0, $url, $payload);
+        $this->schedule_webhook_queue_processor();
+        $this->process_webhook_queue(1);
+    }
+
+    private function get_webhook_queue_table() {
+        global $wpdb;
+        return $wpdb->prefix . 'spf_webhook_queue';
+    }
+
+    private function enqueue_webhook_request($form_id, $entry_id, $url, $payload) {
+        global $wpdb;
+
+        $table = $this->get_webhook_queue_table();
+        $max_attempts = (int) apply_filters('syntekpro_forms_webhook_max_attempts', 5);
+        if ($max_attempts < 1) {
+            $max_attempts = 1;
+        }
+
+        $wpdb->insert(
+            $table,
+            array(
+                'form_id' => absint($form_id),
+                'entry_id' => absint($entry_id),
+                'webhook_url' => esc_url_raw((string) $url),
+                'payload' => wp_json_encode($payload),
+                'status' => 'pending',
+                'attempts' => 0,
+                'max_attempts' => $max_attempts,
+                'next_attempt_at' => current_time('mysql'),
+            ),
+            array('%d', '%d', '%s', '%s', '%s', '%d', '%d', '%s')
+        );
+    }
+
+    public function process_webhook_queue($limit = 10) {
+        global $wpdb;
+
+        $limit = max(1, absint($limit));
+        $table = $this->get_webhook_queue_table();
+
+        $items = $wpdb->get_results($wpdb->prepare(
+            "SELECT *
+             FROM {$table}
+             WHERE status = %s
+               AND (next_attempt_at IS NULL OR next_attempt_at <= NOW())
+             ORDER BY created_at ASC
+             LIMIT %d",
+            'pending',
+            $limit
         ));
+
+        if (empty($items)) {
+            return;
+        }
+
+        foreach ($items as $item) {
+            $this->process_webhook_queue_item($item);
+        }
+    }
+
+    private function process_webhook_queue_item($item) {
+        global $wpdb;
+
+        $table = $this->get_webhook_queue_table();
+        $attempt = (int) $item->attempts + 1;
+
+        $wpdb->update(
+            $table,
+            array(
+                'status' => 'processing',
+                'attempts' => $attempt,
+                'last_attempt_at' => current_time('mysql'),
+            ),
+            array('id' => (int) $item->id),
+            array('%s', '%d', '%s'),
+            array('%d')
+        );
+
+        $timeout = (int) apply_filters('syntekpro_forms_webhook_timeout', 8, $item);
+        if ($timeout < 1) {
+            $timeout = 8;
+        }
+
+        $response = wp_remote_post((string) $item->webhook_url, array(
+            'timeout' => $timeout,
+            'headers' => array('Content-Type' => 'application/json'),
+            'body' => (string) $item->payload,
+        ));
+
+        $is_success = false;
+        $response_code = null;
+        $response_body = '';
+        $error_message = '';
+
+        if (is_wp_error($response)) {
+            $error_message = $response->get_error_message();
+        } else {
+            $response_code = (int) wp_remote_retrieve_response_code($response);
+            $response_body = (string) wp_remote_retrieve_body($response);
+            $is_success = $response_code >= 200 && $response_code < 300;
+
+            if (!$is_success) {
+                $error_message = sprintf(__('HTTP %d returned by webhook endpoint.', 'syntekpro-forms'), $response_code);
+            }
+        }
+
+        if ($is_success) {
+            $wpdb->update(
+                $table,
+                array(
+                    'status' => 'success',
+                    'response_code' => $response_code,
+                    'response_body' => wp_trim_words(wp_strip_all_tags($response_body), 120, '...'),
+                    'error_message' => null,
+                    'next_attempt_at' => null,
+                ),
+                array('id' => (int) $item->id),
+                array('%s', '%d', '%s', '%s', '%s'),
+                array('%d')
+            );
+            return;
+        }
+
+        $max_attempts = max(1, (int) $item->max_attempts);
+        if ($attempt >= $max_attempts) {
+            $wpdb->update(
+                $table,
+                array(
+                    'status' => 'failed',
+                    'response_code' => $response_code,
+                    'response_body' => wp_trim_words(wp_strip_all_tags($response_body), 120, '...'),
+                    'error_message' => $error_message,
+                    'next_attempt_at' => null,
+                ),
+                array('id' => (int) $item->id),
+                array('%s', '%d', '%s', '%s', '%s'),
+                array('%d')
+            );
+            return;
+        }
+
+        $delay_seconds = $this->get_webhook_retry_delay($attempt);
+        $next_attempt = gmdate('Y-m-d H:i:s', current_time('timestamp') + $delay_seconds);
+
+        $wpdb->update(
+            $table,
+            array(
+                'status' => 'pending',
+                'response_code' => $response_code,
+                'response_body' => wp_trim_words(wp_strip_all_tags($response_body), 120, '...'),
+                'error_message' => $error_message,
+                'next_attempt_at' => $next_attempt,
+            ),
+            array('id' => (int) $item->id),
+            array('%s', '%d', '%s', '%s', '%s'),
+            array('%d')
+        );
+    }
+
+    private function get_webhook_retry_delay($attempt) {
+        $attempt = max(1, absint($attempt));
+        $delays = array(60, 300, 900, 3600, 7200);
+        $delay = isset($delays[$attempt - 1]) ? $delays[$attempt - 1] : end($delays);
+
+        return (int) apply_filters('syntekpro_forms_webhook_retry_delay', $delay, $attempt);
+    }
+
+    private function schedule_webhook_queue_processor() {
+        if (!wp_next_scheduled('spf_process_webhook_queue')) {
+            wp_schedule_event(time() + MINUTE_IN_SECONDS, 'spf_five_minutes', 'spf_process_webhook_queue');
+        }
+
+        $next_run = wp_next_scheduled('spf_process_webhook_queue');
+        if (!$next_run || $next_run > (time() + 60)) {
+            wp_schedule_single_event(time() + 15, 'spf_process_webhook_queue');
+        }
     }
 
     public function build_success_payload($form_settings) {
@@ -797,6 +1122,11 @@ class SyntekPro_Forms_Builder {
             wp_mkdir_p(SPF_ADDONS_DIR);
         }
 
+        $disabled_addons = get_option('spf_disabled_addons', array());
+        if (!is_array($disabled_addons)) {
+            $disabled_addons = array();
+        }
+
         $paths = array(SPF_ADDONS_DIR);
         $paths = apply_filters('syntekpro_forms_addons_paths', $paths);
 
@@ -811,12 +1141,22 @@ class SyntekPro_Forms_Builder {
             }
 
             foreach ($files as $file) {
-                if (realpath($file) === realpath(SPF_PLUGIN_FILE)) {
+                $resolved_file = realpath($file);
+                if (!$resolved_file) {
                     continue;
                 }
 
-                require_once $file;
-                $this->loaded_addons[] = $file;
+                if ($resolved_file === realpath(SPF_PLUGIN_FILE)) {
+                    continue;
+                }
+
+                $file_hash = md5($resolved_file);
+                if (in_array($file_hash, $disabled_addons, true)) {
+                    continue;
+                }
+
+                require_once $resolved_file;
+                $this->loaded_addons[] = $resolved_file;
             }
         }
     }
@@ -903,6 +1243,13 @@ class SyntekPro_Forms_Builder {
             );
         }
 
+        if (!isset($schedules['spf_five_minutes'])) {
+            $schedules['spf_five_minutes'] = array(
+                'interval' => 5 * MINUTE_IN_SECONDS,
+                'display'  => __('Every 5 Minutes', 'syntekpro-forms'),
+            );
+        }
+
         return $schedules;
     }
 
@@ -915,7 +1262,7 @@ class SyntekPro_Forms_Builder {
         wp_add_dashboard_widget(
             'spf_entries_dashboard_widget',
             '<img src="' . SPF_PLUGIN_URL . 'assets/images/Syntekpro%20Forms%20Logo.png" style="height:20px;width:auto;vertical-align:middle;margin-right:8px;"> ' . __('Recent Form Entries', 'syntekpro-forms'),
-            array($this, 'render_dashboard_widget')
+            array($this, 'render_dashboard_widget_v2')
         );
     }
 
@@ -1000,6 +1347,86 @@ class SyntekPro_Forms_Builder {
                 wp_dequeue_style($handle);
             }
         }
+    }
+
+    public function render_dashboard_widget_v2() {
+        global $wpdb;
+
+        $forms_table = $wpdb->prefix . 'spf_forms';
+        $entries_table = $wpdb->prefix . 'spf_entries';
+
+        $forms_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$forms_table} WHERE status != 'trash'");
+        $entries_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$entries_table}");
+        $unread_count = (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$entries_table} WHERE status = %s", 'unread'));
+        $read_count = max(0, $entries_count - $unread_count);
+
+        $entries = $wpdb->get_results("\n            SELECT e.*, f.title as form_title \n            FROM {$entries_table} e \n            LEFT JOIN {$forms_table} f ON e.form_id = f.id \n            ORDER BY e.created_at DESC \n            LIMIT 5\n        ");
+
+        $forms_url = esc_url(admin_url('admin.php?page=syntekpro-forms'));
+        $entries_url = esc_url(admin_url('admin.php?page=syntekpro-forms-entries'));
+
+        echo '<style>
+            .spf-dashboard-summary a {
+                transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+            }
+            .spf-dashboard-summary a:hover,
+            .spf-dashboard-summary a:focus {
+                transform: translateY(-1px);
+                box-shadow: 0 2px 8px rgba(0,0,0,.08);
+                border-color: #a7aaad !important;
+                outline: none;
+            }
+        </style>';
+
+        echo '<div class="spf-dashboard-summary" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 14px;">';
+        echo '<a href="' . $forms_url . '" style="background:#f6f7f7;border:1px solid #dcdcde;border-radius:6px;padding:10px;text-decoration:none;color:inherit;display:block;"><div style="font-size:11px;color:#646970;text-transform:uppercase;letter-spacing:.4px;">' . esc_html__('Forms', 'syntekpro-forms') . '</div><div style="font-size:22px;font-weight:700;line-height:1.2;">' . esc_html((string) $forms_count) . '</div></a>';
+        echo '<a href="' . $entries_url . '" style="background:#f6f7f7;border:1px solid #dcdcde;border-radius:6px;padding:10px;text-decoration:none;color:inherit;display:block;"><div style="font-size:11px;color:#646970;text-transform:uppercase;letter-spacing:.4px;">' . esc_html__('Entries', 'syntekpro-forms') . '</div><div style="font-size:22px;font-weight:700;line-height:1.2;">' . esc_html((string) $entries_count) . '</div></a>';
+        echo '<a href="' . $entries_url . '" style="background:#f0f6ff;border:1px solid #bfdbfe;border-radius:6px;padding:10px;text-decoration:none;color:inherit;display:block;"><div style="font-size:11px;color:#1e40af;text-transform:uppercase;letter-spacing:.4px;">' . esc_html__('Read', 'syntekpro-forms') . '</div><div style="font-size:22px;font-weight:700;line-height:1.2;color:#1e3a8a;">' . esc_html((string) $read_count) . '</div></a>';
+        echo '<a href="' . $entries_url . '" style="background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;padding:10px;text-decoration:none;color:inherit;display:block;"><div style="font-size:11px;color:#9a3412;text-transform:uppercase;letter-spacing:.4px;">' . esc_html__('Unread', 'syntekpro-forms') . '</div><div style="font-size:22px;font-weight:700;line-height:1.2;color:#c2410c;">' . esc_html((string) $unread_count) . '</div></a>';
+        echo '</div>';
+
+        if ($forms_count === 0 && $entries_count === 0) {
+            echo '<div style="padding:14px;border:1px dashed #c3c4c7;border-radius:6px;background:#fff;">';
+            echo '<p style="margin:0 0 10px;font-size:13px;">' . esc_html__("Don't have a form yet. Add one to start collecting entries.", 'syntekpro-forms') . '</p>';
+            echo '<a href="' . esc_url(admin_url('admin.php?page=syntekpro-forms-add-new')) . '" class="button button-primary">' . esc_html__('Add Form', 'syntekpro-forms') . '</a>';
+            echo '</div>';
+            return;
+        }
+
+        if (empty($entries)) {
+            echo '<div style="padding:12px;border:1px solid #dcdcde;border-radius:6px;background:#fff;">';
+            echo '<p style="margin:0 0 10px;">' . esc_html__('No entries yet. Your forms are ready to collect submissions.', 'syntekpro-forms') . '</p>';
+            echo '<a href="' . esc_url(admin_url('admin.php?page=syntekpro-forms')) . '" class="button button-secondary">' . esc_html__('View Forms', 'syntekpro-forms') . '</a>';
+            echo '</div>';
+            return;
+        }
+
+        echo '<ul class="spf-dashboard-entries-list" style="margin: 0; padding: 0; list-style: none;">';
+        foreach ($entries as $entry) {
+            $entry_data = json_decode($entry->entry_data, true);
+            $preview = '';
+            if (is_array($entry_data)) {
+                $first_val = reset($entry_data);
+                $preview = is_array($first_val) ? implode(', ', $first_val) : (string) $first_val;
+                $preview = wp_trim_words($preview, 10);
+            }
+
+            $form_title = !empty($entry->form_title) ? $entry->form_title : __('Untitled Form', 'syntekpro-forms');
+            echo '<li style="padding: 10px 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">';
+            echo '<div>';
+            echo '<div style="font-weight: 600; font-size: 14px;">' . esc_html($form_title) . '</div>';
+            echo '<div style="font-size: 12px; color: #646970;">' . esc_html($preview) . '</div>';
+            echo '</div>';
+            echo '<div style="text-align: right;">';
+            echo '<div style="font-size: 11px; color: #999;">' . esc_html(human_time_diff(strtotime((string) $entry->created_at), current_time('timestamp')) . ' ' . __('ago', 'syntekpro-forms')) . '</div>';
+            if ($entry->status === 'unread') {
+                echo '<span style="display: inline-block; width: 8px; height: 8px; background: #ffb900; border-radius: 50%; margin-left: 5px;" title="' . esc_attr__('Unread', 'syntekpro-forms') . '"></span>';
+            }
+            echo '</div>';
+            echo '</li>';
+        }
+        echo '</ul>';
+        echo '<p style="margin-top: 15px; text-align: right;"><a href="' . esc_url(admin_url('admin.php?page=syntekpro-forms-entries')) . '" class="button button-secondary">' . esc_html__('View All Entries', 'syntekpro-forms') . '</a></p>';
     }
 
     public function render_dashboard_widget() {

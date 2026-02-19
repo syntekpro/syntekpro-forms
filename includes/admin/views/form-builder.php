@@ -99,14 +99,48 @@ if ($form_id > 0) {
             </button>
         </div>
     </div>
+
+    <div class="spf-builder-ux-toolbar">
+        <div class="spf-builder-ux-left">
+            <div class="spf-builder-device-group">
+                <button type="button" class="button spf-device-btn is-active" data-device="desktop"><span class="dashicons dashicons-desktop"></span> <?php _e('Desktop', 'syntekpro-forms'); ?></button>
+                <button type="button" class="button spf-device-btn" data-device="tablet"><span class="dashicons dashicons-tablet"></span> <?php _e('Tablet', 'syntekpro-forms'); ?></button>
+                <button type="button" class="button spf-device-btn" data-device="mobile"><span class="dashicons dashicons-smartphone"></span> <?php _e('Mobile', 'syntekpro-forms'); ?></button>
+            </div>
+            <div class="spf-builder-zoom-group">
+                <button type="button" class="button spf-zoom-btn" id="spf-zoom-out"><span class="dashicons dashicons-minus"></span></button>
+                <span id="spf-zoom-level">100%</span>
+                <button type="button" class="button spf-zoom-btn" id="spf-zoom-in"><span class="dashicons dashicons-plus"></span></button>
+                <button type="button" class="button" id="spf-zoom-fit"><?php _e('Fit', 'syntekpro-forms'); ?></button>
+                <button type="button" class="button" id="spf-builder-fullscreen"><span class="dashicons dashicons-editor-expand"></span> <?php _e('Fullscreen', 'syntekpro-forms'); ?></button>
+            </div>
+        </div>
+        <div class="spf-builder-ux-right">
+            <button type="button" class="button" id="spf-undo-btn"><span class="dashicons dashicons-undo"></span> <?php _e('Undo', 'syntekpro-forms'); ?></button>
+            <button type="button" class="button" id="spf-redo-btn"><span class="dashicons dashicons-redo"></span> <?php _e('Redo', 'syntekpro-forms'); ?></button>
+        </div>
+    </div>
+
+    <div id="spf-form-health" class="spf-form-health-strip" aria-live="polite"></div>
+
+    <div id="spf-bulk-actions-bar" class="spf-bulk-actions-bar" style="display:none;">
+        <span id="spf-selected-count">0 <?php _e('selected', 'syntekpro-forms'); ?></span>
+        <button type="button" class="button spf-bulk-action" data-action="required_on"><?php _e('Set Required', 'syntekpro-forms'); ?></button>
+        <button type="button" class="button spf-bulk-action" data-action="required_off"><?php _e('Unset Required', 'syntekpro-forms'); ?></button>
+        <button type="button" class="button spf-bulk-action" data-action="width_half"><?php _e('Width 1/2', 'syntekpro-forms'); ?></button>
+        <button type="button" class="button spf-bulk-action" data-action="width_full"><?php _e('Width Full', 'syntekpro-forms'); ?></button>
+        <button type="button" class="button spf-bulk-action" data-action="duplicate"><?php _e('Duplicate', 'syntekpro-forms'); ?></button>
+        <button type="button" class="button spf-bulk-action" data-action="delete"><?php _e('Delete', 'syntekpro-forms'); ?></button>
+    </div>
     
     <div class="spf-builder-container">
         <!-- Main Content - Form Canvas (LEFT) -->
-        <div class="spf-main-content">
+        <div class="spf-main-content" id="spf-main-content">
             <!-- Form Canvas Badge -->
             <div class="spf-canvas-badge-wrapper">
                 <div class="spf-header-badge"><?php _e('Form Canvas', 'syntekpro-forms'); ?></div>
             </div>
+            <div id="spf-canvas-stage" class="spf-canvas-stage">
             
             <!-- Form Header Preview -->
             <div class="spf-form-header-preview">
@@ -128,6 +162,12 @@ if ($form_id > 0) {
                     </div>
                     <h3><?php _e('Build Your Form', 'syntekpro-forms'); ?></h3>
                     <p><?php _e('Drag and drop fields from the sidebar or click on them to start building.', 'syntekpro-forms'); ?></p>
+                    <div class="spf-template-quickstart">
+                        <button type="button" class="button spf-template-btn" data-template="contact"><?php _e('Contact', 'syntekpro-forms'); ?></button>
+                        <button type="button" class="button spf-template-btn" data-template="lead"><?php _e('Lead', 'syntekpro-forms'); ?></button>
+                        <button type="button" class="button spf-template-btn" data-template="support"><?php _e('Support', 'syntekpro-forms'); ?></button>
+                        <button type="button" class="button spf-template-btn" data-template="event"><?php _e('Event', 'syntekpro-forms'); ?></button>
+                    </div>
                 </div>
             </div>
 
@@ -138,6 +178,7 @@ if ($form_id > 0) {
                         <?php echo isset($settings_array['submit_button_text']) ? esc_html($settings_array['submit_button_text']) : __('Submit', 'syntekpro-forms'); ?>
                     </button>
                 </div>
+            </div>
             </div>
         </div>
 
@@ -467,11 +508,46 @@ if ($form_id > 0) {
                                     <option value="sans-serif" <?php selected(isset($settings_array['font_family']) ? $settings_array['font_family'] : 'inherit', 'sans-serif'); ?>><?php _e('Sans Serif', 'syntekpro-forms'); ?></option>
                                     <option value="serif" <?php selected(isset($settings_array['font_family']) ? $settings_array['font_family'] : 'inherit', 'serif'); ?>><?php _e('Serif', 'syntekpro-forms'); ?></option>
                                     <option value="monospace" <?php selected(isset($settings_array['font_family']) ? $settings_array['font_family'] : 'inherit', 'monospace'); ?>><?php _e('Monospace', 'syntekpro-forms'); ?></option>
+                                    <option value="inter" <?php selected(isset($settings_array['font_family']) ? $settings_array['font_family'] : 'inherit', 'inter'); ?>>Inter (Google)</option>
+                                    <option value="roboto" <?php selected(isset($settings_array['font_family']) ? $settings_array['font_family'] : 'inherit', 'roboto'); ?>>Roboto (Google)</option>
+                                    <option value="open-sans" <?php selected(isset($settings_array['font_family']) ? $settings_array['font_family'] : 'inherit', 'open-sans'); ?>>Open Sans (Google)</option>
+                                    <option value="lato" <?php selected(isset($settings_array['font_family']) ? $settings_array['font_family'] : 'inherit', 'lato'); ?>>Lato (Google)</option>
+                                    <option value="montserrat" <?php selected(isset($settings_array['font_family']) ? $settings_array['font_family'] : 'inherit', 'montserrat'); ?>>Montserrat (Google)</option>
+                                    <option value="poppins" <?php selected(isset($settings_array['font_family']) ? $settings_array['font_family'] : 'inherit', 'poppins'); ?>>Poppins (Google)</option>
+                                    <option value="nunito" <?php selected(isset($settings_array['font_family']) ? $settings_array['font_family'] : 'inherit', 'nunito'); ?>>Nunito (Google)</option>
+                                    <option value="source-sans-pro" <?php selected(isset($settings_array['font_family']) ? $settings_array['font_family'] : 'inherit', 'source-sans-pro'); ?>>Source Sans Pro (Google)</option>
+                                    <option value="work-sans" <?php selected(isset($settings_array['font_family']) ? $settings_array['font_family'] : 'inherit', 'work-sans'); ?>>Work Sans (Google)</option>
+                                    <option value="merriweather" <?php selected(isset($settings_array['font_family']) ? $settings_array['font_family'] : 'inherit', 'merriweather'); ?>>Merriweather (Google)</option>
+                                    <option value="playfair-display" <?php selected(isset($settings_array['font_family']) ? $settings_array['font_family'] : 'inherit', 'playfair-display'); ?>>Playfair Display (Google)</option>
                                 </select>
                             </div>
                             <div class="spf-setting-row">
                                 <label><span class="dashicons dashicons-editor-expand"></span><?php _e('Base Font Size (px)', 'syntekpro-forms'); ?></label>
                                 <input type="number" id="spf-font-size" value="<?php echo isset($settings_array['font_size']) ? esc_attr($settings_array['font_size']) : '16'; ?>" min="10" max="30">
+                            </div>
+                            <div class="spf-setting-row">
+                                <label><span class="dashicons dashicons-editor-alignleft"></span><?php _e('Form Title Alignment', 'syntekpro-forms'); ?></label>
+                                <select id="spf-title-align">
+                                    <option value="left" <?php selected(isset($settings_array['title_align']) ? $settings_array['title_align'] : 'left', 'left'); ?>><?php _e('Left', 'syntekpro-forms'); ?></option>
+                                    <option value="center" <?php selected(isset($settings_array['title_align']) ? $settings_array['title_align'] : 'left', 'center'); ?>><?php _e('Center', 'syntekpro-forms'); ?></option>
+                                    <option value="right" <?php selected(isset($settings_array['title_align']) ? $settings_array['title_align'] : 'left', 'right'); ?>><?php _e('Right', 'syntekpro-forms'); ?></option>
+                                </select>
+                            </div>
+                            <div class="spf-setting-row">
+                                <label><span class="dashicons dashicons-editor-alignleft"></span><?php _e('Form Description Alignment', 'syntekpro-forms'); ?></label>
+                                <select id="spf-description-align">
+                                    <option value="left" <?php selected(isset($settings_array['description_align']) ? $settings_array['description_align'] : 'left', 'left'); ?>><?php _e('Left', 'syntekpro-forms'); ?></option>
+                                    <option value="center" <?php selected(isset($settings_array['description_align']) ? $settings_array['description_align'] : 'left', 'center'); ?>><?php _e('Center', 'syntekpro-forms'); ?></option>
+                                    <option value="right" <?php selected(isset($settings_array['description_align']) ? $settings_array['description_align'] : 'left', 'right'); ?>><?php _e('Right', 'syntekpro-forms'); ?></option>
+                                </select>
+                            </div>
+                            <div class="spf-setting-row">
+                                <label><span class="dashicons dashicons-editor-alignleft"></span><?php _e('Field Label Alignment', 'syntekpro-forms'); ?></label>
+                                <select id="spf-label-align">
+                                    <option value="left" <?php selected(isset($settings_array['label_align']) ? $settings_array['label_align'] : 'left', 'left'); ?>><?php _e('Left', 'syntekpro-forms'); ?></option>
+                                    <option value="center" <?php selected(isset($settings_array['label_align']) ? $settings_array['label_align'] : 'left', 'center'); ?>><?php _e('Center', 'syntekpro-forms'); ?></option>
+                                    <option value="right" <?php selected(isset($settings_array['label_align']) ? $settings_array['label_align'] : 'left', 'right'); ?>><?php _e('Right', 'syntekpro-forms'); ?></option>
+                                </select>
                             </div>
                         </div>
 
@@ -479,11 +555,11 @@ if ($form_id > 0) {
                         <div class="spf-panel-collapsible-content">
                             <div class="spf-setting-row">
                                 <label><span class="dashicons dashicons-align-center"></span><?php _e('Field Padding (px)', 'syntekpro-forms'); ?></label>
-                                <input type="number" id="spf-field-padding" value="<?php echo isset($settings_array['field_padding']) ? esc_attr($settings_array['field_padding']) : '12'; ?>" min="0" max="30">
+                                <input type="number" id="spf-field-padding" value="<?php echo isset($settings_array['field_padding']) ? esc_attr($settings_array['field_padding']) : '14'; ?>" min="0" max="40">
                             </div>
                             <div class="spf-setting-row">
                                 <label><span class="dashicons dashicons-marker"></span><?php _e('Field Border Radius (px)', 'syntekpro-forms'); ?></label>
-                                <input type="number" id="spf-border-radius" value="<?php echo isset($settings_array['border_radius']) ? esc_attr($settings_array['border_radius']) : '4'; ?>" min="0" max="20">
+                                <input type="number" id="spf-border-radius" value="<?php echo isset($settings_array['border_radius']) ? esc_attr($settings_array['border_radius']) : '6'; ?>" min="0" max="30">
                             </div>
                         </div>
 
@@ -650,11 +726,12 @@ if ($form_id > 0) {
 
 </div>
 
-<div class="spf-admin-footer" style="background:#f8ebb4;border:1px solid #ccd0d4;border-radius:4px;padding:10px 20px;margin-top:20px;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 1px rgba(0,0,0,0.04);">
-    <a class="spf-footer-brand" href="https://syntekpro.com" target="_blank" rel="noopener noreferrer">
-        <span><?php _e('Powered by', 'syntekpro-forms'); ?></span>
-        <img src="<?php echo SPF_PLUGIN_URL; ?>assets/images/SYNTEK%20PRO%20LOGO%20Transparent%20Icon%20500x150.png" class="spf-footer-icon" alt="SyntekPro" style="height:45px !important;width:auto !important;max-height:45px !important;max-width:150px !important;object-fit:contain;display:inline-block;vertical-align:middle;">
-    </a>
+<div id="spf-field-context-menu" class="spf-field-context-menu" style="display:none;">
+    <button type="button" data-action="edit"><?php _e('Edit', 'syntekpro-forms'); ?></button>
+    <button type="button" data-action="duplicate"><?php _e('Duplicate', 'syntekpro-forms'); ?></button>
+    <button type="button" data-action="move_up"><?php _e('Move Up', 'syntekpro-forms'); ?></button>
+    <button type="button" data-action="move_down"><?php _e('Move Down', 'syntekpro-forms'); ?></button>
+    <button type="button" data-action="delete"><?php _e('Delete', 'syntekpro-forms'); ?></button>
 </div>
 
 <input type="hidden" id="spf-form-id" value="<?php echo $form_id; ?>">
@@ -1152,7 +1229,8 @@ var spfFormData = {
     background: #fff;
     border: 1px solid #e5e7eb;
     border-radius: 6px;
-    user-select: none;
+    pointer-events: auto;
+    user-select: auto;
 }
 
 .spf-setting-row label .dashicons {
@@ -1243,17 +1321,11 @@ var spfFormData = {
     background: transparent !important;
 }
 
-.spf-admin-footer {
-    margin-left: 0;
-    margin-right: 0;
-    clear: both;
-    margin-top: 30px;
-}
-
 /* Field Settings Window Styling */
 .spf-field-settings-window {
     background: #fff;
     border-bottom: 1px solid #eef1f4;
+    max-height: none;
     display: flex;
     flex-direction: column;
     margin-bottom: 0;
@@ -1364,7 +1436,8 @@ var spfFormData = {
     background: #fff;
     border: 1px solid #e5e7eb;
     border-radius: 6px;
-    user-select: none;
+    pointer-events: auto;
+    user-select: auto;
 }
 
 .spf-setting-row label .dashicons {
@@ -1802,6 +1875,358 @@ var spfFormData = {
     font-size: 12px;
     color: #646970;
     line-height: 1.5;
+}
+
+/* Gravity-style canvas polish */
+.spf-builder-container {
+    gap: 20px;
+}
+
+.spf-main-content {
+    background: #ffffff;
+    border: 1px solid #dcdcde;
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    overflow: hidden;
+}
+
+.spf-sidebar,
+.spf-field-settings-window {
+    background: #ffffff;
+    border: 1px solid #dcdcde;
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.spf-sidebar-content {
+    background: #ffffff;
+}
+
+.spf-builder-top-nav,
+.spf-builder-ux-toolbar,
+.spf-form-health-strip,
+.spf-bulk-actions-bar {
+    background: #ffffff;
+    border: 1px solid #dcdcde;
+    border-radius: 6px;
+    box-shadow: none;
+}
+
+.spf-form-header-preview {
+    background: #ffffff;
+    border-bottom: 1px solid #e0e0e0;
+    padding: 28px 24px;
+}
+
+.spf-header-badge {
+    background: #f0f6fc;
+    color: #2271b1;
+    box-shadow: none;
+}
+
+.spf-form-title-input {
+    font-size: 28px;
+    font-weight: 700;
+}
+
+.spf-form-title-input:hover,
+.spf-form-title-input:focus {
+    border-bottom: 2px solid #2271b1;
+    transform: none;
+}
+
+.spf-form-fields-canvas {
+    background: #f6f7f7;
+    background-image: none;
+    padding: 24px;
+    border-top: 1px solid #e5e5e5;
+}
+
+.spf-field-item {
+    border: 1px solid #dcdcde;
+    border-radius: 8px;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+    margin-bottom: 12px;
+}
+
+.spf-field-item:hover {
+    border-color: #bfc3c7;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    transform: none;
+}
+
+.spf-field-item.active,
+.spf-field-item.is-selected {
+    border-color: #2271b1 !important;
+    box-shadow: 0 0 0 1px #2271b1, 0 2px 8px rgba(34, 113, 177, 0.12) !important;
+}
+
+.spf-field-header {
+    background: #fcfcfc;
+    padding: 10px 12px;
+    gap: 10px;
+}
+
+.spf-field-body {
+    padding: 14px;
+}
+
+.spf-field-sort-handle {
+    color: #8c8f94;
+}
+
+.spf-field-sort-handle:hover {
+    color: #2271b1;
+}
+
+.spf-action-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    background: #ffffff;
+    border-color: #c3c4c7;
+}
+
+.spf-edit-field:hover {
+    background: #2271b1;
+    border-color: #2271b1;
+}
+
+.spf-tab-btn {
+    min-height: 74px;
+    border: 1px solid #dcdcde;
+    border-radius: 6px;
+    margin: 0;
+    background: #ffffff;
+}
+
+.spf-tab-btn .dashicons {
+    color: #50575e;
+}
+
+.spf-tab-btn .spf-tab-label {
+    color: #50575e;
+}
+
+.spf-tab-btn:hover,
+.spf-tab-btn.active {
+    background: #f0f6fc;
+    border-color: #2271b1;
+    box-shadow: none;
+    transform: none;
+}
+
+.spf-tab-btn:hover .dashicons,
+.spf-tab-btn.active .dashicons,
+.spf-tab-btn:hover .spf-tab-label,
+.spf-tab-btn.active .spf-tab-label {
+    color: #2271b1;
+}
+
+.spf-field-grid {
+    background: #ffffff;
+    border: 1px solid #dcdcde;
+    border-top: none;
+}
+
+.spf-field-type {
+    border: 1px solid #dcdcde;
+    border-radius: 6px;
+    aspect-ratio: auto;
+    min-height: 90px;
+}
+
+.spf-field-type:hover {
+    background: #f0f6fc;
+    border-color: #2271b1;
+    box-shadow: none;
+    transform: none;
+}
+
+.spf-field-type:hover .dashicons,
+.spf-field-type:hover .spf-field-label {
+    color: #2271b1;
+    transform: none;
+}
+
+.spf-setting-row label {
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 12px;
+    color: #1d2327;
+    background: #f6f7f7;
+}
+
+.spf-setting-row input[type="text"],
+.spf-setting-row input[type="number"],
+.spf-setting-row textarea,
+.spf-setting-row select {
+    border-color: #c3c4c7;
+    border-radius: 4px;
+}
+
+.spf-setting-row input:focus,
+.spf-setting-row textarea:focus,
+.spf-setting-row select:focus {
+    border-color: #2271b1;
+    box-shadow: 0 0 0 1px #2271b1;
+}
+
+.spf-submit-button {
+    background: #2271b1 !important;
+    border: 1px solid #2271b1 !important;
+    border-radius: 4px !important;
+    box-shadow: none;
+    text-shadow: none;
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    padding: 10px 18px !important;
+}
+
+.spf-submit-button:hover {
+    background: #135e96 !important;
+    border-color: #135e96 !important;
+    transform: none;
+    box-shadow: none;
+}
+
+.spf-empty-builder {
+    border-radius: 8px;
+    border: 2px dashed #c3c4c7;
+    background: #ffffff;
+}
+
+.spf-context-menu {
+    border: 1px solid #c3c4c7;
+    border-radius: 6px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+}
+
+/* Gravity-style refinement pass: tighter typography + reduced icon weight */
+.spf-form-title-input {
+    font-size: 24px;
+    line-height: 1.25;
+}
+
+.spf-form-description-input {
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.spf-header-badge {
+    font-size: 9px;
+    letter-spacing: 0.8px;
+    padding: 5px 12px;
+}
+
+.spf-field-header {
+    padding: 8px 10px;
+}
+
+.spf-field-title {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.spf-field-title small {
+    font-size: 9px;
+    letter-spacing: 0.2px;
+}
+
+.spf-field-badge {
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 10px;
+}
+
+.spf-field-body label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #1d2327;
+}
+
+.spf-field-body input,
+.spf-field-body textarea,
+.spf-field-body select {
+    font-size: 12px;
+}
+
+.spf-tab-btn {
+    min-height: 64px;
+    padding: 12px 6px;
+    gap: 4px;
+}
+
+.spf-tab-btn .dashicons {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+}
+
+.spf-tab-btn .spf-tab-label {
+    font-size: 9px;
+    letter-spacing: 0.3px;
+}
+
+.spf-field-grid {
+    gap: 10px;
+    padding: 12px;
+}
+
+.spf-field-type {
+    min-height: 78px;
+    padding: 10px 8px;
+    border-radius: 5px;
+}
+
+.spf-field-type .dashicons {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+    margin-bottom: 6px;
+    opacity: 0.82;
+}
+
+.spf-field-type .spf-field-label {
+    font-size: 10px;
+    font-weight: 500;
+    line-height: 1.25;
+}
+
+.spf-builder-ux-toolbar .button,
+.spf-bulk-actions-bar .button,
+.spf-nav-btn,
+.spf-nav-right .button {
+    font-size: 12px !important;
+    min-height: 30px;
+    padding: 5px 10px !important;
+}
+
+.spf-action-btn {
+    width: 26px;
+    height: 26px;
+}
+
+.spf-action-btn .dashicons {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+}
+
+.spf-setting-row label {
+    font-size: 11px;
+}
+
+.spf-settings-panel h3,
+.spf-section-header h4 {
+    font-size: 12px;
+}
+
+.spf-submit-button {
+    font-size: 13px !important;
+    padding: 9px 14px !important;
 }
 
 /* Responsive adjustments */

@@ -9,32 +9,33 @@ if (!defined('ABSPATH')) {
 
 // Handle form submission
 if (isset($_POST['spf_save_settings']) && check_admin_referer('spf_settings_nonce')) {
+    $post_data = wp_unslash($_POST);
     $settings = array(
-        'license_key' => sanitize_text_field($_POST['license_key']),
-        'currency' => sanitize_text_field($_POST['currency']),
-        'enable_logging' => isset($_POST['enable_logging']) ? 1 : 0,
-        'default_theme' => sanitize_text_field($_POST['default_theme']),
-        'enable_toolbar_menu' => isset($_POST['enable_toolbar_menu']) ? 1 : 0,
-        'enable_dashboard_widget' => isset($_POST['enable_dashboard_widget']) ? 1 : 0,
-        'enable_background_updates' => isset($_POST['enable_background_updates']) ? 1 : 0,
-        'no_conflict_mode' => isset($_POST['no_conflict_mode']) ? 1 : 0,
-        'enable_akismet' => isset($_POST['enable_akismet']) ? 1 : 0,
-        'enable_data_collection' => isset($_POST['enable_data_collection']) ? 1 : 0,
+        'license_key' => sanitize_text_field($post_data['license_key'] ?? ''),
+        'currency' => sanitize_text_field($post_data['currency'] ?? ''),
+        'enable_logging' => !empty($post_data['enable_logging']) ? 1 : 0,
+        'default_theme' => sanitize_text_field($post_data['default_theme'] ?? ''),
+        'enable_toolbar_menu' => !empty($post_data['enable_toolbar_menu']) ? 1 : 0,
+        'enable_dashboard_widget' => !empty($post_data['enable_dashboard_widget']) ? 1 : 0,
+        'enable_background_updates' => !empty($post_data['enable_background_updates']) ? 1 : 0,
+        'no_conflict_mode' => !empty($post_data['no_conflict_mode']) ? 1 : 0,
+        'enable_akismet' => !empty($post_data['enable_akismet']) ? 1 : 0,
+        'enable_data_collection' => !empty($post_data['enable_data_collection']) ? 1 : 0,
         
-        'recaptcha_site_key' => sanitize_text_field($_POST['recaptcha_site_key']),
-        'recaptcha_secret_key' => sanitize_text_field($_POST['recaptcha_secret_key']),
-        'recaptcha_invisible' => isset($_POST['recaptcha_invisible']) ? 1 : 0,
-        'enable_honeypot' => isset($_POST['enable_honeypot']) ? 1 : 0,
+        'recaptcha_site_key' => sanitize_text_field($post_data['recaptcha_site_key'] ?? ''),
+        'recaptcha_secret_key' => sanitize_text_field($post_data['recaptcha_secret_key'] ?? ''),
+        'recaptcha_invisible' => !empty($post_data['recaptcha_invisible']) ? 1 : 0,
+        'enable_honeypot' => !empty($post_data['enable_honeypot']) ? 1 : 0,
         
-        'from_email' => sanitize_email($_POST['from_email']),
-        'from_name' => sanitize_text_field($_POST['from_name']),
-        'delete_entries_on_uninstall' => isset($_POST['delete_entries_on_uninstall']) ? 1 : 0,
-        'enable_ip_logging' => isset($_POST['enable_ip_logging']) ? 1 : 0,
-        'anonymize_ip' => isset($_POST['anonymize_ip']) ? 1 : 0,
-        'data_retention_days' => isset($_POST['data_retention_days']) ? absint($_POST['data_retention_days']) : 0,
-        'trash_retention_days' => isset($_POST['trash_retention_days']) ? absint($_POST['trash_retention_days']) : 40,
-        'rate_limit_enabled' => isset($_POST['rate_limit_enabled']) ? 1 : 0,
-        'rate_limit_seconds' => isset($_POST['rate_limit_seconds']) ? absint($_POST['rate_limit_seconds']) : 0
+        'from_email' => sanitize_email($post_data['from_email'] ?? ''),
+        'from_name' => sanitize_text_field($post_data['from_name'] ?? ''),
+        'delete_entries_on_uninstall' => !empty($post_data['delete_entries_on_uninstall']) ? 1 : 0,
+        'enable_ip_logging' => !empty($post_data['enable_ip_logging']) ? 1 : 0,
+        'anonymize_ip' => !empty($post_data['anonymize_ip']) ? 1 : 0,
+        'data_retention_days' => isset($post_data['data_retention_days']) ? absint($post_data['data_retention_days']) : 0,
+        'trash_retention_days' => isset($post_data['trash_retention_days']) ? absint($post_data['trash_retention_days']) : 40,
+        'rate_limit_enabled' => !empty($post_data['rate_limit_enabled']) ? 1 : 0,
+        'rate_limit_seconds' => isset($post_data['rate_limit_seconds']) ? absint($post_data['rate_limit_seconds']) : 0
     );
     
     update_option('spf_settings', $settings);
@@ -108,10 +109,6 @@ $tutorial_url = esc_url(plugins_url('docs/TUTORIAL.md', SPF_PLUGIN_FILE));
                 <button type="button" class="spf-settings-tab-btn" data-tab="uninstall">
                     <span class="dashicons dashicons-trash"></span>
                     <?php _e('Uninstall', 'syntekpro-forms'); ?>
-                </button>
-                <button type="button" class="spf-settings-tab-btn" data-tab="pro">
-                    <span class="dashicons dashicons-awards"></span>
-                    <?php _e('Pro', 'syntekpro-forms'); ?>
                 </button>
                 <button type="button" class="spf-settings-tab-btn" data-tab="about">
                     <span class="dashicons dashicons-info"></span>
@@ -391,56 +388,13 @@ $tutorial_url = esc_url(plugins_url('docs/TUTORIAL.md', SPF_PLUGIN_FILE));
                         <h3><?php _e('Professional Form Builder for WordPress', 'syntekpro-forms'); ?></h3>
                         <p><?php _e('Thank you for choosing SyntekPro Forms. We are dedicated to providing the best form building experience for WordPress users.', 'syntekpro-forms'); ?></p>
                         
-                        <div class="spf-about-links">
-                            <a href="https://syntekpro.com/wpplugins" target="_blank" class="button button-secondary">
-                                <span class="dashicons dashicons-external"></span> <?php _e('Check Other Products', 'syntekpro-forms'); ?>
-                            </a>
-                            <a href="https://syntekpro.com/support" target="_blank" class="button button-secondary">
-                                <span class="dashicons dashicons-sos"></span> <?php _e('Get Support', 'syntekpro-forms'); ?>
-                            </a>
-                        </div>
 
-                        <div style="margin-top: 50px; color: #646970; font-size: 13px;">
-                            <p>&copy; 2026 <a href="https://syntekpro.com" target="_blank" class="spf-footer-link"><img src="<?php echo SPF_PLUGIN_URL; ?>assets/images/company-logo.png" alt="SyntekPro" class="spf-footer-logo"> SyntekProSyntekPro</a>. All rights reserved.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Pro Tab -->
-                <div id="spf-settings-tab-pro" class="spf-settings-tab-pane">
-                    <h2><span class="dashicons dashicons-awards"></span> <?php _e('Go Pro', 'syntekpro-forms'); ?></h2>
-                    <div class="spf-about-card" style="display:grid;grid-template-columns:1fr;gap:20px;max-width:900px;">
-                        <div>
-                            <p style="font-size:15px;"><?php _e('Unlock advanced capabilities to supercharge your forms and workflows.', 'syntekpro-forms'); ?></p>
-                            <ul style="list-style:disc;padding-left:20px;line-height:1.7;">
-                                <li><?php _e('Multi-step forms with progress bars and per-step validation', 'syntekpro-forms'); ?></li>
-                                <li><?php _e('Payments with Stripe/PayPal, coupons, and conditional totals', 'syntekpro-forms'); ?></li>
-                                <li><?php _e('Save & Resume plus draft links for partially completed forms', 'syntekpro-forms'); ?></li>
-                                <li><?php _e('Advanced conditional logic and calculations across fields', 'syntekpro-forms'); ?></li>
-                                <li><?php _e('Webhooks, Zapier/Make connectors, and CRM/email integrations', 'syntekpro-forms'); ?></li>
-                            </ul>
-                        </div>
-                        <div style="background:#f6f7fb;border:1px solid #e5e8f0;border-radius:12px;padding:20px;">
-                            <h3 style="margin-top:0;display:flex;align-items:center;gap:8px;"><span class="dashicons dashicons-star-filled" style="color:#eab308;"></span><?php _e('Upgrade to SyntekPro Forms Pro', 'syntekpro-forms'); ?></h3>
-                            <p style="margin:10px 0 16px;"><?php _e('Get priority support, premium templates, and automation add-ons.', 'syntekpro-forms'); ?></p>
-                            <a href="https://syntekpro.com/forms-pro" target="_blank" class="button button-primary button-hero" style="background:#7c5bff;border-color:#7c5bff;">
-                                <?php _e('Get Pro', 'syntekpro-forms'); ?>
-                            </a>
-                            <p style="margin:12px 0 0;font-size:13px;color:#555;"><?php _e('30-day money-back guarantee.', 'syntekpro-forms'); ?></p>
-                        </div>
                     </div>
                 </div>
 
             </div>
         </div>
     </form>
-</div>
-
-<div class="spf-admin-footer" style="background:#f8ebb4;border:1px solid #ccd0d4;border-radius:4px;padding:10px 20px;margin-top:20px;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 1px rgba(0,0,0,0.04);">
-    <a class="spf-footer-brand" href="https://syntekpro.com" target="_blank" rel="noopener noreferrer">
-        <span><?php _e('Powered by', 'syntekpro-forms'); ?></span>
-        <img src="<?php echo SPF_PLUGIN_URL; ?>assets/images/SYNTEK%20PRO%20LOGO%20Transparent%20Icon%20500x150.png" class="spf-footer-icon" alt="SyntekPro" style="height:45px !important;width:auto !important;max-height:45px !important;max-width:150px !important;object-fit:contain;display:inline-block;vertical-align:middle;">
-    </a>
 </div>
 
 <script>

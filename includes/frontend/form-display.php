@@ -57,6 +57,34 @@ $wpdb->query($wpdb->prepare(
 
 $plugin_settings = get_option('spf_settings');
 
+$resolve_font_family = function($font_value) {
+    $font_value = is_string($font_value) ? trim(strtolower($font_value)) : 'inherit';
+    $map = array(
+        'inherit' => array('css' => 'inherit', 'google' => ''),
+        'sans-serif' => array('css' => 'sans-serif', 'google' => ''),
+        'serif' => array('css' => 'serif', 'google' => ''),
+        'monospace' => array('css' => 'monospace', 'google' => ''),
+        'inter' => array('css' => "'Inter', sans-serif", 'google' => 'Inter:wght@400;500;600;700'),
+        'roboto' => array('css' => "'Roboto', sans-serif", 'google' => 'Roboto:wght@400;500;700'),
+        'open-sans' => array('css' => "'Open Sans', sans-serif", 'google' => 'Open+Sans:wght@400;600;700'),
+        'lato' => array('css' => "'Lato', sans-serif", 'google' => 'Lato:wght@400;700'),
+        'montserrat' => array('css' => "'Montserrat', sans-serif", 'google' => 'Montserrat:wght@400;500;600;700'),
+        'poppins' => array('css' => "'Poppins', sans-serif", 'google' => 'Poppins:wght@400;500;600;700'),
+        'nunito' => array('css' => "'Nunito', sans-serif", 'google' => 'Nunito:wght@400;600;700'),
+        'source-sans-pro' => array('css' => "'Source Sans Pro', sans-serif", 'google' => 'Source+Sans+3:wght@400;600;700'),
+        'work-sans' => array('css' => "'Work Sans', sans-serif", 'google' => 'Work+Sans:wght@400;500;600;700'),
+        'merriweather' => array('css' => "'Merriweather', serif", 'google' => 'Merriweather:wght@400;700'),
+        'playfair-display' => array('css' => "'Playfair Display', serif", 'google' => 'Playfair+Display:wght@400;600;700')
+    );
+
+    if (isset($map[$font_value])) {
+        return $map[$font_value];
+    }
+
+    $raw = $font_value !== '' ? $font_value : 'inherit';
+    return array('css' => $raw, 'google' => '');
+};
+
 // Attributes Overrides (Gutenberg/Shortcode)
 $theme = $atts['theme'] ?? $settings['theme'] ?? 'classic';
 if (empty($theme)) {
@@ -76,14 +104,22 @@ if (!empty($atts['fieldValues'])) {
 $custom_styles = '';
 $font_family = $settings['font_family'] ?? 'inherit';
 $font_size = $settings['font_size'] ?? '16';
-$field_padding = $settings['field_padding'] ?? '12';
-$border_radius = $settings['border_radius'] ?? '4';
+$field_padding = $settings['field_padding'] ?? '14';
+$border_radius = $settings['border_radius'] ?? '6';
 $primary_color = $settings['primary_color'] ?? '#0073aa';
 $label_color = $settings['label_color'] ?? '#1d2327';
 $bg_color = $settings['bg_color'] ?? '#ffffff';
 $submit_align = $settings['submit_align'] ?? 'left';
+$title_align = $settings['title_align'] ?? 'left';
+$description_align = $settings['description_align'] ?? 'left';
+$label_align = $settings['label_align'] ?? 'left';
 
-$custom_styles .= "font-family: {$font_family}; ";
+$active_font = isset($atts['fontFamily']) && $atts['fontFamily'] !== '' ? $atts['fontFamily'] : $font_family;
+$font_data = $resolve_font_family($active_font);
+$resolved_font_family = $font_data['css'];
+$google_font_family = $font_data['google'];
+
+$custom_styles .= "font-family: {$resolved_font_family}; ";
 $custom_styles .= "font-size: {$font_size}px; ";
 $custom_styles .= "background-color: {$bg_color}; ";
 
@@ -95,7 +131,10 @@ $vars = array(
     '--spf-border-radius' => (isset($atts['borderRadius']) && $atts['borderRadius'] !== '' ? $atts['borderRadius'] : $border_radius) . 'px',
     '--spf-field-padding' => (isset($atts['fieldPadding']) && $atts['fieldPadding'] !== '' ? $atts['fieldPadding'] : $field_padding) . 'px',
     '--spf-font-size' => $font_size . 'px',
-    '--spf-font-family' => isset($atts['fontFamily']) && $atts['fontFamily'] !== '' ? $atts['fontFamily'] : $font_family,
+    '--spf-font-family' => $resolved_font_family,
+    '--spf-title-align' => !empty($atts['titleAlign']) ? $atts['titleAlign'] : $title_align,
+    '--spf-desc-align' => !empty($atts['descriptionAlign']) ? $atts['descriptionAlign'] : $description_align,
+    '--spf-label-align' => !empty($atts['labelAlign']) ? $atts['labelAlign'] : $label_align,
     
     // New Gutenberg overrides
     '--spf-input-bg' => !empty($atts['inputBgColor']) ? $atts['inputBgColor'] : '',
@@ -138,6 +177,10 @@ $inline_css = "<style>
     #spf-form-{$form_id} .spf-step-nav .button { padding:12px 18px; }
 </style>";
 echo $inline_css;
+
+if (!empty($google_font_family)) {
+    echo '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=' . esc_attr($google_font_family) . '&display=swap">';
+}
 
 $success_behavior = isset($settings['success_behavior']) ? $settings['success_behavior'] : 'message';
 $success_redirect_url = isset($settings['success_redirect_url']) ? esc_url($settings['success_redirect_url']) : '';
@@ -209,8 +252,9 @@ if (empty($steps)) {
                 <?php endif; ?>
                 <?php foreach ($step['fields'] as $field): 
                     $field_val = $prefilled_values[$field['name']] ?? '';
+                    $layout_width = (!empty($field['layout_width']) && $field['layout_width'] === 'half') ? 'half' : 'full';
                 ?>
-                    <div class="spf-field-wrapper spf-field-type-<?php echo esc_attr($field['type']); ?>" 
+                    <div class="spf-field-wrapper spf-field-width-<?php echo esc_attr($layout_width); ?> spf-field-type-<?php echo esc_attr($field['type']); ?>" 
                          data-field-id="<?php echo esc_attr($field['id']); ?>">
                         
                         <?php if (!empty($field['label'])): ?>

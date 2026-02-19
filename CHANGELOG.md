@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.0] - 2026-02-20
+
+### Added
+- Webhook queue + retry manager with cron processing, failure dashboard, and manual retry actions.
+- Submission lifecycle hook pipeline for extensibility in `class-ajax-handler.php`.
+- New add-ons: disposable email blocker and minimum submit time guard.
+- Add-ons showcase upgrades: card metadata (icon/graphic), featured hero strip, and pin-as-featured controls.
+- Builder enhancements: undo/redo history, multi-select, bulk actions, context menu, quick templates, zoom/device/fullscreen controls, and form health strip.
+- Styling controls for title/description/label alignment and Google Fonts selection.
+- Gutenberg block inspector support for per-block title/description/label alignment and expanded font choices.
+
+### Changed
+- Frontend form rendering now uses responsive width classes and stronger layout spacing/alignment rules.
+- Improved frontend block behavior in constrained theme columns to avoid squeezed/overlapping field layouts.
+- Increased default field padding and border radius for cleaner out-of-box presentation.
+- Builder and frontend visual polish to a cleaner Gravity-style look and hierarchy.
+
+### Fixed
+- Required toggle and field settings interaction stability in builder.
+- Bulk/keyboard delete consistency with history snapshots.
+- Empty-state/canvas update edge cases while adding/removing fields.
+
 ## [1.3.1] - 2026-02-08
 
 ### Added

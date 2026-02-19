@@ -50,7 +50,10 @@
             borderRadius: { type: 'number', default: 0 },
             fieldPadding: { type: 'number', default: 0 },
             fontFamily: { type: 'string', default: '' },
-            submitAlign: { type: 'string', default: '' }
+            submitAlign: { type: 'string', default: '' },
+            titleAlign: { type: 'string', default: '' },
+            descriptionAlign: { type: 'string', default: '' },
+            labelAlign: { type: 'string', default: '' }
         },
         
         edit: function(props) {
@@ -60,7 +63,8 @@
                 inputBgColor, inputBorderColor, inputTextColor, inputAccentColor,
                 labelFontSize, labelTextColor, descriptionFontSize, descriptionTextColor,
                     buttonBgColor, buttonTextColor, preview, ajax, tabindex, fieldValues,
-                    primaryColor, labelColor, bgColor, borderRadius, fieldPadding, fontFamily, submitAlign
+                        primaryColor, labelColor, bgColor, borderRadius, fieldPadding, fontFamily, submitAlign,
+                        titleAlign, descriptionAlign, labelAlign
             } = attributes;
             
             function onChangeFormId(newFormId) {
@@ -128,7 +132,10 @@
                                 labelFontSize: 16,
                                 descriptionFontSize: 14,
                                 showTitle: true,
-                                showDescription: true
+                                showDescription: true,
+                                titleAlign: '',
+                                descriptionAlign: '',
+                                labelAlign: ''
                             })
                         }, __('Reset Defaults', 'syntekpro-forms')),
                         el('p', { style: { marginTop: '15px', fontSize: '13px' } },
@@ -168,9 +175,53 @@
                                 { value: '', label: __('Inherit', 'syntekpro-forms') },
                                 { value: 'sans-serif', label: __('Sans Serif', 'syntekpro-forms') },
                                 { value: 'serif', label: __('Serif', 'syntekpro-forms') },
-                                { value: 'monospace', label: __('Monospace', 'syntekpro-forms') }
+                                { value: 'monospace', label: __('Monospace', 'syntekpro-forms') },
+                                { value: 'inter', label: 'Inter (Google)' },
+                                { value: 'roboto', label: 'Roboto (Google)' },
+                                { value: 'open-sans', label: 'Open Sans (Google)' },
+                                { value: 'lato', label: 'Lato (Google)' },
+                                { value: 'montserrat', label: 'Montserrat (Google)' },
+                                { value: 'poppins', label: 'Poppins (Google)' },
+                                { value: 'nunito', label: 'Nunito (Google)' },
+                                { value: 'source-sans-pro', label: 'Source Sans Pro (Google)' },
+                                { value: 'work-sans', label: 'Work Sans (Google)' },
+                                { value: 'merriweather', label: 'Merriweather (Google)' },
+                                { value: 'playfair-display', label: 'Playfair Display (Google)' }
                             ],
                             onChange: (val) => setAttributes({ fontFamily: val })
+                        }),
+                        el(SelectControl, {
+                            label: __('Title Alignment', 'syntekpro-forms'),
+                            value: titleAlign,
+                            options: [
+                                { value: '', label: __('Default', 'syntekpro-forms') },
+                                { value: 'left', label: __('Left', 'syntekpro-forms') },
+                                { value: 'center', label: __('Center', 'syntekpro-forms') },
+                                { value: 'right', label: __('Right', 'syntekpro-forms') }
+                            ],
+                            onChange: (val) => setAttributes({ titleAlign: val })
+                        }),
+                        el(SelectControl, {
+                            label: __('Description Alignment', 'syntekpro-forms'),
+                            value: descriptionAlign,
+                            options: [
+                                { value: '', label: __('Default', 'syntekpro-forms') },
+                                { value: 'left', label: __('Left', 'syntekpro-forms') },
+                                { value: 'center', label: __('Center', 'syntekpro-forms') },
+                                { value: 'right', label: __('Right', 'syntekpro-forms') }
+                            ],
+                            onChange: (val) => setAttributes({ descriptionAlign: val })
+                        }),
+                        el(SelectControl, {
+                            label: __('Label Alignment', 'syntekpro-forms'),
+                            value: labelAlign,
+                            options: [
+                                { value: '', label: __('Default', 'syntekpro-forms') },
+                                { value: 'left', label: __('Left', 'syntekpro-forms') },
+                                { value: 'center', label: __('Center', 'syntekpro-forms') },
+                                { value: 'right', label: __('Right', 'syntekpro-forms') }
+                            ],
+                            onChange: (val) => setAttributes({ labelAlign: val })
                         }),
                         el(RangeControl, {
                             label: __('Field Padding (px)', 'syntekpro-forms'),

@@ -274,6 +274,19 @@ class SyntekPro_Forms_Ajax_Handler {
             $form_settings = array();
         }
 
+        $raw_form_data = apply_filters(
+            'syntekpro_forms_submission_raw_data',
+            $raw_form_data,
+            $form,
+            $form_id,
+            $form_settings,
+            $settings
+        );
+
+        if (!is_array($raw_form_data)) {
+            $this->send_submission_error(__('Invalid submission payload.', 'syntekpro-forms'));
+        }
+
         $availability = $this->builder->get_form_availability_state($form_settings, $form_id);
         if ($availability['status'] !== 'open') {
             $this->send_submission_error($availability['message']);
@@ -282,6 +295,25 @@ class SyntekPro_Forms_Ajax_Handler {
         $fields = json_decode($form->fields, true);
         if (!is_array($fields)) {
             $this->send_submission_error(__('Form configuration invalid', 'syntekpro-forms'));
+        }
+
+        $pre_validate = apply_filters(
+            'syntekpro_forms_submission_pre_validate',
+            true,
+            $raw_form_data,
+            $form,
+            $fields,
+            $form_settings,
+            $form_id,
+            $settings
+        );
+
+        if (is_wp_error($pre_validate)) {
+            $this->send_submission_error($pre_validate->get_error_message());
+        }
+
+        if ($pre_validate === false) {
+            $this->send_submission_error(__('Submission blocked by validation rules.', 'syntekpro-forms'));
         }
 
         $sanitized_data = array();
@@ -296,6 +328,17 @@ class SyntekPro_Forms_Ajax_Handler {
             if ($field_type === 'checkbox') {
                 $value = isset($raw_form_data[$field_name]) ? (array) $raw_form_data[$field_name] : array();
             }
+
+            $value = apply_filters(
+                'syntekpro_forms_submission_field_value',
+                $value,
+                $field,
+                $raw_form_data,
+                $form,
+                $form_id,
+                $form_settings,
+                $settings
+            );
 
             if ($field_type === 'file') {
                 $file_array = $_FILES[$field_name] ?? null;
@@ -343,6 +386,25 @@ class SyntekPro_Forms_Ajax_Handler {
             $sanitized_data[$field_name] = $this->sanitize_field_value($field_type, $value);
         }
 
+        $sanitized_data = apply_filters(
+            'syntekpro_forms_submission_sanitized_data',
+            $sanitized_data,
+            $raw_form_data,
+            $fields,
+            $form,
+            $form_settings,
+            $form_id,
+            $settings
+        );
+
+        if (is_wp_error($sanitized_data)) {
+            $this->send_submission_error($sanitized_data->get_error_message());
+        }
+
+        if (!is_array($sanitized_data)) {
+            $this->send_submission_error(__('Submission data processing failed.', 'syntekpro-forms'));
+        }
+
         $ip_address_logged = '';
         $user_agent = '';
         if (!empty($settings['enable_ip_logging'])) {
@@ -355,6 +417,16 @@ class SyntekPro_Forms_Ajax_Handler {
         if (!empty($settings['enable_akismet']) && $this->spam_filter->check_akismet_spam($form, $sanitized_data, $client_ip, $user_agent)) {
             $this->send_submission_error(__('Submission flagged as spam.', 'syntekpro-forms'));
         }
+
+        do_action(
+            'syntekpro_forms_submission_before_insert',
+            $form_id,
+            $sanitized_data,
+            $raw_form_data,
+            $form,
+            $form_settings,
+            $settings
+        );
 
         $result = $wpdb->insert(
             $wpdb->prefix . 'spf_entries',
@@ -371,18 +443,64 @@ class SyntekPro_Forms_Ajax_Handler {
         if ($result) {
             $entry_id = $wpdb->insert_id;
 
+            do_action(
+                'syntekpro_forms_submission_after_insert',
+                $entry_id,
+                $form_id,
+                $sanitized_data,
+                $raw_form_data,
+                $form,
+                $form_settings,
+                $settings
+            );
+
             if (!empty($lock_key) && !empty($settings['rate_limit_enabled']) && $rate_limit_seconds > 0) {
                 $this->spam_filter->acquire_rate_limit_lock($lock_key, $rate_limit_seconds);
             }
 
             delete_transient('spf_count_' . $form_id);
 
+            do_action(
+                'syntekpro_forms_submission_before_notifications',
+                $entry_id,
+                $form_id,
+                $sanitized_data,
+                $raw_form_data,
+                $form,
+                $form_settings,
+                $settings
+            );
+
             SPF_email_templates()->send_admin_notification($form, $sanitized_data, $entry_id);
             SPF_email_templates()->send_user_confirmation($form, $sanitized_data);
 
             $this->builder->trigger_form_webhooks($form, $sanitized_data, $entry_id, $form_settings);
 
-            wp_send_json_success($this->builder->build_success_payload($form_settings));
+            do_action(
+                'syntekpro_forms_submission_after_notifications',
+                $entry_id,
+                $form_id,
+                $sanitized_data,
+                $raw_form_data,
+                $form,
+                $form_settings,
+                $settings
+            );
+
+            $success_payload = $this->builder->build_success_payload($form_settings);
+            $success_payload = apply_filters(
+                'syntekpro_forms_submission_success_payload',
+                $success_payload,
+                $entry_id,
+                $form_id,
+                $sanitized_data,
+                $raw_form_data,
+                $form,
+                $form_settings,
+                $settings
+            );
+
+            wp_send_json_success($success_payload);
         }
 
         $this->send_submission_error(__('Failed to submit form', 'syntekpro-forms'));

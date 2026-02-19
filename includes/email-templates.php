@@ -122,7 +122,7 @@ class SPF_Email_Templates {
                     </p>
                 </div>
                 <div class="footer">
-                    <p><?php echo get_bloginfo('name'); ?> | <?php _e('Powered by SyntekPro Forms', 'syntekpro-forms'); ?></p>
+                    <p><?php echo get_bloginfo('name'); ?></p>
                 </div>
             </div>
         </body>
@@ -205,7 +205,7 @@ class SPF_Email_Templates {
                     <p><?php _e('We have received your submission and will get back to you soon.', 'syntekpro-forms'); ?></p>
                 </div>
                 <div class="footer">
-                    <p><?php echo get_bloginfo('name'); ?> | <?php _e('Powered by SyntekPro Forms', 'syntekpro-forms'); ?></p>
+                    <p><?php echo get_bloginfo('name'); ?></p>
                 </div>
             </div>
         </body>

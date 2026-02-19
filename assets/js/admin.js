@@ -8,6 +8,27 @@
     window.spfFieldsData = window.spfFieldsData || {};
     
     var SPF_Admin = {
+        historyStack: [],
+        redoStack: [],
+        selectedFieldIds: [],
+        currentZoom: 100,
+        currentDevice: 'desktop',
+        contextMenuFieldId: null,
+        isRestoringSnapshot: false,
+
+        isTruthyValue: function(value) {
+            return value === true || value === 1 || value === '1' || value === 'true' || value === 'on' || value === 'yes';
+        },
+
+        normalizeFieldData: function(field) {
+            if (!field || typeof field !== 'object') {
+                return field;
+            }
+
+            field.required = this.isTruthyValue(field.required);
+            field.layout_width = field.layout_width === 'half' ? 'half' : 'full';
+            return field;
+        },
         
         init: function() {
             // Only initialize if we are on the form builder page
@@ -20,6 +41,8 @@
                 this.initFormSave();
                 this.initFormActions();
                 this.initLivePreview();
+                this.initBuilderEnhancements();
+                this.updateCanvasState();
             }
 
             // Entries page initialization
@@ -357,6 +380,9 @@
                 '#spf-font-size',
                 '#spf-field-padding',
                 '#spf-border-radius',
+                '#spf-title-align',
+                '#spf-description-align',
+                '#spf-label-align',
                 '#spf-primary-color',
                 '#spf-label-color',
                 '#spf-bg-color',
@@ -377,6 +403,9 @@
             var fontSize = $('#spf-font-size').val();
             var fieldPadding = $('#spf-field-padding').val();
             var borderRadius = $('#spf-border-radius').val();
+            var titleAlign = $('#spf-title-align').val();
+            var descriptionAlign = $('#spf-description-align').val();
+            var labelAlign = $('#spf-label-align').val();
             var primaryColor = $('#spf-primary-color').val();
             var labelColor = $('#spf-label-color').val();
             var bgColor = $('#spf-bg-color').val();
@@ -386,10 +415,18 @@
             primaryColor = primaryColor || '#0073aa';
             labelColor = labelColor || '#1d2327';
             bgColor = bgColor || '#ffffff';
-            borderRadius = borderRadius || '4';
-            fieldPadding = fieldPadding || '12';
+            borderRadius = borderRadius || '6';
+            fieldPadding = fieldPadding || '14';
             fontSize = fontSize || '16';
             fontFamily = fontFamily || 'inherit';
+            titleAlign = titleAlign || 'left';
+            descriptionAlign = descriptionAlign || 'left';
+            labelAlign = labelAlign || 'left';
+
+            var fontData = this.resolveFontFamily(fontFamily);
+            if (fontData.googleFamily) {
+                this.loadGoogleFont(fontData.googleFamily);
+            }
 
             var css = `
                 .spf-form-fields-canvas,
@@ -400,15 +437,25 @@
                     --spf-border-radius: ${borderRadius}px;
                     --spf-field-padding: ${fieldPadding}px;
                     --spf-font-size: ${fontSize}px;
-                    --spf-font-family: ${fontFamily === 'inherit' ? 'inherit' : fontFamily};
+                    --spf-font-family: ${fontData.cssFamily};
+                    --spf-title-align: ${titleAlign};
+                    --spf-desc-align: ${descriptionAlign};
+                    --spf-label-align: ${labelAlign};
                 }
                 .spf-form-fields-canvas {
                     font-family: var(--spf-font-family);
                     font-size: var(--spf-font-size);
                     background-color: var(--spf-bg-color);
                 }
+                .spf-form-fields-canvas .spf-form-title-input {
+                    text-align: var(--spf-title-align);
+                }
+                .spf-form-fields-canvas .spf-form-description-input {
+                    text-align: var(--spf-desc-align);
+                }
                 .spf-form-fields-canvas label {
                     color: var(--spf-label-color);
+                    text-align: var(--spf-label-align);
                 }
                 .spf-form-fields-canvas .spf-form-footer {
                     display: flex;
@@ -422,6 +469,11 @@
                 .spf-form-fields-canvas .spf-field-body select {
                     padding: var(--spf-field-padding);
                     border-radius: var(--spf-border-radius);
+                    min-height: 46px;
+                    box-sizing: border-box;
+                }
+                .spf-form-fields-canvas .spf-field-body textarea {
+                    min-height: 120px;
                 }
                 .spf-form-fields-canvas .spf-field-item:hover,
                 .spf-form-fields-canvas .spf-field-item.active {
@@ -434,6 +486,48 @@
             // Update canvas theme class
             $('#spf-form-fields').removeClass('spf-theme-classic spf-theme-modern spf-theme-minimal spf-theme-elegant spf-theme-contrast spf-theme-pastel spf-theme-outline spf-theme-glass')
                                 .addClass('spf-theme-' + (theme || 'classic'));
+        },
+
+        resolveFontFamily: function(fontKey) {
+            var map = {
+                'inherit': { cssFamily: 'inherit', googleFamily: '' },
+                'sans-serif': { cssFamily: 'sans-serif', googleFamily: '' },
+                'serif': { cssFamily: 'serif', googleFamily: '' },
+                'monospace': { cssFamily: 'monospace', googleFamily: '' },
+                'inter': { cssFamily: "'Inter', sans-serif", googleFamily: 'Inter:wght@400;500;600;700' },
+                'roboto': { cssFamily: "'Roboto', sans-serif", googleFamily: 'Roboto:wght@400;500;700' },
+                'open-sans': { cssFamily: "'Open Sans', sans-serif", googleFamily: 'Open+Sans:wght@400;600;700' },
+                'lato': { cssFamily: "'Lato', sans-serif", googleFamily: 'Lato:wght@400;700' },
+                'montserrat': { cssFamily: "'Montserrat', sans-serif", googleFamily: 'Montserrat:wght@400;500;600;700' },
+                'poppins': { cssFamily: "'Poppins', sans-serif", googleFamily: 'Poppins:wght@400;500;600;700' },
+                'nunito': { cssFamily: "'Nunito', sans-serif", googleFamily: 'Nunito:wght@400;600;700' },
+                'source-sans-pro': { cssFamily: "'Source Sans Pro', sans-serif", googleFamily: 'Source+Sans+3:wght@400;600;700' },
+                'work-sans': { cssFamily: "'Work Sans', sans-serif", googleFamily: 'Work+Sans:wght@400;500;600;700' },
+                'merriweather': { cssFamily: "'Merriweather', serif", googleFamily: 'Merriweather:wght@400;700' },
+                'playfair-display': { cssFamily: "'Playfair Display', serif", googleFamily: 'Playfair+Display:wght@400;600;700' }
+            };
+
+            if (map[fontKey]) {
+                return map[fontKey];
+            }
+
+            return {
+                cssFamily: fontKey || 'inherit',
+                googleFamily: ''
+            };
+        },
+
+        loadGoogleFont: function(googleFamily) {
+            var id = 'spf-google-font-' + googleFamily.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+            if (document.getElementById(id)) {
+                return;
+            }
+
+            var link = document.createElement('link');
+            link.id = id;
+            link.rel = 'stylesheet';
+            link.href = 'https://fonts.googleapis.com/css2?family=' + googleFamily + '&display=swap';
+            document.head.appendChild(link);
         },
 
         initTabs: function() {
@@ -469,8 +563,7 @@
                 $('#spf-form-fields .spf-empty-builder').remove();
                 
                 spfFormData.fields.forEach(function(field) {
-                    // CRITICAL FIX: Ensure required is boolean, not string
-                    field.required = (field.required === true || field.required === 'true' || field.required === 1 || field.required === '1');
+                    field = self.normalizeFieldData(field);
                     
                     window.spfFieldsData[field.id] = field;
                     self.addFieldToBuilder(field);
@@ -485,6 +578,9 @@
                     self.updateFieldOrder();
                 }
             });
+
+            this.pushHistory('Initial state', true);
+            this.updateCanvasState();
         },
         
         initFieldTypes: function() {
@@ -572,6 +668,7 @@
                 placeholder: this.getFieldDefaultPlaceholder(type),
                 description: '',
                 required: false, // BOOLEAN, not string!
+                layout_width: 'full',
                 options: []
             };
             
@@ -692,17 +789,25 @@
         
         addFieldToBuilder: function(field) {
             var self = this;
+            $('#spf-form-fields .spf-empty-builder').remove();
             var fieldHtml = this.renderField(field);
             $('#spf-form-fields').append(fieldHtml);
             
             this.attachFieldEvents(field.id);
+            this.updateCanvasState();
         },
         
         renderField: function(field) {
-            var html = '<div class="spf-field-item" data-field-id="' + field.id + '">';
+            var widthClass = field.layout_width === 'half' ? 'spf-width-half' : 'spf-width-full';
+            var healthClass = (!field.label || !String(field.label).trim()) ? 'spf-field-has-issue' : '';
+            var requiredBadge = field.required === true ? '<span class="spf-field-badge spf-badge-required">Required</span>' : '';
+            var widthBadge = field.layout_width === 'half' ? '<span class="spf-field-badge">1/2</span>' : '<span class="spf-field-badge">Full</span>';
+
+            var html = '<div class="spf-field-item ' + widthClass + ' ' + healthClass + '" data-field-id="' + field.id + '">';
             html += '<div class="spf-field-header">';
             html += '<div class="spf-field-sort-handle"><span class="dashicons dashicons-arrow-up-alt2"></span><span class="dashicons dashicons-arrow-down-alt2"></span></div>';
             html += '<span class="spf-field-title">' + this.escapeHtml(field.label) + ' <small>(' + field.type + ')</small></span>';
+            html += '<div class="spf-field-badges">' + requiredBadge + widthBadge + '</div>';
             html += '<div class="spf-field-actions">';
             html += '<button type="button" class="spf-action-btn spf-edit-field spf-tooltip" title="Edit"><span class="dashicons dashicons-edit"></span></button>';
             html += '<button type="button" class="spf-action-btn spf-delete-field spf-tooltip" title="Delete"><span class="dashicons dashicons-trash"></span></button>';
@@ -874,6 +979,13 @@
                 if ($(e.target).closest('.spf-field-actions').length || $(e.target).hasClass('spf-delete-field')) {
                     return;
                 }
+
+                if (e.ctrlKey || e.metaKey || e.shiftKey) {
+                    self.toggleFieldSelection(fieldId);
+                    return;
+                }
+
+                self.selectSingleField(fieldId);
                 self.editField(fieldId);
                 
                 // Add smooth scroll to settings on mobile/small screens if they are stacked
@@ -886,21 +998,62 @@
             
             $field.find('.spf-edit-field').on('click', function(e) {
                 e.stopPropagation(); // Prevent double trigger since parent also has click event
+                self.selectSingleField(fieldId);
                 self.editField(fieldId);
             });
             
             $field.find('.spf-delete-field').on('click', function(e) {
                 e.stopPropagation();
                 if (confirm('Are you sure you want to delete this field?')) {
-                    delete window.spfFieldsData[fieldId];
-                    $field.fadeOut(function() {
-                        $(this).remove();
-                        
-                        if ($('#spf-form-fields .spf-field-item').length === 0) {
-                            $('#spf-form-fields').html('<div class="spf-empty-builder"><p>Drag and drop fields from the left sidebar to build your form</p></div>');
-                        }
-                    });
+                    self.deleteFieldById(fieldId);
                 }
+            });
+
+            $field.on('contextmenu', function(e) {
+                e.preventDefault();
+                self.selectSingleField(fieldId);
+                self.openContextMenu(fieldId, e.pageX, e.pageY);
+            });
+
+            $field.find('.spf-field-title').on('dblclick', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                var $title = $(this);
+                var currentField = window.spfFieldsData[fieldId] || {};
+                var currentLabel = currentField.label || '';
+                var $input = $('<input type="text" class="spf-inline-title-edit" />').val(currentLabel);
+
+                $title.replaceWith($input);
+                $input.trigger('focus').trigger('select');
+
+                var commit = function(save) {
+                    if (save) {
+                        currentField.label = $input.val();
+                        window.spfFieldsData[fieldId] = self.normalizeFieldData(currentField);
+                        $field.replaceWith(self.renderField(window.spfFieldsData[fieldId]));
+                        self.attachFieldEvents(fieldId);
+                        self.pushHistory('Inline label edit');
+                        self.updateCanvasState();
+                    } else {
+                        $field.replaceWith(self.renderField(currentField));
+                        self.attachFieldEvents(fieldId);
+                    }
+                };
+
+                $input.on('keydown', function(ev) {
+                    if (ev.key === 'Enter') {
+                        ev.preventDefault();
+                        commit(true);
+                    } else if (ev.key === 'Escape') {
+                        ev.preventDefault();
+                        commit(false);
+                    }
+                });
+
+                $input.on('blur', function() {
+                    commit(true);
+                });
             });
         },
         
@@ -965,8 +1118,12 @@
             
             if (fieldData.type !== 'step') {
                 settingsHtml += '<div class="spf-setting-row">';
-                var isChecked = (fieldData.required === true) ? ' checked' : '';
-                settingsHtml += '<label style="display: flex; align-items: center; gap: 8px; text-transform: none; font-weight: 500;"><input type="checkbox" class="spf-setting-required"' + isChecked + '> Required Field</label>';
+                var requiredInputId = 'spf-setting-required-' + fieldId;
+                var isChecked = this.isTruthyValue(fieldData.required) ? ' checked' : '';
+                settingsHtml += '<div class="spf-required-toggle" style="display:flex;align-items:center;gap:8px;">';
+                settingsHtml += '<input type="checkbox" id="' + requiredInputId + '" class="spf-setting-required-input"' + isChecked + '>';
+                settingsHtml += '<label for="' + requiredInputId + '" style="margin:0;padding:0;border:0;background:transparent;text-transform:none;letter-spacing:0;font-weight:500;cursor:pointer;">Required Field</label>';
+                settingsHtml += '</div>';
                 settingsHtml += '</div>';
             }
             settingsHtml += '</div></div>'; // End Advanced
@@ -995,6 +1152,11 @@
                     self.saveFieldSettings(fieldId);
                 });
 
+                $settingsPanel.find('.spf-setting-required-input').on('click change', function(e) {
+                    e.stopPropagation();
+                    self.saveFieldSettings(fieldId, { silent: true });
+                });
+
                 // Initialize accordion state: open first section only
                 var $sections = $settingsPanel.find('.spf-settings-section');
                 $sections.removeClass('active').find('.spf-section-body').hide();
@@ -1011,41 +1173,49 @@
             }
         },
         
-        saveFieldSettings: function(fieldId) {
+        saveFieldSettings: function(fieldId, options) {
+            options = options || {};
             var fieldData = window.spfFieldsData[fieldId];
+            var $settingsPanel = $('#spf-field-settings');
             
             if (!fieldData) return;
             
-            fieldData.label = $('.spf-setting-label').val();
-            fieldData.description = $('.spf-setting-description').val();
+            fieldData.label = $settingsPanel.find('.spf-setting-label').val();
+            fieldData.description = $settingsPanel.find('.spf-setting-description').val();
 
             if (fieldData.type !== 'step') {
-                fieldData.name = $('.spf-setting-name').val();
-                fieldData.placeholder = $('.spf-setting-placeholder').val();
-                // CRITICAL FIX: Store as boolean, not string!
-                fieldData.required = $('.spf-setting-required').is(':checked');
+                fieldData.name = $settingsPanel.find('.spf-setting-name').val();
+                fieldData.placeholder = $settingsPanel.find('.spf-setting-placeholder').val();
+                fieldData.required = $settingsPanel.find('.spf-setting-required-input').is(':checked');
             } else {
                 fieldData.required = false;
             }
             
-            if ($('.spf-setting-options').length > 0) {
-                var optionsText = $('.spf-setting-options').val();
+            if ($settingsPanel.find('.spf-setting-options').length > 0) {
+                var optionsText = $settingsPanel.find('.spf-setting-options').val();
                 fieldData.options = optionsText.split('\n').filter(function(opt) {
                     return opt.trim() !== '';
                 });
             }
+
+            fieldData = this.normalizeFieldData(fieldData);
             
             window.spfFieldsData[fieldId] = fieldData;
             
             var $field = $('.spf-field-item[data-field-id="' + fieldId + '"]');
-            $field.find('.spf-field-title').text(fieldData.label + ' (' + fieldData.type + ')');
-            $field.find('.spf-field-body').html(this.renderFieldPreview(fieldData));
+            $field.replaceWith(this.renderField(fieldData));
+            this.attachFieldEvents(fieldId);
+            this.updateCanvasState();
             
-            this.showNotification('Field settings saved!', 'success');
+            if (!options.silent) {
+                this.pushHistory('Field settings saved');
+                this.showNotification('Field settings saved!', 'success');
+            }
         },
         
         updateFieldOrder: function() {
-            console.log('Field order updated');
+            this.pushHistory('Reordered fields');
+            this.updateCanvasState();
         },
         
         initFormSave: function() {
@@ -1071,7 +1241,7 @@
             $('#spf-form-fields .spf-field-item').each(function() {
                 var fieldId = $(this).data('field-id');
                 if (window.spfFieldsData[fieldId]) {
-                    fields.push(window.spfFieldsData[fieldId]);
+                    fields.push(self.normalizeFieldData(window.spfFieldsData[fieldId]));
                 }
             });
             
@@ -1116,6 +1286,9 @@
                         theme: $('#spf-form-theme').val(),
                         font_family: $('#spf-font-family').val(),
                         font_size: $('#spf-font-size').val(),
+                        title_align: $('#spf-title-align').val(),
+                        description_align: $('#spf-description-align').val(),
+                        label_align: $('#spf-label-align').val(),
                         field_padding: $('#spf-field-padding').val(),
                         border_radius: $('#spf-border-radius').val(),
                         primary_color: $('#spf-primary-color').val(),
@@ -1433,6 +1606,440 @@
             $(document).off('change', '#spf-show-field-ids').on('change', '#spf-show-field-ids', function() {
                 localStorage.setItem('spf-show-field-ids', $(this).is(':checked'));
             });
+        },
+
+        initBuilderEnhancements: function() {
+            var self = this;
+
+            $(document).off('click', '#spf-zoom-in').on('click', '#spf-zoom-in', function() {
+                self.setCanvasZoom(self.currentZoom + 10);
+            });
+
+            $(document).off('click', '#spf-zoom-out').on('click', '#spf-zoom-out', function() {
+                self.setCanvasZoom(self.currentZoom - 10);
+            });
+
+            $(document).off('click', '#spf-zoom-fit').on('click', '#spf-zoom-fit', function() {
+                self.setCanvasZoom(100);
+            });
+
+            $(document).off('click', '#spf-builder-fullscreen').on('click', '#spf-builder-fullscreen', function() {
+                $('body').toggleClass('spf-builder-fullscreen-mode');
+            });
+
+            $(document).off('click', '.spf-device-btn').on('click', '.spf-device-btn', function() {
+                var device = $(this).data('device');
+                self.setDevicePreview(device);
+            });
+
+            $(document).off('click', '#spf-undo-btn').on('click', '#spf-undo-btn', function() {
+                self.undoHistory();
+            });
+
+            $(document).off('click', '#spf-redo-btn').on('click', '#spf-redo-btn', function() {
+                self.redoHistory();
+            });
+
+            $(document).off('click', '.spf-bulk-action').on('click', '.spf-bulk-action', function() {
+                self.applyBulkAction($(this).data('action'));
+            });
+
+            $(document).off('click', '.spf-template-btn').on('click', '.spf-template-btn', function() {
+                self.insertQuickTemplate($(this).data('template'));
+            });
+
+            $(document).off('click', '#spf-field-context-menu button').on('click', '#spf-field-context-menu button', function() {
+                var action = $(this).data('action');
+                var fieldId = self.contextMenuFieldId;
+                self.hideContextMenu();
+                if (!fieldId) return;
+
+                if (action === 'edit') {
+                    self.editField(fieldId);
+                } else if (action === 'duplicate') {
+                    self.duplicateFieldById(fieldId);
+                } else if (action === 'delete') {
+                    self.deleteFieldById(fieldId);
+                } else if (action === 'move_up' || action === 'move_down') {
+                    var $item = $('.spf-field-item[data-field-id="' + fieldId + '"]');
+                    if (action === 'move_up') {
+                        $item.prev('.spf-field-item').before($item);
+                    } else {
+                        $item.next('.spf-field-item').after($item);
+                    }
+                    self.updateFieldOrder();
+                }
+            });
+
+            $(document).off('click.spfCtx').on('click.spfCtx', function(e) {
+                if (!$(e.target).closest('#spf-field-context-menu').length) {
+                    self.hideContextMenu();
+                }
+            });
+
+            $(document).off('keydown.spfShortcuts').on('keydown.spfShortcuts', function(e) {
+                var isCmd = e.ctrlKey || e.metaKey;
+
+                if (isCmd && e.key.toLowerCase() === 's') {
+                    e.preventDefault();
+                    $('#spf-save-form').trigger('click');
+                    return;
+                }
+
+                if (isCmd && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+                    e.preventDefault();
+                    self.undoHistory();
+                    return;
+                }
+
+                if ((isCmd && e.key.toLowerCase() === 'y') || (isCmd && e.shiftKey && e.key.toLowerCase() === 'z')) {
+                    e.preventDefault();
+                    self.redoHistory();
+                    return;
+                }
+
+                if (isCmd && e.key.toLowerCase() === 'd') {
+                    e.preventDefault();
+                    var ids = self.getSelectedFieldIds();
+                    ids.forEach(function(id) { self.duplicateFieldById(id, true); });
+                    if (ids.length) {
+                        self.pushHistory('Duplicate selected fields');
+                        self.updateCanvasState();
+                    }
+                    return;
+                }
+
+                if (e.key === 'Delete' || e.key === 'Backspace') {
+                    if ($(e.target).is('input,textarea,select,[contenteditable="true"]')) {
+                        return;
+                    }
+                    var selectedIds = self.getSelectedFieldIds();
+                    if (selectedIds.length) {
+                        e.preventDefault();
+                        selectedIds.forEach(function(id) { self.deleteFieldById(id, true); });
+                        self.pushHistory('Delete selected fields');
+                        self.updateCanvasState();
+                    }
+                }
+            });
+        },
+
+        setCanvasZoom: function(zoom) {
+            zoom = Math.max(50, Math.min(150, parseInt(zoom, 10) || 100));
+            this.currentZoom = zoom;
+            $('#spf-canvas-stage').css('transform', 'scale(' + (zoom / 100) + ')');
+            $('#spf-canvas-stage').css('transform-origin', 'top center');
+            $('#spf-zoom-level').text(zoom + '%');
+        },
+
+        setDevicePreview: function(device) {
+            this.currentDevice = device;
+            $('.spf-device-btn').removeClass('is-active');
+            $('.spf-device-btn[data-device="' + device + '"]').addClass('is-active');
+
+            var $main = $('#spf-main-content');
+            $main.removeClass('spf-device-desktop spf-device-tablet spf-device-mobile');
+            $main.addClass('spf-device-' + device);
+        },
+
+        getSelectedFieldIds: function() {
+            return this.selectedFieldIds.slice();
+        },
+
+        clearSelection: function() {
+            this.selectedFieldIds = [];
+            $('.spf-field-item').removeClass('is-selected');
+            this.updateBulkActionsBar();
+        },
+
+        selectSingleField: function(fieldId) {
+            this.selectedFieldIds = [fieldId];
+            $('.spf-field-item').removeClass('is-selected');
+            $('.spf-field-item[data-field-id="' + fieldId + '"]').addClass('is-selected');
+            this.updateBulkActionsBar();
+        },
+
+        toggleFieldSelection: function(fieldId) {
+            var index = this.selectedFieldIds.indexOf(fieldId);
+            if (index > -1) {
+                this.selectedFieldIds.splice(index, 1);
+                $('.spf-field-item[data-field-id="' + fieldId + '"]').removeClass('is-selected');
+            } else {
+                this.selectedFieldIds.push(fieldId);
+                $('.spf-field-item[data-field-id="' + fieldId + '"]').addClass('is-selected');
+            }
+            this.updateBulkActionsBar();
+        },
+
+        updateBulkActionsBar: function() {
+            var count = this.selectedFieldIds.length;
+            if (count > 1) {
+                $('#spf-bulk-actions-bar').show();
+                $('#spf-selected-count').text(count + ' selected');
+            } else {
+                $('#spf-bulk-actions-bar').hide();
+            }
+        },
+
+        applyBulkAction: function(action) {
+            var self = this;
+            var ids = this.getSelectedFieldIds();
+            if (!ids.length) {
+                return;
+            }
+
+            ids.forEach(function(fieldId) {
+                var field = window.spfFieldsData[fieldId];
+                if (!field) return;
+
+                if (action === 'required_on') {
+                    field.required = true;
+                } else if (action === 'required_off') {
+                    field.required = false;
+                } else if (action === 'width_half') {
+                    field.layout_width = 'half';
+                } else if (action === 'width_full') {
+                    field.layout_width = 'full';
+                } else if (action === 'duplicate') {
+                    self.duplicateFieldById(fieldId, true);
+                } else if (action === 'delete') {
+                    self.deleteFieldById(fieldId, true);
+                }
+
+                if (window.spfFieldsData[fieldId]) {
+                    window.spfFieldsData[fieldId] = self.normalizeFieldData(field);
+                }
+            });
+
+            if (action !== 'duplicate' && action !== 'delete') {
+                ids.forEach(function(fieldId) {
+                    var field = window.spfFieldsData[fieldId];
+                    if (!field) return;
+                    var $existing = $('.spf-field-item[data-field-id="' + fieldId + '"]');
+                    $existing.replaceWith(self.renderField(field));
+                    self.attachFieldEvents(fieldId);
+                });
+            }
+
+            this.pushHistory('Bulk update');
+            this.updateCanvasState();
+        },
+
+        duplicateFieldById: function(fieldId, silent) {
+            var source = window.spfFieldsData[fieldId];
+            if (!source) return;
+
+            var clone = $.extend(true, {}, source);
+            clone.id = 'field_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+            clone.name = (source.name || source.type || 'field') + '_copy';
+            clone.label = (source.label || 'Field') + ' Copy';
+            clone = this.normalizeFieldData(clone);
+
+            window.spfFieldsData[clone.id] = clone;
+            this.addFieldToBuilder(clone);
+
+            if (!silent) {
+                this.pushHistory('Duplicate field');
+                this.updateCanvasState();
+            }
+        },
+
+        deleteFieldById: function(fieldId, silent) {
+            var self = this;
+            var $field = $('.spf-field-item[data-field-id="' + fieldId + '"]');
+            delete window.spfFieldsData[fieldId];
+
+            if (silent) {
+                $field.remove();
+                self.selectedFieldIds = self.selectedFieldIds.filter(function(id) { return id !== fieldId; });
+                return;
+            }
+
+            $field.fadeOut(function() {
+                $(this).remove();
+                self.selectedFieldIds = self.selectedFieldIds.filter(function(id) { return id !== fieldId; });
+                self.updateCanvasState();
+                if (!silent) {
+                    self.pushHistory('Delete field');
+                }
+            });
+        },
+
+        openContextMenu: function(fieldId, pageX, pageY) {
+            this.contextMenuFieldId = fieldId;
+            $('#spf-field-context-menu').css({ top: pageY + 'px', left: pageX + 'px' }).show();
+        },
+
+        hideContextMenu: function() {
+            this.contextMenuFieldId = null;
+            $('#spf-field-context-menu').hide();
+        },
+
+        insertQuickTemplate: function(templateKey) {
+            var templates = {
+                contact: ['name', 'email', 'phone', 'textarea'],
+                lead: ['name', 'email', 'website', 'select'],
+                support: ['name', 'email', 'select', 'textarea', 'file'],
+                event: ['name', 'email', 'date', 'time', 'number']
+            };
+
+            var fields = templates[templateKey] || [];
+            if (!fields.length) return;
+
+            var self = this;
+            fields.forEach(function(type) {
+                var field = self.createField(type);
+                window.spfFieldsData[field.id] = field;
+                self.addFieldToBuilder(field);
+            });
+
+            this.pushHistory('Insert template ' + templateKey);
+            this.updateCanvasState();
+        },
+
+        pushHistory: function(reason, force) {
+            if (this.isRestoringSnapshot) {
+                return;
+            }
+
+            var snapshot = JSON.stringify(this.buildOrderedFieldArray());
+            if (!force && this.historyStack.length && this.historyStack[this.historyStack.length - 1] === snapshot) {
+                return;
+            }
+
+            this.historyStack.push(snapshot);
+            if (this.historyStack.length > 60) {
+                this.historyStack.shift();
+            }
+            this.redoStack = [];
+        },
+
+        buildOrderedFieldArray: function() {
+            var self = this;
+            var fields = [];
+            $('#spf-form-fields .spf-field-item').each(function() {
+                var id = $(this).data('field-id');
+                if (window.spfFieldsData[id]) {
+                    fields.push(self.normalizeFieldData($.extend(true, {}, window.spfFieldsData[id])));
+                }
+            });
+            return fields;
+        },
+
+        applySnapshot: function(snapshot) {
+            var self = this;
+            var fields = [];
+            try {
+                fields = JSON.parse(snapshot);
+            } catch (err) {
+                return;
+            }
+
+            this.isRestoringSnapshot = true;
+            window.spfFieldsData = {};
+            $('#spf-form-fields').empty();
+
+            fields.forEach(function(field) {
+                field = self.normalizeFieldData(field);
+                window.spfFieldsData[field.id] = field;
+                self.addFieldToBuilder(field);
+            });
+
+            this.isRestoringSnapshot = false;
+            this.clearSelection();
+            this.updateCanvasState();
+        },
+
+        undoHistory: function() {
+            if (this.historyStack.length < 2) {
+                return;
+            }
+
+            var current = this.historyStack.pop();
+            this.redoStack.push(current);
+            var previous = this.historyStack[this.historyStack.length - 1];
+            this.applySnapshot(previous);
+        },
+
+        redoHistory: function() {
+            if (!this.redoStack.length) {
+                return;
+            }
+
+            var snapshot = this.redoStack.pop();
+            this.historyStack.push(snapshot);
+            this.applySnapshot(snapshot);
+        },
+
+        updateCanvasState: function() {
+            if ($('#spf-form-fields .spf-field-item').length === 0) {
+                $('#spf-form-fields').html(this.getEmptyBuilderHtml());
+            } else {
+                $('#spf-form-fields .spf-empty-builder').remove();
+            }
+            this.updateBulkActionsBar();
+            this.updateFormHealth();
+        },
+
+        getEmptyBuilderHtml: function() {
+            return '<div class="spf-empty-builder">'
+                + '<div class="spf-empty-icon"><span class="dashicons dashicons-plus-alt"></span></div>'
+                + '<h3>Build Your Form</h3>'
+                + '<p>Drag and drop fields from the sidebar or click on them to start building.</p>'
+                + '<div class="spf-template-quickstart">'
+                + '<button type="button" class="button spf-template-btn" data-template="contact">Contact</button>'
+                + '<button type="button" class="button spf-template-btn" data-template="lead">Lead</button>'
+                + '<button type="button" class="button spf-template-btn" data-template="support">Support</button>'
+                + '<button type="button" class="button spf-template-btn" data-template="event">Event</button>'
+                + '</div></div>';
+        },
+
+        updateFormHealth: function() {
+            var fields = this.buildOrderedFieldArray();
+            var missingLabels = 0;
+            var missingNames = 0;
+            var duplicates = 0;
+            var names = {};
+
+            fields.forEach(function(field) {
+                var label = String(field.label || '').trim();
+                var name = String(field.name || '').trim();
+                var type = String(field.type || '');
+
+                if (!label && type !== 'step' && type !== 'section' && type !== 'page') {
+                    missingLabels++;
+                }
+
+                if (!name && type !== 'step' && type !== 'section' && type !== 'page' && type !== 'html') {
+                    missingNames++;
+                }
+
+                if (name) {
+                    names[name] = (names[name] || 0) + 1;
+                }
+            });
+
+            Object.keys(names).forEach(function(key) {
+                if (names[key] > 1) {
+                    duplicates++;
+                }
+            });
+
+            var issues = missingLabels + missingNames + duplicates;
+            var html = '';
+
+            if (issues === 0) {
+                html = '<span class="dashicons dashicons-yes-alt"></span> Form Health: Looks good. No issues detected.';
+                $('#spf-form-health').removeClass('has-issues').addClass('is-good');
+            } else {
+                html = '<span class="dashicons dashicons-warning"></span> Form Health: '
+                    + missingLabels + ' missing labels, '
+                    + missingNames + ' missing names, '
+                    + duplicates + ' duplicate names.';
+                $('#spf-form-health').removeClass('is-good').addClass('has-issues');
+            }
+
+            $('#spf-form-health').html(html);
         },
 
         // NEW: Load Recent Forms

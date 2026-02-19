@@ -32,7 +32,7 @@ For a step-by-step walkthrough of every capability, see the comprehensive tutori
 
 ## Version
 
-1.2.9
+1.4.0
 
 ## Author
 
@@ -42,11 +42,13 @@ Syntek Pro
 
 See [CHANGELOG.md](CHANGELOG.md) for a full history of changes.
 
-### 1.2.9 (2026-02-03)
-- Added comprehensive tutorial covering setup, builder workflow, styling, notifications, scheduling, anti-spam, Gutenberg usage, entries/exporting, and webhooks
-- Updated README references so users can jump straight to the tutorial from plugin documentation
-- Bumped plugin version to ship the new docs and in-dashboard links
-- Added quick-access tutorial buttons in the plugin settings page and admin toolbar menu
+### 1.4.0 (2026-02-20)
+- Major builder UX refresh with improved canvas controls, bulk actions, selection flow, and cleaner Gravity-style editor look
+- Frontend form rendering overhaul with responsive grid alignment, better field spacing, and reduced overlap/squeezing in narrow block/theme containers
+- New styling controls for title/description/label alignment (left/center/right) with live preview and frontend output support
+- Expanded typography with Google Fonts support in builder settings and Gutenberg block controls
+- Added webhook queue/retry manager with admin dashboard, retry tools, and cron-based processing
+- Add-ons system expanded with richer Add-ons page visuals, featured pinning, and starter production add-ons
 
 ### 1.2.8 (2026-02-02)
 - Multi-step forms with progress, step validation, and final-step submit button

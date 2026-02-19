@@ -136,6 +136,18 @@ class SyntekPro_Forms_Gutenberg {
                 'submitAlign' => array(
                     'type' => 'string',
                     'default' => ''
+                ),
+                'titleAlign' => array(
+                    'type' => 'string',
+                    'default' => ''
+                ),
+                'descriptionAlign' => array(
+                    'type' => 'string',
+                    'default' => ''
+                ),
+                'labelAlign' => array(
+                    'type' => 'string',
+                    'default' => ''
                 )
             ),
             'render_callback' => array($this, 'render_block')
@@ -193,6 +205,13 @@ class SyntekPro_Forms_Gutenberg {
             'syntekpro-forms-block-editor',
             SPF_PLUGIN_URL . 'assets/css/gutenberg-block.css',
             array('wp-edit-blocks'),
+            SPF_VERSION
+        );
+
+        wp_enqueue_style(
+            'syntekpro-forms-frontend',
+            SPF_PLUGIN_URL . 'assets/css/frontend.css',
+            array(),
             SPF_VERSION
         );
     }
