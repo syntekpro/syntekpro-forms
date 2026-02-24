@@ -29,6 +29,7 @@ For a step-by-step walkthrough of every capability, see the comprehensive tutori
 - **Email Notifications**: Customizable admin notifications and user confirmation emails.
 - **File Uploads**: Secure file attachments via AJAX (FormData) submissions.
 - **Privacy & Anti-spam**: Honeypot, rate limiting, Akismet checks, IP anonymization, and data retention controls.
+- **Consent-aware submissions**: Registers the `syntekpro_forms` consent type via the WordPress Consent API so banners can gate submissions, webhooks, and notifications.
 - **Add-ons Ready**: Add-ons loader and admin Add-ons page to extend functionality.
 
 ## Documentation & Tutorials
@@ -46,6 +47,9 @@ Syntek Pro
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md) for a full history of changes.
+
+### Unreleased
+- Added WordPress Consent API compatibility through the `syntekpro_forms` consent type so consent banners can control form submission, webhook dispatch, and notification delivery.
 
 ### 1.4.0 (2026-02-20)
 - Major builder UX refresh with improved canvas controls, bulk actions, selection flow, and cleaner Gravity-style editor look

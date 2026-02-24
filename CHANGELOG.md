@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- WordPress Consent API compatibility via a `syntekpro_forms` consent type so banners can gate submissions, webhooks, and notifications before consent is granted.
+
 ## [1.4.0] - 2026-02-20
 
 ### Added

@@ -89,6 +89,7 @@ class SyntekPro_Forms_Builder {
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_scripts'));
         add_action('wp_enqueue_scripts', array($this, 'enqueue_frontend_scripts'));
         add_action('init', array($this, 'register_shortcodes'));
+        add_action('init', array($this, 'register_consent_type'), 5);
         add_action('wp_dashboard_setup', array($this, 'add_dashboard_widget'));
         add_action('admin_bar_menu', array($this, 'add_admin_bar_menu'), 100);
         add_action('admin_init', array($this, 'handle_no_conflict_mode'));
@@ -721,6 +722,19 @@ class SyntekPro_Forms_Builder {
 
     public function register_shortcodes() {
         add_shortcode('syntekpro_form', array($this, 'render_form_shortcode'));
+    }
+
+    public function register_consent_type() {
+        if (!function_exists('wp_set_consent_type')) {
+            return;
+        }
+
+        wp_set_consent_type('syntekpro_forms', array(
+            'label'       => __('SyntekPro Forms submissions', 'syntekpro-forms'),
+            'description' => __('Allow SyntekPro Forms to store submissions, trigger webhooks, and send notifications once the visitor grants consent.', 'syntekpro-forms'),
+            'context'     => 'plugin',
+            'has_ajax'    => true,
+        ));
     }
 
     public function render_forms_page() {
