@@ -8,6 +8,9 @@
     var SPF_Frontend = {
         
         activeForm: null,
+        sessionId: 'spf_' + Math.random().toString(36).slice(2, 12),
+        startedForms: {},
+        completedForms: {},
 
         // Initialize
         init: function() {
@@ -16,6 +19,8 @@
             this.initValidation();
             this.initSteps();
             this.initDynamicFields();
+            this.initAnalytics();
+            this.initDrafts();
 
             // Global callback for reCAPTCHA
             window.spfRecaptchaCallback = function(token) {
@@ -84,6 +89,7 @@
             formData.append('action', 'spf_submit_form');
             formData.append('nonce', spfFrontend.nonce);
             formData.append('form_id', formId);
+            formData.append('spf_session_id', self.sessionId);
             
             $form.find('input, textarea, select').each(function() {
                 var $field = $(this);
@@ -140,6 +146,12 @@
                         var successMsg = payload.message || fallbackMsg;
                         var behavior = payload.behavior || $form.data('success-behavior') || 'message';
                         var redirectUrl = payload.redirect || $form.data('success-redirect') || '';
+                        var payment = payload.payment || {};
+
+                        if (payment && payment.stripe_checkout_url) {
+                            window.location.href = payment.stripe_checkout_url;
+                            return;
+                        }
 
                         if (behavior === 'redirect' && redirectUrl) {
                             window.location.href = redirectUrl;
@@ -154,6 +166,10 @@
                         if (typeof grecaptcha !== 'undefined') {
                             grecaptcha.reset();
                         }
+
+                        self.completedForms[formId] = true;
+                        self.trackAnalytics($form, 'complete');
+                        self.clearDraftData($form);
                     } else {
                         self.showError($form, response.data || 'An error occurred. Please try again.');
                         if (typeof grecaptcha !== 'undefined') {
@@ -373,6 +389,159 @@
                 label += ' – ' + title;
             }
             $progress.find('.spf-progress-label').text(label);
+        },
+
+        initAnalytics: function() {
+            var self = this;
+
+            $(document).on('focus', '.spf-form input, .spf-form textarea, .spf-form select', function() {
+                var $form = $(this).closest('.spf-form');
+                var formId = $form.data('form-id');
+                if (!self.startedForms[formId]) {
+                    self.startedForms[formId] = true;
+                    self.trackAnalytics($form, 'start');
+                }
+            });
+
+            $(document).on('blur', '.spf-form input, .spf-form textarea, .spf-form select', function() {
+                var $field = $(this);
+                var name = $field.attr('name');
+                if (!name) {
+                    return;
+                }
+                var value = $field.val();
+                if (value === '' || value === null) {
+                    var $form = $field.closest('.spf-form');
+                    self.trackAnalytics($form, 'field_dropoff', name.replace(/\[\]$/, ''));
+                }
+            });
+
+            $(window).on('beforeunload', function() {
+                $('.spf-form').each(function() {
+                    var $form = $(this);
+                    var formId = $form.data('form-id');
+                    if (self.startedForms[formId] && !self.completedForms[formId]) {
+                        self.trackAnalytics($form, 'abandon');
+                    }
+                });
+            });
+        },
+
+        trackAnalytics: function($form, eventType, fieldName) {
+            if (!$form || !$form.length) {
+                return;
+            }
+
+            $.post(spfFrontend.ajaxurl, {
+                action: 'spf_track_analytics',
+                nonce: spfFrontend.nonce,
+                form_id: $form.data('form-id'),
+                event_type: eventType,
+                field_name: fieldName || '',
+                session_id: this.sessionId
+            });
+        },
+
+        initDrafts: function() {
+            var self = this;
+
+            $('.spf-form').each(function() {
+                var $form = $(this);
+                if (!$form.hasClass('spf-has-steps')) {
+                    return;
+                }
+
+                setInterval(function() {
+                    self.saveDraft($form, false);
+                }, 15000);
+            });
+
+            $(document).on('click', '.spf-save-draft', function() {
+                var $form = $(this).closest('.spf-form');
+                self.saveDraft($form, true);
+            });
+        },
+
+        saveDraft: function($form, announce) {
+            if (!$form || !$form.length) {
+                return;
+            }
+
+            var draftData = {};
+            var email = '';
+            $form.find('input, textarea, select').each(function() {
+                var $field = $(this);
+                var name = $field.attr('name');
+                if (!name) {
+                    return;
+                }
+
+                var clean = name.replace(/\[\]$/, '');
+                var type = ($field.attr('type') || '').toLowerCase();
+
+                if (type === 'checkbox') {
+                    if (!draftData[clean]) {
+                        draftData[clean] = [];
+                    }
+                    if ($field.is(':checked')) {
+                        draftData[clean].push($field.val());
+                    }
+                    return;
+                }
+
+                if (type === 'radio') {
+                    if ($field.is(':checked')) {
+                        draftData[clean] = $field.val();
+                    }
+                    return;
+                }
+
+                if ($field.is('select[multiple]')) {
+                    draftData[clean] = $field.val() || [];
+                    return;
+                }
+
+                if (type === 'file') {
+                    return;
+                }
+
+                draftData[clean] = $field.val();
+                if (!email && clean.toLowerCase().indexOf('email') !== -1) {
+                    email = $field.val();
+                }
+            });
+
+            var currentToken = $form.attr('data-resume-token') || '';
+            $.post(spfFrontend.ajaxurl, {
+                action: 'spf_save_draft',
+                nonce: spfFrontend.nonce,
+                form_id: $form.data('form-id'),
+                resume_token: currentToken,
+                email: email,
+                draft_data: JSON.stringify(draftData)
+            }, function(response) {
+                if (!response || !response.success || !response.data) {
+                    return;
+                }
+
+                if (response.data.resume_token) {
+                    $form.attr('data-resume-token', response.data.resume_token);
+                }
+
+                if (announce) {
+                    var $msg = $form.find('.spf-draft-message');
+                    if ($msg.length) {
+                        $msg.html('Draft saved. Resume URL: <a href="' + response.data.resume_url + '">' + response.data.resume_url + '</a>').show();
+                    }
+                }
+            });
+        },
+
+        clearDraftData: function($form) {
+            if (!$form || !$form.length) {
+                return;
+            }
+            $form.attr('data-resume-token', '');
         }
     };
     

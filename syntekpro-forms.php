@@ -3,7 +3,7 @@
  * Plugin Name: SyntekPro Forms
  * Plugin URI: https://syntekpro.com
  * Description: Professional WordPress form builder with drag & drop interface, Gutenberg support, and advanced entry management
- * Version: 1.4.0
+ * Version: 1.5.1
  * Update URI: https://github.com/syntekpro/syntekpro-forms
  * Author: SyntekPro
  * Author URI: https://syntekpro.com
@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('SPF_VERSION', '1.4.0');
+define('SPF_VERSION', '1.5.1');
 define('SPF_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SPF_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('SPF_PLUGIN_FILE', __FILE__);
@@ -55,6 +55,14 @@ if (file_exists(SPF_PLUGIN_DIR . 'includes/class-entries.php')) {
 if (file_exists(SPF_PLUGIN_DIR . 'includes/class-ajax-handler.php')) {
     require_once SPF_PLUGIN_DIR . 'includes/class-ajax-handler.php';
 }
+if (file_exists(SPF_PLUGIN_DIR . 'includes/class-growth-services.php')) {
+    require_once SPF_PLUGIN_DIR . 'includes/class-growth-services.php';
+}
+
+// REST API support
+if (file_exists(SPF_PLUGIN_DIR . 'includes/class-rest-api.php')) {
+    require_once SPF_PLUGIN_DIR . 'includes/class-rest-api.php';
+}
 
 class SyntekPro_Forms_Builder {
 
@@ -63,6 +71,7 @@ class SyntekPro_Forms_Builder {
     private $ajax_handler;
     private $entries;
     private $spam_filter;
+    private $growth_services;
 
     public static function get_instance() {
         if (null === self::$instance) {
@@ -73,8 +82,9 @@ class SyntekPro_Forms_Builder {
 
     private function __construct() {
         $this->spam_filter = new SyntekPro_Forms_Spam_Filter();
+        $this->growth_services = new SyntekPro_Forms_Growth_Services();
         $this->entries = new SyntekPro_Forms_Entries($this);
-        $this->ajax_handler = new SyntekPro_Forms_Ajax_Handler($this, $this->spam_filter);
+        $this->ajax_handler = new SyntekPro_Forms_Ajax_Handler($this, $this->spam_filter, $this->growth_services);
         $this->init_hooks();
     }
 
@@ -102,6 +112,9 @@ class SyntekPro_Forms_Builder {
     add_filter('plugins_api', array($this, 'github_plugin_info'), 10, 3);
     add_filter('upgrader_post_install', array($this, 'github_upgrader_post_install'), 10, 3);
     add_action('spf_process_webhook_queue', array($this, 'process_webhook_queue'));
+
+        // REST API initialization
+        add_action('rest_api_init', array($this, 'init_rest_api'));
 
         $this->ajax_handler->register_hooks();
         $this->entries->register_hooks();
@@ -163,10 +176,42 @@ class SyntekPro_Forms_Builder {
             KEY entry_id (entry_id)
         ) $charset_collate;";
 
+        $drafts_table = $wpdb->prefix . 'spf_drafts';
+        $drafts_sql = "CREATE TABLE $drafts_table (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            form_id bigint(20) NOT NULL,
+            resume_token varchar(64) NOT NULL,
+            draft_data longtext NOT NULL,
+            email varchar(255) DEFAULT NULL,
+            user_id bigint(20) DEFAULT 0,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY resume_token (resume_token),
+            KEY form_id (form_id),
+            KEY updated_at (updated_at)
+        ) $charset_collate;";
+
+        $analytics_table = $wpdb->prefix . 'spf_analytics';
+        $analytics_sql = "CREATE TABLE $analytics_table (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            form_id bigint(20) NOT NULL,
+            event_type varchar(40) NOT NULL,
+            field_name varchar(120) DEFAULT NULL,
+            session_id varchar(64) DEFAULT NULL,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY form_event (form_id, event_type),
+            KEY created_at (created_at),
+            KEY field_name (field_name)
+        ) $charset_collate;";
+
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
         dbDelta($forms_sql);
         dbDelta($entries_sql);
         dbDelta($webhook_queue_sql);
+        dbDelta($drafts_sql);
+        dbDelta($analytics_sql);
 
         update_option('spf_version', SPF_VERSION);
         add_option('spf_settings', $this->get_default_settings());
@@ -224,7 +269,21 @@ class SyntekPro_Forms_Builder {
             'rate_limit_enabled' => 0,
             'rate_limit_seconds' => 30,
             'force_enqueue_conditional_logic' => 0,
+            'rest_api_enabled' => 1,
+            'stripe_publishable_key' => '',
+            'stripe_secret_key' => '',
+            'payment_currency' => 'USD',
+            'automation_zapier_url' => '',
+            'automation_make_url' => '',
+            'mailchimp_api_key' => '',
+            'mailchimp_audience_id' => '',
+            'hubspot_private_token' => '',
+            'hubspot_default_list_id' => '',
         );
+    }
+
+    public function get_growth_services() {
+        return $this->growth_services;
     }
 
     public function deactivate() {
@@ -419,6 +478,17 @@ class SyntekPro_Forms_Builder {
         return $result;
     }
 
+    public function init_rest_api() {
+        $settings = get_option('spf_settings', array());
+        $enabled = isset($settings['rest_api_enabled']) ? (int)$settings['rest_api_enabled'] : 0;
+        if ( ! $enabled ) {
+            return;
+        }
+        if (class_exists('SyntekPro_Forms_REST_API')) {
+            new SyntekPro_Forms_REST_API($this);
+        }
+    }
+
     public function maybe_show_duplicate_install_notice() {
         if (!current_user_can('manage_options')) {
             return;
@@ -500,15 +570,6 @@ class SyntekPro_Forms_Builder {
 
         add_submenu_page(
             'syntekpro-forms',
-            __('Settings', 'syntekpro-forms'),
-            __('Settings', 'syntekpro-forms'),
-            'manage_options',
-            'syntekpro-forms-settings',
-            array($this, 'render_settings_page')
-        );
-
-        add_submenu_page(
-            'syntekpro-forms',
             __('Add-ons', 'syntekpro-forms'),
             __('Add-ons', 'syntekpro-forms'),
             'manage_options',
@@ -518,30 +579,22 @@ class SyntekPro_Forms_Builder {
 
         add_submenu_page(
             'syntekpro-forms',
-            __('Webhook Queue', 'syntekpro-forms'),
-            __('Webhook Queue', 'syntekpro-forms'),
+            __('Settings', 'syntekpro-forms'),
+            __('Settings', 'syntekpro-forms'),
             'manage_options',
-            'syntekpro-forms-webhook-queue',
-            array($this, 'render_webhook_queue_page')
+            'syntekpro-forms-settings',
+            array($this, 'render_settings_page')
         );
 
         add_submenu_page(
             'syntekpro-forms',
-            __('About', 'syntekpro-forms'),
-            __('About', 'syntekpro-forms'),
+            __('Help', 'syntekpro-forms'),
+            __('Help', 'syntekpro-forms'),
             'manage_options',
-            'syntekpro-forms-about',
-            array($this, 'render_about_page')
+            'syntekpro-forms-help',
+            array($this, 'render_help_page')
         );
 
-        add_submenu_page(
-            'syntekpro-forms',
-            __('Other Plugins', 'syntekpro-forms'),
-            __('Other Plugins', 'syntekpro-forms'),
-            'manage_options',
-            'syntekpro-forms-other-plugins',
-            array($this, 'render_other_plugins_page')
-        );
     }
 
     public function enqueue_admin_scripts($hook) {
@@ -783,6 +836,29 @@ class SyntekPro_Forms_Builder {
         }
     }
 
+    public function render_analytics_page() {
+        if (!current_user_can('manage_options')) {
+            wp_die(__('Unauthorized', 'syntekpro-forms'));
+        }
+
+        $days = isset($_GET['days']) ? absint($_GET['days']) : 30;
+        if ($days < 1) {
+            $days = 30;
+        }
+
+        $analytics_summary = array();
+        $field_dropoff = array();
+        if ($this->growth_services) {
+            $analytics_summary = $this->growth_services->get_analytics_summary($days);
+            $field_dropoff = $this->growth_services->get_field_dropoff($days);
+        }
+
+        $view_file = SPF_PLUGIN_DIR . 'includes/admin/views/analytics.php';
+        if (file_exists($view_file)) {
+            include $view_file;
+        }
+    }
+
     public function render_settings_page() {
         $view_file = SPF_PLUGIN_DIR . 'includes/admin/views/settings.php';
         if (file_exists($view_file)) {
@@ -790,7 +866,87 @@ class SyntekPro_Forms_Builder {
         }
     }
 
+    public function render_help_page() {
+        $view_file = SPF_PLUGIN_DIR . 'includes/admin/views/help.php';
+        if (file_exists($view_file)) {
+            include $view_file;
+        }
+    }
+
     public function render_addons_page() {
+        if (!current_user_can('manage_options')) {
+            wp_die(__('Unauthorized', 'syntekpro-forms'));
+        }
+
+        global $wpdb;
+        $table = $this->get_webhook_queue_table();
+
+        if (isset($_POST['spf_webhook_queue_action'])) {
+            check_admin_referer('spf_webhook_queue_action', 'spf_webhook_queue_nonce');
+            $action = sanitize_text_field(wp_unslash($_POST['spf_webhook_queue_action']));
+
+            if ($action === 'retry_item' && !empty($_POST['item_id'])) {
+                $item_id = absint($_POST['item_id']);
+                if ($item_id > 0) {
+                    $wpdb->update(
+                        $table,
+                        array(
+                            'status' => 'pending',
+                            'attempts' => 0,
+                            'next_attempt_at' => current_time('mysql'),
+                            'error_message' => null,
+                            'response_code' => null,
+                            'response_body' => null,
+                        ),
+                        array('id' => $item_id),
+                        array('%s', '%d', '%s', '%s', '%s', '%s'),
+                        array('%d')
+                    );
+                    $this->schedule_webhook_queue_processor();
+                }
+            }
+
+            if ($action === 'retry_failed') {
+                $wpdb->query(
+                    "UPDATE {$table}
+                     SET status = 'pending', attempts = 0, next_attempt_at = NOW(), error_message = NULL
+                     WHERE status = 'failed'"
+                );
+                $this->schedule_webhook_queue_processor();
+            }
+
+            if ($action === 'clear_success') {
+                $wpdb->query("DELETE FROM {$table} WHERE status = 'success'");
+            }
+
+            if ($action === 'run_processor_now') {
+                $this->process_webhook_queue();
+            }
+        }
+
+        $status = isset($_GET['status']) ? sanitize_text_field(wp_unslash($_GET['status'])) : 'failed';
+        $allowed = array('all', 'failed', 'pending', 'success');
+        if (!in_array($status, $allowed, true)) {
+            $status = 'failed';
+        }
+
+        $where = '';
+        $params = array();
+        if ($status !== 'all') {
+            $where = 'WHERE status = %s';
+            $params[] = $status;
+        }
+
+        $items_sql = "SELECT * FROM {$table} {$where} ORDER BY created_at DESC LIMIT 200";
+        $items = empty($params) ? $wpdb->get_results($items_sql) : $wpdb->get_results($wpdb->prepare($items_sql, $params));
+
+        $stats = array(
+            'all' => (int) $wpdb->get_var("SELECT COUNT(*) FROM {$table}"),
+            'failed' => (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$table} WHERE status = %s", 'failed')),
+            'pending' => (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$table} WHERE status = %s", 'pending')),
+            'success' => (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$table} WHERE status = %s", 'success')),
+        );
+
         $view_file = SPF_PLUGIN_DIR . 'includes/admin/views/addons.php';
         if (file_exists($view_file)) {
             $loaded_addons = $this->loaded_addons;

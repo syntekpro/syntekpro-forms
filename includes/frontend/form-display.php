@@ -55,6 +55,18 @@ $wpdb->query($wpdb->prepare(
     $form_id
 ));
 
+$growth = null;
+$resume_token = isset($_GET['spf_resume']) ? sanitize_text_field(wp_unslash((string) $_GET['spf_resume'])) : '';
+if (class_exists('SyntekPro_Forms_Builder')) {
+    $builder_instance = SyntekPro_Forms_Builder::get_instance();
+    if (method_exists($builder_instance, 'get_growth_services')) {
+        $growth = $builder_instance->get_growth_services();
+        if ($growth) {
+            $growth->track_event($form_id, 'view', '', '');
+        }
+    }
+}
+
 $plugin_settings = get_option('spf_settings');
 
 $resolve_font_family = function($font_value) {
@@ -98,6 +110,12 @@ $show_description = isset($atts['showDescription']) ? (bool)$atts['showDescripti
 $prefilled_values = array();
 if (!empty($atts['fieldValues'])) {
     parse_str(str_replace(',', '&', (string)$atts['fieldValues']), $prefilled_values);
+}
+if (!empty($resume_token) && !empty($growth)) {
+    $draft = $growth->get_draft($resume_token, $form_id);
+    if (!empty($draft['draft_data']) && is_array($draft['draft_data'])) {
+        $prefilled_values = array_merge($prefilled_values, $draft['draft_data']);
+    }
 }
 
 // Prepare custom styles
@@ -230,6 +248,7 @@ if (empty($steps)) {
         <form class="spf-form<?php echo count($steps) > 1 ? ' spf-has-steps' : ''; ?>" data-form-id="<?php echo $form_id; ?>" 
             data-ajax="<?php echo (isset($atts['ajax']) && $atts['ajax'] === false) ? 'false' : 'true'; ?>"
             data-step-total="<?php echo count($steps); ?>"
+            data-resume-token="<?php echo esc_attr($resume_token); ?>"
             <?php echo (!empty($plugin_settings['recaptcha_invisible']) && !empty($plugin_settings['recaptcha_site_key'])) ? 'data-recaptcha-type="invisible"' : ''; ?>
             <?php echo !empty($atts['tabindex']) ? 'tabindex="' . intval($atts['tabindex']) . '"' : ''; ?>
             <?php echo !empty($atts['submitAlign']) ? 'data-submit-align="' . esc_attr($atts['submitAlign']) . '"' : ''; ?>
@@ -580,6 +599,13 @@ if (empty($steps)) {
                 <?php endif; ?>
             </div>
         <?php endforeach; ?>
+
+        <?php if (count($steps) > 1): ?>
+            <div class="spf-save-draft-wrap" style="margin-top:12px;">
+                <button type="button" class="button spf-save-draft"><?php _e('Save & Resume Later', 'syntekpro-forms'); ?></button>
+                <div class="spf-draft-message" style="display:none;margin-top:8px;"></div>
+            </div>
+        <?php endif; ?>
         
         <?php
         // Add reCAPTCHA if enabled

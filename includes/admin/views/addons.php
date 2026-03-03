@@ -131,6 +131,47 @@ if (!empty($_POST['spf_addon_action']) && current_user_can('manage_options')) {
     }
 }
 
+$addons_tab = isset($_GET['addons_tab']) ? sanitize_key(wp_unslash((string) $_GET['addons_tab'])) : 'addons';
+if (!in_array($addons_tab, array('addons', 'webhooks', 'growth'), true)) {
+    $addons_tab = 'addons';
+}
+
+if (!empty($_POST['spf_growth_action']) && current_user_can('manage_options')) {
+    check_admin_referer('spf_manage_growth', 'spf_manage_growth_nonce');
+
+    if (sanitize_text_field(wp_unslash((string) $_POST['spf_growth_action'])) === 'save_growth_settings') {
+        $post_data = wp_unslash($_POST);
+        $current_settings = get_option('spf_settings', array());
+        if (!is_array($current_settings)) {
+            $current_settings = array();
+        }
+
+        $growth_settings = array(
+            'stripe_publishable_key' => sanitize_text_field($post_data['stripe_publishable_key'] ?? ''),
+            'stripe_secret_key' => sanitize_text_field($post_data['stripe_secret_key'] ?? ''),
+            'payment_currency' => sanitize_text_field($post_data['payment_currency'] ?? 'USD'),
+            'automation_zapier_url' => esc_url_raw($post_data['automation_zapier_url'] ?? ''),
+            'automation_make_url' => esc_url_raw($post_data['automation_make_url'] ?? ''),
+            'mailchimp_api_key' => sanitize_text_field($post_data['mailchimp_api_key'] ?? ''),
+            'mailchimp_audience_id' => sanitize_text_field($post_data['mailchimp_audience_id'] ?? ''),
+            'hubspot_private_token' => sanitize_text_field($post_data['hubspot_private_token'] ?? ''),
+            'hubspot_default_list_id' => sanitize_text_field($post_data['hubspot_default_list_id'] ?? ''),
+        );
+
+        update_option('spf_settings', array_merge($current_settings, $growth_settings));
+
+        $notices[] = array(
+            'type' => 'success',
+            'message' => __('Growth settings saved successfully.', 'syntekpro-forms'),
+        );
+    }
+}
+
+$plugin_settings = get_option('spf_settings', array());
+if (!is_array($plugin_settings)) {
+    $plugin_settings = array();
+}
+
 $available_files = glob(trailingslashit($addons_dir) . '*.php');
 $available_files = is_array($available_files) ? $available_files : array();
 $loaded_files = isset($loaded_addons) && is_array($loaded_addons) ? $loaded_addons : array();
@@ -335,12 +376,31 @@ if (count($featured_addons) < 3) {
     <div class="spf-admin-page-title-wrap spf-page-toolbar">
         <h1 class="spf-admin-page-title spf-title-with-icon">
             <span class="dashicons dashicons-admin-plugins"></span>
-            <?php _e('SyntekPro Forms Add-ons', 'syntekpro-forms'); ?>
+            <?php _e('Add-ons', 'syntekpro-forms'); ?>
         </h1>
         <a class="button" href="<?php echo esc_url(admin_url('admin.php?page=syntekpro-forms-addons')); ?>">
             <?php esc_html_e('Refresh', 'syntekpro-forms'); ?>
         </a>
     </div>
+
+    <div class="spf-settings-layout" style="margin-top:12px;">
+        <div class="spf-settings-tabs">
+            <button type="button" class="spf-settings-tab-btn <?php echo $addons_tab === 'addons' ? 'active' : ''; ?>" data-tab="addons">
+                <span class="dashicons dashicons-admin-plugins"></span>
+                <?php _e('Add-ons', 'syntekpro-forms'); ?>
+            </button>
+            <button type="button" class="spf-settings-tab-btn <?php echo $addons_tab === 'webhooks' ? 'active' : ''; ?>" data-tab="webhooks">
+                <span class="dashicons dashicons-update"></span>
+                <?php _e('Webhooks', 'syntekpro-forms'); ?>
+            </button>
+            <button type="button" class="spf-settings-tab-btn <?php echo $addons_tab === 'growth' ? 'active' : ''; ?>" data-tab="growth">
+                <span class="dashicons dashicons-chart-pie"></span>
+                <?php _e('Growth', 'syntekpro-forms'); ?>
+            </button>
+        </div>
+
+        <div class="spf-settings-content">
+            <div id="spf-addons-tab-addons" class="spf-settings-tab-pane <?php echo $addons_tab === 'addons' ? 'active' : ''; ?>">
 
     <p class="description"><?php _e('Upload add-ons here or drop PHP files into the add-ons folder. Add-ons in that folder are auto-loaded.', 'syntekpro-forms'); ?></p>
 
@@ -515,11 +575,213 @@ if (count($featured_addons) < 3) {
         <?php endif; ?>
     </div>
 
+            </div>
+
+            <div id="spf-addons-tab-webhooks" class="spf-settings-tab-pane <?php echo $addons_tab === 'webhooks' ? 'active' : ''; ?>">
+                <?php
+                $status = isset($status) ? (string) $status : 'failed';
+                $items = isset($items) && is_array($items) ? $items : array();
+                $stats = isset($stats) && is_array($stats) ? $stats : array('all' => 0, 'failed' => 0, 'pending' => 0, 'success' => 0);
+                ?>
+                <h2><span class="dashicons dashicons-update"></span> <?php esc_html_e('Webhook Retry Manager', 'syntekpro-forms'); ?></h2>
+                <p class="description"><?php esc_html_e('Queued webhooks are retried automatically with backoff. Use this panel to monitor failures and retry manually.', 'syntekpro-forms'); ?></p>
+
+                <div class="spf-addon-summary-grid spf-summary-grid-spaced">
+                    <div class="spf-addon-summary-card"><h3><?php esc_html_e('All', 'syntekpro-forms'); ?></h3><p class="spf-addon-summary-number"><?php echo esc_html((string) ($stats['all'] ?? 0)); ?></p></div>
+                    <div class="spf-addon-summary-card"><h3><?php esc_html_e('Failed', 'syntekpro-forms'); ?></h3><p class="spf-addon-summary-number"><?php echo esc_html((string) ($stats['failed'] ?? 0)); ?></p></div>
+                    <div class="spf-addon-summary-card"><h3><?php esc_html_e('Pending', 'syntekpro-forms'); ?></h3><p class="spf-addon-summary-number"><?php echo esc_html((string) ($stats['pending'] ?? 0)); ?></p></div>
+                    <div class="spf-addon-summary-card"><h3><?php esc_html_e('Success', 'syntekpro-forms'); ?></h3><p class="spf-addon-summary-number"><?php echo esc_html((string) ($stats['success'] ?? 0)); ?></p></div>
+                </div>
+
+                <div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0;gap:10px;flex-wrap:wrap;">
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <?php
+                        $tabs = array(
+                            'failed' => __('Failed', 'syntekpro-forms'),
+                            'pending' => __('Pending', 'syntekpro-forms'),
+                            'success' => __('Success', 'syntekpro-forms'),
+                            'all' => __('All', 'syntekpro-forms'),
+                        );
+                        foreach ($tabs as $key => $label):
+                            $active = $status === $key;
+                            ?>
+                            <a class="button<?php echo $active ? ' button-primary' : ''; ?>" href="<?php echo esc_url(add_query_arg(array('page' => 'syntekpro-forms-addons', 'addons_tab' => 'webhooks', 'status' => $key), admin_url('admin.php'))); ?>"><?php echo esc_html($label); ?></a>
+                        <?php endforeach; ?>
+                    </div>
+
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <form method="post" style="display:inline;">
+                            <?php wp_nonce_field('spf_webhook_queue_action', 'spf_webhook_queue_nonce'); ?>
+                            <input type="hidden" name="spf_webhook_queue_action" value="run_processor_now">
+                            <button type="submit" class="button button-primary"><?php esc_html_e('Run Processor Now', 'syntekpro-forms'); ?></button>
+                        </form>
+                        <form method="post" style="display:inline;">
+                            <?php wp_nonce_field('spf_webhook_queue_action', 'spf_webhook_queue_nonce'); ?>
+                            <input type="hidden" name="spf_webhook_queue_action" value="retry_failed">
+                            <button type="submit" class="button"><?php esc_html_e('Retry All Failed', 'syntekpro-forms'); ?></button>
+                        </form>
+                        <form method="post" style="display:inline;" onsubmit="return confirm('<?php echo esc_js(__('Delete all successful webhook logs?', 'syntekpro-forms')); ?>');">
+                            <?php wp_nonce_field('spf_webhook_queue_action', 'spf_webhook_queue_nonce'); ?>
+                            <input type="hidden" name="spf_webhook_queue_action" value="clear_success">
+                            <button type="submit" class="button"><?php esc_html_e('Clear Success Logs', 'syntekpro-forms'); ?></button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="spf-admin-content-card" style="background:#fff;border:1px solid #ccd0d4;border-radius:6px;overflow:auto;">
+                    <table class="widefat striped">
+                        <thead>
+                        <tr>
+                            <th><?php esc_html_e('ID', 'syntekpro-forms'); ?></th>
+                            <th><?php esc_html_e('Status', 'syntekpro-forms'); ?></th>
+                            <th><?php esc_html_e('Form / Entry', 'syntekpro-forms'); ?></th>
+                            <th><?php esc_html_e('Webhook URL', 'syntekpro-forms'); ?></th>
+                            <th><?php esc_html_e('Attempts', 'syntekpro-forms'); ?></th>
+                            <th><?php esc_html_e('Next Attempt', 'syntekpro-forms'); ?></th>
+                            <th><?php esc_html_e('Last Error', 'syntekpro-forms'); ?></th>
+                            <th><?php esc_html_e('Actions', 'syntekpro-forms'); ?></th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <?php if (empty($items)): ?>
+                            <tr><td colspan="8"><?php esc_html_e('No webhook queue items found for this filter.', 'syntekpro-forms'); ?></td></tr>
+                        <?php else: ?>
+                            <?php foreach ($items as $item): ?>
+                                <tr>
+                                    <td>#<?php echo esc_html((string) $item->id); ?></td>
+                                    <td>
+                                        <span class="spf-status spf-status-<?php echo esc_attr($item->status === 'failed' ? 'inactive' : 'active'); ?>">
+                                            <?php echo esc_html(ucfirst((string) $item->status)); ?>
+                                        </span>
+                                    </td>
+                                    <td><?php echo esc_html(sprintf(__('Form #%1$d / Entry #%2$d', 'syntekpro-forms'), (int) $item->form_id, (int) $item->entry_id)); ?></td>
+                                    <td style="max-width:350px;word-break:break-all;"><a href="<?php echo esc_url((string) $item->webhook_url); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html((string) $item->webhook_url); ?></a></td>
+                                    <td><?php echo esc_html((string) $item->attempts); ?> / <?php echo esc_html((string) $item->max_attempts); ?></td>
+                                    <td><?php echo !empty($item->next_attempt_at) ? esc_html((string) $item->next_attempt_at) : '&mdash;'; ?></td>
+                                    <td style="max-width:300px;word-break:break-word;"><?php echo !empty($item->error_message) ? esc_html((string) $item->error_message) : '&mdash;'; ?></td>
+                                    <td>
+                                        <?php if ($item->status === 'failed' || $item->status === 'pending'): ?>
+                                            <form method="post" style="display:inline;">
+                                                <?php wp_nonce_field('spf_webhook_queue_action', 'spf_webhook_queue_nonce'); ?>
+                                                <input type="hidden" name="spf_webhook_queue_action" value="retry_item">
+                                                <input type="hidden" name="item_id" value="<?php echo esc_attr((string) $item->id); ?>">
+                                                <button type="submit" class="button button-small"><?php esc_html_e('Retry', 'syntekpro-forms'); ?></button>
+                                            </form>
+                                        <?php else: ?>
+                                            &mdash;
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="spf-addons-tab-growth" class="spf-settings-tab-pane <?php echo $addons_tab === 'growth' ? 'active' : ''; ?>">
+                <h2><span class="dashicons dashicons-chart-pie"></span> <?php esc_html_e('Growth Features', 'syntekpro-forms'); ?></h2>
+                <p class="description"><?php esc_html_e('Configure payments and connectors for conversion-focused workflows.', 'syntekpro-forms'); ?></p>
+
+                <form method="post" class="spf-admin-content-card" style="padding:16px;">
+                    <?php wp_nonce_field('spf_manage_growth', 'spf_manage_growth_nonce'); ?>
+                    <input type="hidden" name="spf_growth_action" value="save_growth_settings">
+
+                    <div class="spf-setting-field">
+                        <label class="spf-setting-label"><?php _e('Stripe Publishable Key', 'syntekpro-forms'); ?></label>
+                        <input type="text" name="stripe_publishable_key" value="<?php echo esc_attr($plugin_settings['stripe_publishable_key'] ?? ''); ?>" class="regular-text">
+                    </div>
+
+                    <div class="spf-setting-field">
+                        <label class="spf-setting-label"><?php _e('Stripe Secret Key', 'syntekpro-forms'); ?></label>
+                        <input type="text" name="stripe_secret_key" value="<?php echo esc_attr($plugin_settings['stripe_secret_key'] ?? ''); ?>" class="regular-text">
+                    </div>
+
+                    <div class="spf-setting-field">
+                        <label class="spf-setting-label"><?php _e('Payment Currency', 'syntekpro-forms'); ?></label>
+                        <select name="payment_currency">
+                            <option value="USD" <?php selected($plugin_settings['payment_currency'] ?? 'USD', 'USD'); ?>>USD</option>
+                            <option value="EUR" <?php selected($plugin_settings['payment_currency'] ?? 'USD', 'EUR'); ?>>EUR</option>
+                            <option value="GBP" <?php selected($plugin_settings['payment_currency'] ?? 'USD', 'GBP'); ?>>GBP</option>
+                        </select>
+                    </div>
+
+                    <div class="spf-setting-field">
+                        <label class="spf-setting-label"><?php _e('Zapier Webhook URL', 'syntekpro-forms'); ?></label>
+                        <input type="url" name="automation_zapier_url" value="<?php echo esc_attr($plugin_settings['automation_zapier_url'] ?? ''); ?>" class="regular-text" placeholder="https://hooks.zapier.com/...">
+                    </div>
+
+                    <div class="spf-setting-field">
+                        <label class="spf-setting-label"><?php _e('Make Webhook URL', 'syntekpro-forms'); ?></label>
+                        <input type="url" name="automation_make_url" value="<?php echo esc_attr($plugin_settings['automation_make_url'] ?? ''); ?>" class="regular-text" placeholder="https://hook.make.com/...">
+                    </div>
+
+                    <div class="spf-setting-field">
+                        <label class="spf-setting-label"><?php _e('Mailchimp API Key', 'syntekpro-forms'); ?></label>
+                        <input type="text" name="mailchimp_api_key" value="<?php echo esc_attr($plugin_settings['mailchimp_api_key'] ?? ''); ?>" class="regular-text">
+                    </div>
+
+                    <div class="spf-setting-field">
+                        <label class="spf-setting-label"><?php _e('Mailchimp Audience ID', 'syntekpro-forms'); ?></label>
+                        <input type="text" name="mailchimp_audience_id" value="<?php echo esc_attr($plugin_settings['mailchimp_audience_id'] ?? ''); ?>" class="regular-text">
+                    </div>
+
+                    <div class="spf-setting-field">
+                        <label class="spf-setting-label"><?php _e('HubSpot Private App Token', 'syntekpro-forms'); ?></label>
+                        <input type="text" name="hubspot_private_token" value="<?php echo esc_attr($plugin_settings['hubspot_private_token'] ?? ''); ?>" class="regular-text">
+                    </div>
+
+                    <div class="spf-setting-field">
+                        <label class="spf-setting-label"><?php _e('HubSpot List ID', 'syntekpro-forms'); ?></label>
+                        <input type="text" name="hubspot_default_list_id" value="<?php echo esc_attr($plugin_settings['hubspot_default_list_id'] ?? ''); ?>" class="regular-text">
+                    </div>
+
+                    <div class="spf-settings-footer">
+                        <button type="submit" class="button button-primary button-large"><?php _e('Save Growth Settings', 'syntekpro-forms'); ?></button>
+                    </div>
+                </form>
+            </div>
+
+        </div>
+    </div>
+
 </div>
 
 <script>
 (function($) {
     $(function() {
+        var requestedTab = '<?php echo esc_js($addons_tab); ?>';
+        var $tabButtons = $('.spf-settings-tabs .spf-settings-tab-btn[data-tab]');
+        var $tabPanes = $('.spf-settings-content .spf-settings-tab-pane');
+
+        var activateTab = function(tabName) {
+            if (!tabName || !$tabButtons.filter('[data-tab="' + tabName + '"]').length) {
+                tabName = 'addons';
+            }
+
+            $tabButtons.removeClass('active');
+            $tabButtons.filter('[data-tab="' + tabName + '"]').addClass('active');
+
+            $tabPanes.removeClass('active');
+            $('#spf-addons-tab-' + tabName).addClass('active');
+        };
+
+        $tabButtons.on('click', function(e) {
+            e.preventDefault();
+            var tabName = $(this).data('tab');
+            activateTab(tabName);
+
+            try {
+                var url = new URL(window.location.href);
+                url.searchParams.set('addons_tab', tabName);
+                window.history.replaceState({}, '', url.toString());
+            } catch (error) {
+                // Ignore URL API issues and keep tab switching functional.
+            }
+        });
+
+        activateTab(requestedTab || 'addons');
+
         var $filter = $('#spf-addon-status-filter');
         var $rows = $('.spf-addon-showcase-card');
 

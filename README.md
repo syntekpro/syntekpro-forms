@@ -31,6 +31,8 @@ For a step-by-step walkthrough of every capability, see the comprehensive tutori
 - **Privacy & Anti-spam**: Honeypot, rate limiting, Akismet checks, IP anonymization, and data retention controls.
 - **Consent-aware submissions**: Registers the `syntekpro_forms` consent type via the WordPress Consent API so banners can gate submissions, webhooks, and notifications.
 - **Add-ons Ready**: Add-ons loader and admin Add-ons page to extend functionality.
+- **Developer API**: CRUD endpoints under `/wp-json/syntekpro-forms/v1` for forms and entries, plus filters/actions for every major action.
+- **Growth Suite**: Stripe-ready payment totals + coupons, automation connectors (Zapier/Make/Mailchimp/HubSpot), draft save/resume for multi-step forms, and built-in analytics (views, starts, completions, abandonment, field dropoff).
 
 ## Documentation & Tutorials
 
@@ -38,7 +40,7 @@ For a step-by-step walkthrough of every capability, see the comprehensive tutori
 
 ## Version
 
-1.4.0
+1.5.1
 
 ## Author
 
@@ -50,6 +52,15 @@ See [CHANGELOG.md](CHANGELOG.md) for a full history of changes.
 
 ### Unreleased
 - Added WordPress Consent API compatibility through the `syntekpro_forms` consent type so consent banners can control form submission, webhook dispatch, and notification delivery.
+- Added Growth features: payment summary engine with optional Stripe Checkout session links, automation connectors, draft save/resume links for multi-step forms, and a new Analytics admin dashboard.
+
+### 1.5.1 (2026-03-04)
+- Added REST API feature controls and expanded growth tooling (payments/connectors/drafts/analytics)
+- Added dedicated Help page under main plugin menu (User/Developer/Designer docs)
+- Reorganized admin IA (Add-ons/Webhooks/Growth tabs, Settings consolidation, About cleanup)
+- Improved Entries page visual design while preserving all existing functionality
+- Improved Add-ons tab responsiveness with instant client-side switching
+- Standardized page headings to concise titles across admin pages
 
 ### 1.4.0 (2026-02-20)
 - Major builder UX refresh with improved canvas controls, bulk actions, selection flow, and cleaner Gravity-style editor look

@@ -7,6 +7,23 @@ All notable changes to this project will be documented in this file.
 ### Added
 - WordPress Consent API compatibility via a `syntekpro_forms` consent type so banners can gate submissions, webhooks, and notifications before consent is granted.
 
+## [1.5.1] - 2026-03-04
+
+### Added
+- REST API support (`/wp-json/syntekpro-forms/v1`) with settings toggle and dedicated admin controls.
+- Growth feature set: Stripe-ready payment summary flow, automation connectors, draft save/resume support, and analytics tracking/reporting.
+- New Help page in the main plugin menu with user, developer, and designer documentation entry points.
+
+### Changed
+- Admin navigation and IA refresh: Add-ons hub tabs (Add-ons/Webhooks/Growth), Analytics surfaced in Settings, and About content consolidated.
+- Add-ons tab switching now uses instant client-side pane switching for a faster Settings-like experience.
+- Entries page visual polish for cleaner layout, status tabs, improved table readability, and consistent action styling.
+- Standardized admin page headings to concise titles (Settings, Add-ons, Entries, Help, Analytics, About).
+
+### Fixed
+- Add-ons tab pane rendering and sidebar layout issues that caused empty sections/overlap in some configurations.
+- Help page REST base display now uses a neutral relative path (`/wp-json/syntekpro-forms/v1`).
+
 ## [1.4.0] - 2026-02-20
 
 ### Added

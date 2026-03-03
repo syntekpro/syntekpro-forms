@@ -18,6 +18,8 @@ if (isset($settings['delete_entries_on_uninstall']) && $settings['delete_entries
     $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}spf_forms");
     $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}spf_entries");
     $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}spf_webhook_queue");
+    $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}spf_drafts");
+    $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}spf_analytics");
 
     // Delete options
     delete_option('spf_settings');

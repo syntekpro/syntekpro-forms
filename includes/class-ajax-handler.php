@@ -15,9 +15,13 @@ class SyntekPro_Forms_Ajax_Handler {
     /** @var SyntekPro_Forms_Spam_Filter */
     private $spam_filter;
 
-    public function __construct($builder, $spam_filter) {
+    /** @var SyntekPro_Forms_Growth_Services */
+    private $growth_services;
+
+    public function __construct($builder, $spam_filter, $growth_services = null) {
         $this->builder = $builder;
         $this->spam_filter = $spam_filter;
+        $this->growth_services = $growth_services;
     }
 
     /**
@@ -43,6 +47,12 @@ class SyntekPro_Forms_Ajax_Handler {
         add_action('wp_ajax_spf_get_posts_for_embed', array($this, 'ajax_get_posts_for_embed'));
         add_action('wp_ajax_spf_insert_form_to_post', array($this, 'ajax_insert_form_to_post'));
         add_action('wp_ajax_spf_create_post_with_form', array($this, 'ajax_create_post_with_form'));
+        add_action('wp_ajax_nopriv_spf_save_draft', array($this, 'ajax_save_draft'));
+        add_action('wp_ajax_spf_save_draft', array($this, 'ajax_save_draft'));
+        add_action('wp_ajax_nopriv_spf_get_draft', array($this, 'ajax_get_draft'));
+        add_action('wp_ajax_spf_get_draft', array($this, 'ajax_get_draft'));
+        add_action('wp_ajax_nopriv_spf_track_analytics', array($this, 'ajax_track_analytics'));
+        add_action('wp_ajax_spf_track_analytics', array($this, 'ajax_track_analytics'));
     }
 
     public function ajax_save_form() {
@@ -440,8 +450,24 @@ class SyntekPro_Forms_Ajax_Handler {
             array('%d', '%s', '%d', '%s', '%s')
         );
 
+        $payment_summary = array();
+
         if ($result) {
             $entry_id = $wpdb->insert_id;
+
+            if ($this->growth_services) {
+                $payment_summary = $this->growth_services->build_payment_summary($sanitized_data, $fields, $form_settings, $settings);
+                if (!empty($payment_summary['enabled'])) {
+                    $sanitized_data['spf_payment'] = $payment_summary;
+                    $wpdb->update(
+                        $wpdb->prefix . 'spf_entries',
+                        array('entry_data' => wp_json_encode($sanitized_data)),
+                        array('id' => $entry_id),
+                        array('%s'),
+                        array('%d')
+                    );
+                }
+            }
 
             do_action(
                 'syntekpro_forms_submission_after_insert',
@@ -476,6 +502,11 @@ class SyntekPro_Forms_Ajax_Handler {
 
             $this->builder->trigger_form_webhooks($form, $sanitized_data, $entry_id, $form_settings);
 
+            if ($this->growth_services) {
+                $this->growth_services->dispatch_connectors($form, $sanitized_data, $entry_id, $form_settings, $settings);
+                $this->growth_services->track_event($form_id, 'complete', '', isset($_POST['spf_session_id']) ? sanitize_text_field((string) $_POST['spf_session_id']) : '');
+            }
+
             do_action(
                 'syntekpro_forms_submission_after_notifications',
                 $entry_id,
@@ -488,6 +519,9 @@ class SyntekPro_Forms_Ajax_Handler {
             );
 
             $success_payload = $this->builder->build_success_payload($form_settings);
+            if (!empty($payment_summary) && is_array($payment_summary)) {
+                $success_payload['payment'] = $payment_summary;
+            }
             $success_payload = apply_filters(
                 'syntekpro_forms_submission_success_payload',
                 $success_payload,
@@ -591,6 +625,16 @@ class SyntekPro_Forms_Ajax_Handler {
             'enable_dashboard_widget'     => 'bool',
             'enable_toolbar_menu'         => 'bool',
             'no_conflict_mode'            => 'bool',
+            'rest_api_enabled'            => 'bool',
+            'stripe_publishable_key'      => 'text',
+            'stripe_secret_key'           => 'text',
+            'payment_currency'            => 'text',
+            'automation_zapier_url'       => 'text',
+            'automation_make_url'         => 'text',
+            'mailchimp_api_key'           => 'text',
+            'mailchimp_audience_id'       => 'text',
+            'hubspot_private_token'       => 'text',
+            'hubspot_default_list_id'     => 'text',
         );
 
         $sanitized = array();
@@ -1202,5 +1246,59 @@ class SyntekPro_Forms_Ajax_Handler {
 
         $edit_url = get_edit_post_link($post_id, 'raw');
         wp_send_json_success(array('edit_url' => $edit_url));
+    }
+
+    public function ajax_save_draft() {
+        check_ajax_referer('spf_frontend_nonce', 'nonce');
+
+        if (!$this->growth_services) {
+            wp_send_json_error(__('Draft service unavailable.', 'syntekpro-forms'));
+        }
+
+        $form_id = isset($_POST['form_id']) ? absint($_POST['form_id']) : 0;
+        $resume_token = isset($_POST['resume_token']) ? sanitize_text_field(wp_unslash((string) $_POST['resume_token'])) : '';
+        $email = isset($_POST['email']) ? sanitize_email(wp_unslash((string) $_POST['email'])) : '';
+        $draft_data = isset($_POST['draft_data']) ? json_decode(wp_unslash((string) $_POST['draft_data']), true) : array();
+
+        $saved = $this->growth_services->save_draft($form_id, is_array($draft_data) ? $draft_data : array(), $resume_token, $email);
+        if (is_wp_error($saved)) {
+            wp_send_json_error($saved->get_error_message());
+        }
+
+        wp_send_json_success($saved);
+    }
+
+    public function ajax_get_draft() {
+        check_ajax_referer('spf_frontend_nonce', 'nonce');
+
+        if (!$this->growth_services) {
+            wp_send_json_error(__('Draft service unavailable.', 'syntekpro-forms'));
+        }
+
+        $form_id = isset($_POST['form_id']) ? absint($_POST['form_id']) : 0;
+        $resume_token = isset($_POST['resume_token']) ? sanitize_text_field(wp_unslash((string) $_POST['resume_token'])) : '';
+
+        $draft = $this->growth_services->get_draft($resume_token, $form_id);
+        if (!$draft) {
+            wp_send_json_error(__('Draft not found.', 'syntekpro-forms'));
+        }
+
+        wp_send_json_success($draft);
+    }
+
+    public function ajax_track_analytics() {
+        check_ajax_referer('spf_frontend_nonce', 'nonce');
+
+        if (!$this->growth_services) {
+            wp_send_json_error(__('Analytics service unavailable.', 'syntekpro-forms'));
+        }
+
+        $form_id = isset($_POST['form_id']) ? absint($_POST['form_id']) : 0;
+        $event_type = isset($_POST['event_type']) ? sanitize_key(wp_unslash((string) $_POST['event_type'])) : '';
+        $field_name = isset($_POST['field_name']) ? sanitize_key(wp_unslash((string) $_POST['field_name'])) : '';
+        $session_id = isset($_POST['session_id']) ? sanitize_text_field(wp_unslash((string) $_POST['session_id'])) : '';
+
+        $this->growth_services->track_event($form_id, $event_type, $field_name, $session_id);
+        wp_send_json_success();
     }
 }

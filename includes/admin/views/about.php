@@ -40,7 +40,7 @@ $system_info = array(
     <div class="spf-admin-page-title-wrap spf-page-toolbar">
         <h1 class="spf-admin-page-title spf-title-with-icon">
             <span class="dashicons dashicons-info"></span>
-            <?php esc_html_e('About SyntekPro Forms', 'syntekpro-forms'); ?>
+            <?php esc_html_e('About', 'syntekpro-forms'); ?>
         </h1>
         <a class="button button-primary" href="<?php echo esc_url(admin_url('admin.php?page=syntekpro-forms-add-new')); ?>">
             <?php esc_html_e('Create a Form', 'syntekpro-forms'); ?>

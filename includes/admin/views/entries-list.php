@@ -23,6 +23,40 @@ $entries = array();
 // Get counts
 $total_entries = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}spf_entries");
 $unread_entries = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}spf_entries WHERE status = 'unread'");
+$read_entries = max(0, (int) $total_entries - (int) $unread_entries);
+
+$status_base_url = admin_url('admin.php?page=syntekpro-forms-entries');
+$status_all_url = add_query_arg(
+    array(
+        'form_id' => $form_id,
+        's' => $search,
+        'date_from' => $date_from,
+        'date_to' => $date_to,
+    ),
+    $status_base_url
+);
+
+$status_unread_url = add_query_arg(
+    array(
+        'status' => 'unread',
+        'form_id' => $form_id,
+        's' => $search,
+        'date_from' => $date_from,
+        'date_to' => $date_to,
+    ),
+    $status_base_url
+);
+
+$status_read_url = add_query_arg(
+    array(
+        'status' => 'read',
+        'form_id' => $form_id,
+        's' => $search,
+        'date_from' => $date_from,
+        'date_to' => $date_to,
+    ),
+    $status_base_url
+);
 ?>
 
 <div class="wrap spf-admin-list-wrap spf-entries-shell">
@@ -37,7 +71,10 @@ $unread_entries = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}spf_entrie
     </div>
 
     <div class="spf-admin-page-title-wrap spf-page-toolbar">
-        <h1 class="spf-admin-page-title"><?php _e('Form Entries', 'syntekpro-forms'); ?></h1>
+        <h1 class="spf-admin-page-title spf-title-with-icon">
+            <span class="dashicons dashicons-feedback"></span>
+            <?php _e('Entries', 'syntekpro-forms'); ?>
+        </h1>
         <div class="spf-page-stats" aria-label="<?php esc_attr_e('Entries overview', 'syntekpro-forms'); ?>">
             <div class="spf-stat-pill">
                 <strong><?php echo (int) $total_entries; ?></strong>
@@ -48,6 +85,30 @@ $unread_entries = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}spf_entrie
                 <span><?php _e('Unread', 'syntekpro-forms'); ?></span>
             </div>
         </div>
+    </div>
+
+    <p class="description spf-about-intro">
+        <?php esc_html_e('Browse submissions, review details, and manage entries with filters, bulk actions, and CSV export.', 'syntekpro-forms'); ?>
+    </p>
+
+    <div class="spf-tablenav-top spf-forms-top-nav spf-entries-status-nav">
+        <ul class="subsubsub spf-forms-status-tabs">
+            <li>
+                <a href="<?php echo esc_url($status_all_url); ?>" class="<?php echo $status === '' ? 'current' : ''; ?>">
+                    <?php _e('All', 'syntekpro-forms'); ?> <span class="count">(<?php echo (int) $total_entries; ?>)</span>
+                </a> |
+            </li>
+            <li>
+                <a href="<?php echo esc_url($status_unread_url); ?>" class="<?php echo $status === 'unread' ? 'current' : ''; ?>">
+                    <?php _e('Unread', 'syntekpro-forms'); ?> <span class="count">(<?php echo (int) $unread_entries; ?>)</span>
+                </a> |
+            </li>
+            <li>
+                <a href="<?php echo esc_url($status_read_url); ?>" class="<?php echo $status === 'read' ? 'current' : ''; ?>">
+                    <?php _e('Read', 'syntekpro-forms'); ?> <span class="count">(<?php echo (int) $read_entries; ?>)</span>
+                </a>
+            </li>
+        </ul>
     </div>
     
     <div class="spf-admin-content-card spf-entries-card">
