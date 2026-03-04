@@ -468,11 +468,19 @@ class SyntekPro_Forms_Ajax_Handler {
             $ip_address_logged = !empty($settings['anonymize_ip'])
                 ? $this->builder->anonymize_ip_address($client_ip)
                 : $client_ip;
-            $user_agent = isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : '';
+            $user_agent = isset($_SERVER['HTTP_USER_AGENT']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_USER_AGENT'])) : '';
         }
 
         if (!empty($settings['enable_akismet']) && $this->spam_filter->check_akismet_spam($form, $sanitized_data, $client_ip, $user_agent)) {
             $this->send_submission_error(__('Submission flagged as spam.', 'syntekpro-forms'));
+        }
+
+        // Allow addons (hCaptcha, Turnstile, etc.) to reject spam.
+        $addon_spam = apply_filters('syntekpro_forms_spam_check', false, $form_id, $sanitized_data);
+        if ($addon_spam) {
+            $this->send_submission_error(
+                is_string($addon_spam) ? $addon_spam : __('Spam check failed.', 'syntekpro-forms')
+            );
         }
 
         do_action(

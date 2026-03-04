@@ -124,10 +124,10 @@ class SyntekPro_Forms_Builder {
         add_filter('cron_schedules', array($this, 'register_cron_schedules'));
         add_action('spf_apply_data_retention', array($this, 'run_data_retention_cron'));
         add_action('spf_fire_webhook', array($this, 'fire_webhook'), 10, 2);
-    add_filter('pre_set_site_transient_update_plugins', array($this, 'check_github_update'));
-    add_filter('plugins_api', array($this, 'github_plugin_info'), 10, 3);
-    add_filter('upgrader_post_install', array($this, 'github_upgrader_post_install'), 10, 3);
-    add_action('spf_process_webhook_queue', array($this, 'process_webhook_queue'));
+        add_filter('pre_set_site_transient_update_plugins', array($this, 'check_github_update'));
+        add_filter('plugins_api', array($this, 'github_plugin_info'), 10, 3);
+        add_filter('upgrader_post_install', array($this, 'github_upgrader_post_install'), 10, 3);
+        add_action('spf_process_webhook_queue', array($this, 'process_webhook_queue'));
 
         // REST API initialization
         add_action('rest_api_init', array($this, 'init_rest_api'));

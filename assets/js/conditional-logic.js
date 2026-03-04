@@ -16,7 +16,6 @@
         // Initialize conditional rules
         initConditionalRules: function() {
             // This will be expanded to handle conditional field visibility
-            console.log('Conditional logic initialized');
         },
         
         // Monitor field changes
@@ -32,7 +31,6 @@
         evaluateConditions: function() {
             // Example: Show/hide fields based on conditions
             // This is a placeholder for future conditional logic functionality
-            console.log('Evaluating conditions');
         },
         
         // Show field

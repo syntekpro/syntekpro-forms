@@ -670,7 +670,6 @@
             
             // Load existing form data if editing
             if (typeof spfFormData !== 'undefined' && spfFormData.fields && spfFormData.fields.length > 0) {
-                console.log('Populating builder with fields:', spfFormData.fields.length);
                 // Remove empty state if we have fields
                 $('#spf-form-fields .spf-empty-builder').remove();
                 
@@ -1219,7 +1218,6 @@
             var fieldData = window.spfFieldsData[fieldId];
             
             if (!fieldData) {
-                console.error('AFB: Field data not found for ID: ' + fieldId);
                 return;
             }
 
@@ -1467,7 +1465,6 @@
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error('AJAX Error:', error, xhr.responseText);
                     self.showNotification('Error: ' + error, 'error');
                 },
                 complete: function() {

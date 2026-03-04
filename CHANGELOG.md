@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [1.6.0] - 2026-03-08
+## [1.6.0] - 2026-03-04
 
 ### Added
 - **New field types**: Calculation (formula-based), Repeater (dynamic rows), and Signature (canvas drawing) fields with full builder and frontend support.

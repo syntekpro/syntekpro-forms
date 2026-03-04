@@ -34,20 +34,23 @@ class SPF_Addon_Slack_Discord {
 
     private function __construct() {
         // Fires after an entry is successfully saved via AJAX.
-        add_action( 'syntekpro_forms_after_submission', array( $this, 'send_notifications' ), 10, 4 );
+        add_action( 'syntekpro_forms_submission_after_notifications', array( $this, 'send_notifications' ), 10, 7 );
         // Fires after an entry is created via REST API.
         add_action( 'syntekpro_forms_rest_insert_entry', array( $this, 'send_notifications_rest' ), 10, 2 );
     }
 
     /**
-     * Hook: AJAX submission path.
+     * Hook: AJAX submission path (syntekpro_forms_submission_after_notifications).
      *
-     * @param object $form           Form row object.
-     * @param array  $sanitized_data Submitted field values.
      * @param int    $entry_id       New entry ID.
+     * @param int    $form_id        Form ID.
+     * @param array  $sanitized_data Submitted field values.
+     * @param array  $raw_form_data  Raw POST data.
+     * @param object $form           Form row object.
      * @param array  $form_settings  Decoded form settings.
+     * @param array  $settings       Global plugin settings.
      */
-    public function send_notifications( $form, $sanitized_data, $entry_id, $form_settings ) {
+    public function send_notifications( $entry_id, $form_id, $sanitized_data, $raw_form_data, $form, $form_settings, $settings ) {
         $plugin_settings = get_option( 'spf_settings', array() );
 
         $slack_url   = ! empty( $form_settings['slack_webhook_url'] )   ? trim( $form_settings['slack_webhook_url'] )   : ( ! empty( $plugin_settings['slack_webhook_url'] ) ? trim( $plugin_settings['slack_webhook_url'] ) : '' );
@@ -84,7 +87,7 @@ class SPF_Addon_Slack_Discord {
         $sanitized_data = is_array( $entry->entry_data ) ? $entry->entry_data : json_decode( (string) $entry->entry_data, true );
         $entry_id       = (int) $entry->id;
 
-        $this->send_notifications( $form, (array) $sanitized_data, $entry_id, (array) $form_settings );
+        $this->send_notifications( $entry_id, (int) $entry->form_id, (array) $sanitized_data, array(), $form, (array) $form_settings, array() );
     }
 
     /**
