@@ -81,6 +81,12 @@
                         if (response.success) {
                             var html = '';
                             
+                            // Toolbar
+                            html += '<div class="spf-entry-toolbar" style="display:flex;gap:8px;margin-bottom:15px;flex-wrap:wrap;">';
+                            html += '<button class="button button-small spf-edit-entry-btn" data-entry-id="' + entryId + '" data-editing="false"><span class="dashicons dashicons-edit" style="vertical-align:middle;"></span> Edit Entry</button>';
+                            html += '<button class="button button-small spf-export-pdf-btn" data-entry-id="' + entryId + '"><span class="dashicons dashicons-media-document" style="vertical-align:middle;"></span> Export PDF</button>';
+                            html += '</div>';
+
                             // Form & Metadata info
                             html += '<div class="spf-entry-metadata" style="background:#f9f9f9;padding:15px;border-radius:4px;margin-bottom:20px;display:grid;grid-template-columns:1fr 1fr;gap:15px;">';
                             html += '<div><strong>' + 'Form:' + '</strong><br>' + response.data.form_title + '</div>';
@@ -89,14 +95,24 @@
                             html += '<div><strong>' + 'User Agent:' + '</strong><br><small>' + response.data.user_agent + '</small></div>';
                             html += '</div>';
 
+                            html += '<div class="spf-entry-detail-section">';
                             if (response.data.entry_data) {
                                 $.each(response.data.entry_data, function(key, value) {
                                     html += '<div class="spf-entry-detail-row">';
-                                    html += '<div class="spf-detail-label">' + key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) + '</div>';
+                                    html += '<div class="spf-detail-label" data-field-key="' + self.escapeHtml(key) + '">' + key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) + '</div>';
                                     html += '<div class="spf-detail-value">' + (Array.isArray(value) ? value.join(', ') : value) + '</div>';
                                     html += '</div>';
                                 });
                             }
+                            html += '</div>';
+
+                            // Notes section
+                            var existingNote = response.data.notes || '';
+                            html += '<div class="spf-entry-notes-section" style="margin-top:20px;padding-top:15px;border-top:1px solid #e0e0e0;">';
+                            html += '<h4 style="margin:0 0 8px;"><span class="dashicons dashicons-admin-comments" style="vertical-align:middle;"></span> Admin Notes</h4>';
+                            html += '<textarea class="spf-note-textarea" style="width:100%;min-height:80px;padding:8px;border:1px solid #ddd;border-radius:4px;" placeholder="Add a private note about this entry...">' + self.escapeHtml(existingNote) + '</textarea>';
+                            html += '<button class="button button-primary button-small spf-save-note-btn" data-entry-id="' + entryId + '" style="margin-top:8px;">Save Note</button>';
+                            html += '</div>';
                             
                             $('#spf-entry-details-content').html(html);
                             
@@ -192,6 +208,99 @@
                     });
                     $entriesWrap.find('.spf-entry-checkbox').prop('checked', false);
                     $entriesWrap.find('#cb-select-all-1').prop('checked', false);
+                }
+            });
+
+            // Toggle Star
+            $entriesWrap.off('click', '.spf-toggle-star').on('click', '.spf-toggle-star', function(e) {
+                e.stopPropagation();
+                var $btn = $(this);
+                var entryId = $btn.data('entry-id');
+                $.post(spfAdmin.ajaxurl, {
+                    action: 'spf_toggle_star_entry',
+                    nonce: spfAdmin.nonce,
+                    entry_id: entryId
+                }, function(response) {
+                    if (response.success) {
+                        var isStarred = response.data.starred;
+                        $btn.html(isStarred ? '★' : '☆').css('color', isStarred ? '#dba617' : '#ccc');
+                    }
+                });
+            });
+
+            // PDF Export from modal
+            $(document).off('click', '.spf-export-pdf-btn').on('click', '.spf-export-pdf-btn', function() {
+                var entryId = $(this).data('entry-id');
+                var url = spfAdmin.ajaxurl + '?action=spf_export_entry_pdf&nonce=' + spfAdmin.nonce + '&entry_ids=' + entryId;
+                window.open(url, '_blank');
+            });
+
+            // Save Note from modal
+            $(document).off('click', '.spf-save-note-btn').on('click', '.spf-save-note-btn', function() {
+                var $btn = $(this);
+                var entryId = $btn.data('entry-id');
+                var note = $btn.closest('.spf-entry-notes-section').find('.spf-note-textarea').val();
+                $btn.prop('disabled', true).text('Saving...');
+                $.post(spfAdmin.ajaxurl, {
+                    action: 'spf_save_entry_note',
+                    nonce: spfAdmin.nonce,
+                    entry_id: entryId,
+                    note: note
+                }, function(response) {
+                    $btn.prop('disabled', false).text('Save Note');
+                    if (response.success) {
+                        $btn.text('Saved ✓');
+                        setTimeout(function() { $btn.text('Save Note'); }, 2000);
+                    } else {
+                        alert(response.data || 'Failed to save note.');
+                    }
+                });
+            });
+
+            // Edit Entry from modal
+            $(document).off('click', '.spf-edit-entry-btn').on('click', '.spf-edit-entry-btn', function() {
+                var $section = $(this).closest('.spf-entry-detail-section');
+                var $rows = $section.find('.spf-entry-detail-row');
+                var isEditing = $(this).data('editing');
+                if (!isEditing) {
+                    // Switch to edit mode
+                    $(this).data('editing', true).text('Save Changes');
+                    $rows.each(function() {
+                        var $val = $(this).find('.spf-detail-value');
+                        var raw = $val.text().trim();
+                        $val.html('<input type="text" class="spf-edit-field" value="' + self.escapeHtml(raw) + '" style="width:100%;padding:4px 8px;">');
+                    });
+                } else {
+                    // Save edits
+                    var entryId = $(this).data('entry-id');
+                    var entryData = {};
+                    $rows.each(function() {
+                        var key = $(this).find('.spf-detail-label').data('field-key');
+                        var val = $(this).find('.spf-edit-field').val();
+                        if (key) entryData[key] = val;
+                    });
+                    var $btn = $(this);
+                    $btn.prop('disabled', true).text('Saving...');
+                    $.post(spfAdmin.ajaxurl, {
+                        action: 'spf_edit_entry',
+                        nonce: spfAdmin.nonce,
+                        entry_id: entryId,
+                        entry_data: entryData
+                    }, function(response) {
+                        $btn.prop('disabled', false);
+                        if (response.success) {
+                            // Switch back to view mode
+                            $btn.data('editing', false).text('Edit Entry');
+                            $rows.each(function() {
+                                var $val = $(this).find('.spf-detail-value');
+                                var newVal = $(this).find('.spf-edit-field').val();
+                                $val.text(newVal);
+                            });
+                        } else {
+                            alert(response.data || 'Failed to save.');
+                            $btn.text('Save Changes');
+                        }
+                    });
                 }
             });
 
@@ -292,6 +401,7 @@
             html += '<input id="cb-select-all-1" type="checkbox">';
             html += '</td>';
             html += '<th class="column-id">ID</th>';
+            html += '<th class="column-star" style="width:36px;"></th>';
             html += '<th>Form Name</th>';
             html += '<th>Entry Data Preview</th>';
             html += '<th>Date Submitted</th>';
@@ -304,10 +414,12 @@
                 var previewHtml = self.buildEntryPreview(entry.entry_data || {});
                 var status = (entry.status || 'unread');
                 var statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
+                var starred = entry.starred === 1 || entry.starred === '1';
 
                 html += '<tr class="' + (status === 'unread' ? 'spf-unread-row' : '') + '" data-entry-id="' + entry.id + '">';
                 html += '<th scope="row" class="check-column"><input type="checkbox" name="entry[]" value="' + entry.id + '" class="spf-entry-checkbox"></th>';
                 html += '<td>#' + entry.id + '</td>';
+                html += '<td class="column-star"><button class="spf-toggle-star" data-entry-id="' + entry.id + '" title="Toggle star" style="background:none;border:none;cursor:pointer;font-size:18px;color:' + (starred ? '#dba617' : '#ccc') + ';">' + (starred ? '★' : '☆') + '</button></td>';
                 html += '<td><div class="spf-entry-form-meta"><strong>' + self.escapeHtml(entry.form_title || '') + '</strong><small>' + self.escapeHtml(entry.ip_address || '') + '</small></div></td>';
                 html += '<td><div class="spf-entry-preview">' + previewHtml + '</div></td>';
                 html += '<td>' + self.escapeHtml(entry.created_at || '') + '</td>';
@@ -712,6 +824,24 @@
                 field.placeholder = '';
                 field.options = [];
             }
+
+            if (type === 'calculation') {
+                field.formula = '';
+                field.prefix = '';
+                field.suffix = '';
+            }
+
+            if (type === 'repeater') {
+                field.sub_fields = [
+                    {name: 'item', label: 'Item', type: 'text', placeholder: ''}
+                ];
+                field.min_rows = 1;
+                field.max_rows = 10;
+            }
+
+            if (type === 'signature') {
+                field.required = false;
+            }
             
             return field;
         },
@@ -735,7 +865,10 @@
                 'captcha': '',
                 'list': 'Add items...',
                 'consent': '',
-                'post-title': 'Enter post title...',
+                'calculation': '',
+                'repeater': '',
+                'signature': '',
+                'post-title': 'Enter post title...', 
                 'post-body': 'Enter post content...',
                 'post-excerpt': 'Enter excerpt...',
                 'post-tags': 'Enter tags separated by commas...',
@@ -775,6 +908,9 @@
                 'list': 'List',
                 'multi-select': 'Multi Select',
                 'consent': 'Consent',
+                'calculation': 'Calculation',
+                'repeater': 'Repeater',
+                'signature': 'Signature',
                 'post-title': 'Post Title',
                 'post-body': 'Post Body',
                 'post-excerpt': 'Post Excerpt',
@@ -936,6 +1072,27 @@
                 case 'file':
                 case 'post-image':
                     html += '<input type="file" disabled>';
+                    break;
+
+                case 'calculation':
+                    html += '<div class="spf-calc-preview" style="background:#f0f7ff;padding:10px;border-radius:4px;text-align:center;">';
+                    html += '<span class="dashicons dashicons-calculator" style="font-size:24px;color:#0073aa;"></span>';
+                    html += '<p style="margin:5px 0 0;font-size:12px;">Formula: ' + this.escapeHtml(field.formula || 'Not set') + '</p>';
+                    html += '</div>';
+                    break;
+
+                case 'repeater':
+                    html += '<div class="spf-repeater-preview" style="background:#f0faf0;padding:10px;border-radius:4px;border:1px dashed #ccc;">';
+                    html += '<span class="dashicons dashicons-list-view" style="font-size:24px;color:#46b450;"></span>';
+                    html += '<p style="margin:5px 0 0;font-size:12px;">Repeater field (user can add/remove rows)</p>';
+                    html += '</div>';
+                    break;
+
+                case 'signature':
+                    html += '<div class="spf-sig-preview" style="background:#fef8f0;padding:10px;border-radius:4px;border:1px dashed #ccc;text-align:center;">';
+                    html += '<span class="dashicons dashicons-edit" style="font-size:24px;color:#dba617;"></span>';
+                    html += '<p style="margin:5px 0 0;font-size:12px;">Signature pad</p>';
+                    html += '</div>';
                     break;
                 
                 case 'captcha':

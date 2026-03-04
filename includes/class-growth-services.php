@@ -172,18 +172,44 @@ class SyntekPro_Forms_Growth_Services {
             $urls = array_merge($urls, preg_split('/[\r\n,]+/', (string) $form_settings['automation_webhook_urls']));
         }
 
+        // Queue webhooks instead of firing synchronously during the request.
+        global $wpdb;
+        $queue_table = $wpdb->prefix . 'spf_webhook_queue';
+        $has_queue   = $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $queue_table ) ) === $queue_table;
+
         foreach ((array) $urls as $url) {
             $url = trim((string) $url);
             if (empty($url) || !filter_var($url, FILTER_VALIDATE_URL)) {
                 continue;
             }
-            wp_remote_post($url, array(
-                'timeout' => 12,
-                'headers' => array('Content-Type' => 'application/json'),
-                'body' => wp_json_encode($payload),
-            ));
+
+            if ($has_queue) {
+                // Insert into the webhook queue for async processing
+                $wpdb->insert(
+                    $queue_table,
+                    array(
+                        'form_id'     => (int) $form->id,
+                        'entry_id'    => (int) $entry_id,
+                        'webhook_url' => $url,
+                        'payload'     => wp_json_encode($payload),
+                        'status'      => 'pending',
+                        'attempts'    => 0,
+                        'max_attempts' => 5,
+                        'next_attempt_at' => current_time('mysql'),
+                    ),
+                    array('%d', '%d', '%s', '%s', '%s', '%d', '%d', '%s')
+                );
+            } else {
+                // Fallback: fire synchronously if queue table doesn't exist
+                wp_remote_post($url, array(
+                    'timeout' => 12,
+                    'headers' => array('Content-Type' => 'application/json'),
+                    'body' => wp_json_encode($payload),
+                ));
+            }
         }
 
+        // CRM integrations still fire synchronously (lightweight)
         $this->send_mailchimp($payload, $plugin_settings);
         $this->send_hubspot($payload, $plugin_settings);
     }

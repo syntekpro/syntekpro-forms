@@ -53,6 +53,13 @@ class SyntekPro_Forms_Ajax_Handler {
         add_action('wp_ajax_spf_get_draft', array($this, 'ajax_get_draft'));
         add_action('wp_ajax_nopriv_spf_track_analytics', array($this, 'ajax_track_analytics'));
         add_action('wp_ajax_spf_track_analytics', array($this, 'ajax_track_analytics'));
+        // Entry management
+        add_action('wp_ajax_spf_toggle_star_entry', array($this, 'ajax_toggle_star_entry'));
+        add_action('wp_ajax_spf_save_entry_note', array($this, 'ajax_save_entry_note'));
+        add_action('wp_ajax_spf_edit_entry', array($this, 'ajax_edit_entry'));
+        // Form import/export
+        add_action('wp_ajax_spf_export_form', array($this, 'ajax_export_form'));
+        add_action('wp_ajax_spf_import_form', array($this, 'ajax_import_form'));
     }
 
     public function ajax_save_form() {
@@ -235,7 +242,7 @@ class SyntekPro_Forms_Ajax_Handler {
         check_ajax_referer('spf_frontend_nonce', 'nonce');
 
         $settings = get_option('spf_settings');
-        $client_ip = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '';
+        $client_ip = isset($_SERVER['REMOTE_ADDR']) ? sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR'])) : '';
 
         $lock_key = '';
         $rate_limit_seconds = isset($settings['rate_limit_seconds']) ? absint($settings['rate_limit_seconds']) : 0;
@@ -267,7 +274,15 @@ class SyntekPro_Forms_Ajax_Handler {
         global $wpdb;
         $form_id = intval($_POST['form_id']);
 
-        $raw_form_data = isset($_POST['form_data']) && is_array($_POST['form_data']) ? $_POST['form_data'] : $_POST;
+        $raw_form_data = isset($_POST['form_data']) && is_array($_POST['form_data']) ? $_POST['form_data'] : array();
+        if (empty($raw_form_data)) {
+            $excluded_keys = array('action', 'nonce', 'form_id', 'g-recaptcha-response', 'spf_hp_field', 'spf_session_id', 'spf_mt_started');
+            foreach ($_POST as $key => $value) {
+                if (!in_array($key, $excluded_keys, true)) {
+                    $raw_form_data[$key] = $value;
+                }
+            }
+        }
         unset($raw_form_data['action'], $raw_form_data['nonce'], $raw_form_data['form_id'], $raw_form_data['g-recaptcha-response']);
 
         $form = $wpdb->get_row($wpdb->prepare(
@@ -360,29 +375,61 @@ class SyntekPro_Forms_Ajax_Handler {
                 if (!empty($file_array) && !empty($file_array['tmp_name'])) {
                     $file_handler = SPF_file_handler();
 
-                    $type_check = $file_handler->validate_file_type($file_array);
-                    if (is_wp_error($type_check)) {
-                        $this->send_submission_error($type_check->get_error_message());
-                    }
+                    // Multi-file upload support
+                    if (is_array($file_array['tmp_name'])) {
+                        $results = $file_handler->handle_multi_upload($file_array, $field_name);
+                        if (is_wp_error($results)) {
+                            $this->send_submission_error($results->get_error_message());
+                        }
 
-                    $size_check = $file_handler->validate_file_size($file_array);
-                    if (is_wp_error($size_check)) {
-                        $this->send_submission_error($size_check->get_error_message());
-                    }
+                        $file_entries = array();
+                        foreach ((array) $results as $uploaded) {
+                            $file_entries[] = sprintf(
+                                '%s (%s)',
+                                sanitize_text_field(basename((string) $uploaded['file'])),
+                                esc_url_raw((string) $uploaded['url'])
+                            );
+                        }
+                        $sanitized_data[$field_name] = implode(', ', $file_entries);
+                    } else {
+                        $type_check = $file_handler->validate_file_type($file_array);
+                        if (is_wp_error($type_check)) {
+                            $this->send_submission_error($type_check->get_error_message());
+                        }
 
-                    $uploaded = $file_handler->handle_upload($file_array, $field_name);
-                    if (is_wp_error($uploaded)) {
-                        $this->send_submission_error($uploaded->get_error_message());
-                    }
+                        $size_check = $file_handler->validate_file_size($file_array);
+                        if (is_wp_error($size_check)) {
+                            $this->send_submission_error($size_check->get_error_message());
+                        }
 
-                    $sanitized_data[$field_name] = sprintf(
-                        '%s (%s)',
-                        sanitize_text_field(basename((string) $uploaded['file'])),
-                        esc_url_raw((string) $uploaded['url'])
-                    );
+                        $uploaded = $file_handler->handle_upload($file_array, $field_name);
+                        if (is_wp_error($uploaded)) {
+                            $this->send_submission_error($uploaded->get_error_message());
+                        }
+
+                        $sanitized_data[$field_name] = sprintf(
+                            '%s (%s)',
+                            sanitize_text_field(basename((string) $uploaded['file'])),
+                            esc_url_raw((string) $uploaded['url'])
+                        );
+                    }
                 }
 
                 continue;
+            }
+
+            // Server-side captcha validation
+            if ($field_type === 'captcha') {
+                $captcha_key = isset($raw_form_data[$field_name . '_key']) ? sanitize_text_field($raw_form_data[$field_name . '_key']) : '';
+                $expected = get_transient($captcha_key);
+                $submitted = isset($raw_form_data[$field_name]) ? intval($raw_form_data[$field_name]) : -1;
+
+                if ($expected === false || intval($expected) !== $submitted) {
+                    $this->send_submission_error(__('Incorrect CAPTCHA answer. Please try again.', 'syntekpro-forms'));
+                }
+
+                delete_transient($captcha_key);
+                continue; // Don't store captcha answer in entry data
             }
 
             if ($is_required && (empty($value) && $value !== '0')) {
@@ -1300,5 +1347,190 @@ class SyntekPro_Forms_Ajax_Handler {
 
         $this->growth_services->track_event($form_id, $event_type, $field_name, $session_id);
         wp_send_json_success();
+    }
+
+    /**
+     * Toggle starred status on an entry.
+     */
+    public function ajax_toggle_star_entry() {
+        check_ajax_referer('spf_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(__('Unauthorized', 'syntekpro-forms'));
+        }
+
+        global $wpdb;
+        $entry_id = isset($_POST['entry_id']) ? absint($_POST['entry_id']) : 0;
+        if ($entry_id <= 0) {
+            wp_send_json_error(__('Invalid entry ID', 'syntekpro-forms'));
+        }
+
+        $current = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT starred FROM {$wpdb->prefix}spf_entries WHERE id = %d",
+            $entry_id
+        ));
+
+        $new_val = $current ? 0 : 1;
+        $wpdb->update(
+            $wpdb->prefix . 'spf_entries',
+            array('starred' => $new_val),
+            array('id' => $entry_id),
+            array('%d'),
+            array('%d')
+        );
+
+        wp_send_json_success(array('starred' => $new_val));
+    }
+
+    /**
+     * Save a note on an entry.
+     */
+    public function ajax_save_entry_note() {
+        check_ajax_referer('spf_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(__('Unauthorized', 'syntekpro-forms'));
+        }
+
+        global $wpdb;
+        $entry_id = isset($_POST['entry_id']) ? absint($_POST['entry_id']) : 0;
+        $note = isset($_POST['note']) ? sanitize_textarea_field(wp_unslash((string) $_POST['note'])) : '';
+
+        if ($entry_id <= 0) {
+            wp_send_json_error(__('Invalid entry ID', 'syntekpro-forms'));
+        }
+
+        $wpdb->update(
+            $wpdb->prefix . 'spf_entries',
+            array('notes' => $note),
+            array('id' => $entry_id),
+            array('%s'),
+            array('%d')
+        );
+
+        wp_send_json_success(array('note' => $note));
+    }
+
+    /**
+     * Edit an existing entry's data.
+     */
+    public function ajax_edit_entry() {
+        check_ajax_referer('spf_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(__('Unauthorized', 'syntekpro-forms'));
+        }
+
+        global $wpdb;
+        $entry_id = isset($_POST['entry_id']) ? absint($_POST['entry_id']) : 0;
+        $entry_data = isset($_POST['entry_data']) ? json_decode(wp_unslash((string) $_POST['entry_data']), true) : null;
+
+        if ($entry_id <= 0) {
+            wp_send_json_error(__('Invalid entry ID', 'syntekpro-forms'));
+        }
+
+        if (!is_array($entry_data)) {
+            wp_send_json_error(__('Invalid entry data', 'syntekpro-forms'));
+        }
+
+        // Sanitize all values
+        $sanitized = array();
+        foreach ($entry_data as $key => $value) {
+            $key = sanitize_text_field($key);
+            if (is_array($value)) {
+                $sanitized[$key] = array_map('sanitize_text_field', $value);
+            } else {
+                $sanitized[$key] = sanitize_text_field((string) $value);
+            }
+        }
+
+        $result = $wpdb->update(
+            $wpdb->prefix . 'spf_entries',
+            array('entry_data' => wp_json_encode($sanitized)),
+            array('id' => $entry_id),
+            array('%s'),
+            array('%d')
+        );
+
+        if ($result === false) {
+            wp_send_json_error(__('Failed to update entry', 'syntekpro-forms'));
+        }
+
+        wp_send_json_success(array('message' => __('Entry updated successfully', 'syntekpro-forms')));
+    }
+
+    /**
+     * Export a single form as JSON.
+     */
+    public function ajax_export_form() {
+        check_ajax_referer('spf_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(__('Unauthorized', 'syntekpro-forms'));
+        }
+
+        global $wpdb;
+        $form_id = isset($_POST['form_id']) ? absint($_POST['form_id']) : 0;
+        if ($form_id <= 0) {
+            wp_send_json_error(__('Invalid form ID', 'syntekpro-forms'));
+        }
+
+        $form = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM {$wpdb->prefix}spf_forms WHERE id = %d",
+            $form_id
+        ));
+
+        if (!$form) {
+            wp_send_json_error(__('Form not found', 'syntekpro-forms'));
+        }
+
+        $export = array(
+            'spf_export_version' => SPF_VERSION,
+            'title'              => $form->title,
+            'description'        => $form->description,
+            'fields'             => json_decode($form->fields, true),
+            'settings'           => json_decode($form->settings, true),
+            'status'             => $form->status,
+        );
+
+        wp_send_json_success($export);
+    }
+
+    /**
+     * Import a form from JSON payload.
+     */
+    public function ajax_import_form() {
+        check_ajax_referer('spf_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(__('Unauthorized', 'syntekpro-forms'));
+        }
+
+        $import_json = isset($_POST['import_data']) ? wp_unslash((string) $_POST['import_data']) : '';
+        $import = json_decode($import_json, true);
+
+        if (!is_array($import) || empty($import['title']) || empty($import['fields'])) {
+            wp_send_json_error(__('Invalid import data. Requires title and fields.', 'syntekpro-forms'));
+        }
+
+        global $wpdb;
+        $result = $wpdb->insert(
+            $wpdb->prefix . 'spf_forms',
+            array(
+                'title'       => sanitize_text_field($import['title']),
+                'description' => isset($import['description']) ? sanitize_textarea_field($import['description']) : '',
+                'fields'      => wp_json_encode($import['fields']),
+                'settings'    => isset($import['settings']) ? wp_json_encode($import['settings']) : '{}',
+                'status'      => 'active',
+            ),
+            array('%s', '%s', '%s', '%s', '%s')
+        );
+
+        if ($result === false) {
+            wp_send_json_error(__('Failed to import form', 'syntekpro-forms'));
+        }
+
+        $form_id = $wpdb->insert_id;
+
+        wp_send_json_success(array(
+            'form_id'  => $form_id,
+            'message'  => __('Form imported successfully', 'syntekpro-forms'),
+            'redirect' => admin_url('admin.php?page=syntekpro-forms-new&form_id=' . $form_id),
+        ));
     }
 }

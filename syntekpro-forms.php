@@ -3,7 +3,7 @@
  * Plugin Name: SyntekPro Forms
  * Plugin URI: https://syntekpro.com
  * Description: Professional WordPress form builder with drag & drop interface, Gutenberg support, and advanced entry management
- * Version: 1.5.1
+ * Version: 1.6.0
  * Update URI: https://github.com/syntekpro/syntekpro-forms
  * Author: SyntekPro
  * Author URI: https://syntekpro.com
@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('SPF_VERSION', '1.5.1');
+define('SPF_VERSION', '1.6.0');
 define('SPF_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SPF_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('SPF_PLUGIN_FILE', __FILE__);
@@ -64,6 +64,21 @@ if (file_exists(SPF_PLUGIN_DIR . 'includes/class-rest-api.php')) {
     require_once SPF_PLUGIN_DIR . 'includes/class-rest-api.php';
 }
 
+// GDPR compliance
+if (file_exists(SPF_PLUGIN_DIR . 'includes/class-gdpr.php')) {
+    require_once SPF_PLUGIN_DIR . 'includes/class-gdpr.php';
+}
+
+// PDF export
+if (file_exists(SPF_PLUGIN_DIR . 'includes/class-pdf-export.php')) {
+    require_once SPF_PLUGIN_DIR . 'includes/class-pdf-export.php';
+}
+
+// WP-CLI commands
+if (defined('WP_CLI') && WP_CLI && file_exists(SPF_PLUGIN_DIR . 'includes/class-wpcli.php')) {
+    require_once SPF_PLUGIN_DIR . 'includes/class-wpcli.php';
+}
+
 class SyntekPro_Forms_Builder {
 
     private static $instance = null;
@@ -105,6 +120,7 @@ class SyntekPro_Forms_Builder {
         add_action('admin_init', array($this, 'handle_no_conflict_mode'));
         add_action('admin_head', array($this, 'admin_styles_fix'));
         add_action('admin_notices', array($this, 'maybe_show_duplicate_install_notice'));
+        add_action('admin_notices', array($this, 'show_admin_notifications'));
         add_filter('cron_schedules', array($this, 'register_cron_schedules'));
         add_action('spf_apply_data_retention', array($this, 'run_data_retention_cron'));
         add_action('spf_fire_webhook', array($this, 'fire_webhook'), 10, 2);
@@ -115,6 +131,10 @@ class SyntekPro_Forms_Builder {
 
         // REST API initialization
         add_action('rest_api_init', array($this, 'init_rest_api'));
+
+        // GDPR privacy hooks
+        add_filter('wp_privacy_personal_data_exporters', array($this, 'register_gdpr_exporter'));
+        add_filter('wp_privacy_personal_data_erasers', array($this, 'register_gdpr_eraser'));
 
         $this->ajax_handler->register_hooks();
         $this->entries->register_hooks();
@@ -149,6 +169,8 @@ class SyntekPro_Forms_Builder {
             user_agent text,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             status varchar(20) DEFAULT 'unread',
+            starred tinyint(1) DEFAULT 0,
+            notes text,
             PRIMARY KEY  (id),
             KEY form_id  (form_id)
         ) $charset_collate;";
@@ -528,6 +550,61 @@ class SyntekPro_Forms_Builder {
             . '</p></div>';
     }
 
+    /**
+     * Show admin notifications from the plugin's notification queue.
+     */
+    public function show_admin_notifications() {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            return;
+        }
+
+        $notices = get_option( 'spf_admin_notices', array() );
+        if ( empty( $notices ) || ! is_array( $notices ) ) {
+            return;
+        }
+
+        foreach ( $notices as $notice ) {
+            $type    = isset( $notice['type'] ) ? sanitize_html_class( $notice['type'] ) : 'info';
+            $message = isset( $notice['message'] ) ? wp_kses_post( $notice['message'] ) : '';
+            if ( $message ) {
+                printf( '<div class="notice notice-%s is-dismissible"><p><strong>SyntekPro Forms:</strong> %s</p></div>', $type, $message );
+            }
+        }
+
+        // Clear after display
+        delete_option( 'spf_admin_notices' );
+    }
+
+    /**
+     * Queue an admin notification. Type: success, warning, error, info
+     */
+    public static function add_admin_notice( $message, $type = 'info' ) {
+        $notices = get_option( 'spf_admin_notices', array() );
+        if ( ! is_array( $notices ) ) {
+            $notices = array();
+        }
+        $notices[] = array(
+            'type'    => $type,
+            'message' => $message,
+            'time'    => current_time( 'mysql' ),
+        );
+        // Keep max 20 notices
+        $notices = array_slice( $notices, -20 );
+        update_option( 'spf_admin_notices', $notices );
+    }
+
+    /**
+     * Log a plugin error with optional admin notification.
+     */
+    public static function log_error( $message, $context = '', $notify_admin = false ) {
+        if ( defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+            error_log( 'SyntekPro Forms' . ( $context ? ' [' . $context . ']' : '' ) . ': ' . $message );
+        }
+        if ( $notify_admin ) {
+            self::add_admin_notice( $message, 'error' );
+        }
+    }
+
     public function add_admin_menu() {
         add_menu_page(
             __('SyntekPro Forms', 'syntekpro-forms'),
@@ -608,7 +685,7 @@ class SyntekPro_Forms_Builder {
             'spf-admin-css',
             SPF_PLUGIN_URL . 'assets/css/admin.css',
             array(),
-            SPF_VERSION . time()  // Force cache bust
+            SPF_VERSION
         );
 
         // Add critical inline CSS to force red buttons - override WordPress defaults
@@ -689,7 +766,7 @@ class SyntekPro_Forms_Builder {
             'spf-admin-js',
             SPF_PLUGIN_URL . 'assets/js/admin.js',
             array('jquery', 'jquery-ui-sortable'),
-            SPF_VERSION . time(),  // Force cache bust
+            SPF_VERSION,
             true
         );
 
@@ -705,7 +782,8 @@ class SyntekPro_Forms_Builder {
     }
 
     public function enqueue_frontend_scripts() {
-        wp_enqueue_style('spf-frontend-css', SPF_PLUGIN_URL . 'assets/css/frontend.css', array(), SPF_VERSION);
+        // Register scripts/styles (only enqueued when a form is on the page)
+        wp_register_style('spf-frontend-css', SPF_PLUGIN_URL . 'assets/css/frontend.css', array(), SPF_VERSION);
 
         wp_register_script(
             'spf-conditional-logic',
@@ -715,16 +793,55 @@ class SyntekPro_Forms_Builder {
             true
         );
 
-        if ($this->should_enqueue_conditional_logic()) {
-            wp_enqueue_script('spf-conditional-logic');
-        }
-
-        wp_enqueue_script('spf-frontend-js', SPF_PLUGIN_URL . 'assets/js/frontend.js', array('jquery'), SPF_VERSION, true);
+        wp_register_script('spf-frontend-js', SPF_PLUGIN_URL . 'assets/js/frontend.js', array('jquery'), SPF_VERSION, true);
 
         wp_localize_script('spf-frontend-js', 'spfFrontend', array(
             'ajaxurl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('spf_frontend_nonce')
         ));
+
+        // Only enqueue on pages that contain a form
+        if ($this->page_has_form()) {
+            wp_enqueue_style('spf-frontend-css');
+            wp_enqueue_script('spf-frontend-js');
+            if ($this->should_enqueue_conditional_logic()) {
+                wp_enqueue_script('spf-conditional-logic');
+            }
+        }
+    }
+
+    /**
+     * Detect whether the current page contains a SyntekPro form.
+     */
+    private function page_has_form() {
+        $settings = get_option('spf_settings', array());
+        if (!empty($settings['force_enqueue_conditional_logic'])) {
+            return true;
+        }
+        if (apply_filters('syntekpro_forms_force_enqueue_scripts', false)) {
+            return true;
+        }
+        if (is_singular()) {
+            $post = get_post();
+            if ($post) {
+                if (has_shortcode($post->post_content, 'syntekpro_form')) {
+                    return true;
+                }
+                if (function_exists('has_block') && has_block('syntekpro-forms/form-selector', $post)) {
+                    return true;
+                }
+            }
+        } else {
+            global $wp_query;
+            if (!empty($wp_query->posts)) {
+                foreach ((array) $wp_query->posts as $p) {
+                    if (!isset($p->post_content)) continue;
+                    if (has_shortcode($p->post_content, 'syntekpro_form')) return true;
+                    if (function_exists('has_block') && has_block('syntekpro-forms/form-selector', $p)) return true;
+                }
+            }
+        }
+        return false;
     }
 
     private function should_enqueue_conditional_logic() {
@@ -1057,6 +1174,11 @@ class SyntekPro_Forms_Builder {
             return '';
         }
 
+        // Ensure frontend assets are enqueued when shortcode renders
+        wp_enqueue_style('spf-frontend-css');
+        wp_enqueue_script('spf-frontend-js');
+        wp_enqueue_script('spf-conditional-logic');
+
         ob_start();
         $view_file = SPF_PLUGIN_DIR . 'includes/frontend/form-display.php';
         if (file_exists($view_file)) {
@@ -1291,6 +1413,11 @@ class SyntekPro_Forms_Builder {
 
         $max_attempts = max(1, (int) $item->max_attempts);
         if ($attempt >= $max_attempts) {
+            self::log_error(
+                sprintf( 'Webhook #%d failed permanently after %d attempts: %s (URL: %s)', $item->id, $attempt, $error_message, $item->webhook_url ),
+                'webhook',
+                true
+            );
             $wpdb->update(
                 $table,
                 array(
@@ -1686,53 +1813,30 @@ class SyntekPro_Forms_Builder {
         echo '</p>';
     }
 
-    public function render_dashboard_widget() {
-        global $wpdb;
-        $entries = $wpdb->get_results("
-            SELECT e.*, f.title as form_title 
-            FROM {$wpdb->prefix}spf_entries e 
-            LEFT JOIN {$wpdb->prefix}spf_forms f ON e.form_id = f.id 
-            ORDER BY e.created_at DESC 
-            LIMIT 5
-        ");
-
-        if (empty($entries)) {
-            echo '<div style="padding:12px;border:1px solid #dcdcde;border-radius:6px;background:#fff;">';
-            echo '<p style="margin:0 0 10px;">' . esc_html__('No entries yet.', 'syntekpro-forms') . '</p>';
-            echo '<a href="' . esc_url(admin_url('admin.php?page=syntekpro-forms')) . '" class="button button-secondary" style="margin-right: 8px;">' . esc_html__('View All Forms', 'syntekpro-forms') . '</a>';
-            echo '<a href="' . esc_url(admin_url('admin.php?page=syntekpro-forms-entries')) . '" class="button button-secondary">' . esc_html__('View All Entries', 'syntekpro-forms') . '</a>';
-            echo '</div>';
-            return;
+    /**
+     * Register GDPR personal data exporter.
+     */
+    public function register_gdpr_exporter($exporters) {
+        if (class_exists('SyntekPro_Forms_GDPR')) {
+            $exporters['syntekpro-forms'] = array(
+                'exporter_friendly_name' => __('SyntekPro Forms Entries', 'syntekpro-forms'),
+                'callback'               => array('SyntekPro_Forms_GDPR', 'export_personal_data'),
+            );
         }
+        return $exporters;
+    }
 
-        echo '<ul class="spf-dashboard-entries-list" style="margin: 0; padding: 0; list-style: none;">';
-        foreach ($entries as $entry) {
-            $entry_data = json_decode($entry->entry_data, true);
-            $preview = '';
-            if (is_array($entry_data)) {
-                $first_val = reset($entry_data);
-                $preview = is_array($first_val) ? implode(', ', $first_val) : (string) $first_val;
-                $preview = wp_trim_words($preview, 10);
-            }
-
-            echo '<li style="padding: 10px 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">';
-            echo '<div>';
-            echo '<div style="font-weight: 600; font-size: 14px;">' . esc_html($entry->form_title) . '</div>';
-            echo '<div style="font-size: 12px; color: #646970;">' . esc_html($preview) . '</div>';
-            echo '</div>';
-            echo '<div style="text-align: right;">';
-            echo '<div style="font-size: 11px; color: #999;">' . human_time_diff(strtotime((string) $entry->created_at), current_time('timestamp')) . ' ' . __('ago', 'syntekpro-forms') . '</div>';
-            if ($entry->status === 'unread') {
-                echo '<span style="display: inline-block; width: 8px; height: 8px; background: #ffb900; border-radius: 50%; margin-left: 5px;" title="' . __('Unread', 'syntekpro-forms') . '"></span>';
-            }
-            echo '</div>';
-            echo '</li>';
+    /**
+     * Register GDPR personal data eraser.
+     */
+    public function register_gdpr_eraser($erasers) {
+        if (class_exists('SyntekPro_Forms_GDPR')) {
+            $erasers['syntekpro-forms'] = array(
+                'eraser_friendly_name' => __('SyntekPro Forms Entries', 'syntekpro-forms'),
+                'callback'             => array('SyntekPro_Forms_GDPR', 'erase_personal_data'),
+            );
         }
-        echo '</ul>';
-        echo '<p style="margin-top: 15px; text-align: right;">';
-        echo '<a href="' . esc_url(admin_url('admin.php?page=syntekpro-forms')) . '" class="button button-secondary" style="margin-right: 8px;">' . esc_html__('View All Forms', 'syntekpro-forms') . '</a>';
-        echo '<a href="' . esc_url(admin_url('admin.php?page=syntekpro-forms-entries')) . '" class="button button-secondary">' . esc_html__('View All Entries', 'syntekpro-forms') . '</a>';
-        echo '</p>';
+        return $erasers;
     }
 
     public function admin_styles_fix() {

@@ -4,8 +4,41 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-03-08
+
 ### Added
-- WordPress Consent API compatibility via a `syntekpro_forms` consent type so banners can gate submissions, webhooks, and notifications before consent is granted.
+- **New field types**: Calculation (formula-based), Repeater (dynamic rows), and Signature (canvas drawing) fields with full builder and frontend support.
+- **GDPR compliance**: WordPress Privacy Tool integration with personal data exporter and eraser (`class-gdpr.php`).
+- **PDF export**: Print-friendly HTML export for entries via admin modal or AJAX endpoint (`class-pdf-export.php`).
+- **WP-CLI commands**: Full CLI suite under `wp spf` — form list/get/delete, entry list/export/delete/purge, cache flush (`class-wpcli.php`).
+- **Slack & Discord addon**: Webhook notifications on form submission with Block Kit (Slack) and rich embeds (Discord).
+- **hCaptcha & Turnstile addon**: Cloudflare Turnstile and hCaptcha as reCAPTCHA alternatives with per-form provider selection.
+- **Form import/export**: Export forms as JSON and import from file via the forms list page.
+- **Entry starring**: Star/unstar entries in the entries table for quick flagging.
+- **Admin notes**: Private notes per entry, editable from the entry detail modal.
+- **Entry editing**: Inline edit entry field values from the detail modal.
+- **Email routing**: Route admin notifications to different recipients based on field values (e.g., department dropdown).
+- **Merge tags**: Use `{form_title}`, `{entry_id}`, `{date}`, `{site_name}`, `{all_fields}`, and `{field_name}` in email subjects and bodies.
+- **Per-form email settings**: Custom from name, from email, reply-to from submitter, and per-form notification subject/body templates.
+- **Access control**: Restrict form visibility to logged-in users or specific roles with custom denied message.
+- **Per-form reCAPTCHA toggle**: Enable/disable reCAPTCHA on individual forms.
+- **Admin notification system**: Queue-based admin notices for email failures and webhook errors with `log_error()` utility.
+- **Multi-file upload**: File fields now support `multiple` attribute with file list preview.
+
+### Changed
+- **Async webhooks**: Webhook dispatch now queues to `spf_webhook_queue` table for async cron processing instead of blocking page load.
+- **Transient-based captcha**: Math captcha answers stored in server-side transients instead of client-readable hidden fields.
+- **Conditional frontend loading**: CSS/JS only enqueued on pages containing a SyntekPro form shortcode or block.
+- **Email error logging**: Failed `wp_mail()` calls and permanently failed webhooks now logged to `WP_DEBUG_LOG` and shown as admin notices.
+
+### Fixed
+- **REST API security**: `create_entry` endpoint now validates form existence, active status, availability schedule, applies rate limiting, honeypot check, and sanitizes all entry data.
+- **`$_SERVER['REMOTE_ADDR']` sanitization**: All IP address reads now use `sanitize_text_field(wp_unslash())`.
+- **`$_POST` superglobal fallback**: Uses explicit excluded-keys array instead of raw dump.
+- **Cache busting**: Removed `time()` from asset version strings; uses `SPF_VERSION` consistently.
+- **Dead code removal**: Removed unused `render_dashboard_widget()` method.
+- **Upload directory**: Renamed from `advanced-forms` to `syntekpro-forms` with `index.php` protection; uninstall cleans both directories.
+- **Text domain consistency**: Fixed hardcoded text domain strings in file handler.
 
 ## [1.5.1] - 2026-03-04
 

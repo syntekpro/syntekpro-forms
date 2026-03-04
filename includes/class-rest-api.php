@@ -341,25 +341,78 @@ class SyntekPro_Forms_REST_API {
     }
 
     public function create_entry( $request ) {
-        // allow anyone to submit; spam filtering handled elsewhere via AJAX path
         global $wpdb;
         $params = $request->get_json_params();
 
         $form_id = isset( $params['form_id'] ) ? intval( $params['form_id'] ) : 0;
-        $data    = isset( $params['entry_data'] ) ? wp_json_encode( $params['entry_data'] ) : '';
+        $data    = isset( $params['entry_data'] ) ? $params['entry_data'] : array();
 
         if ( $form_id <= 0 ) {
             return new WP_Error( 'spf_rest_invalid_form', __( 'Valid form_id is required', 'syntekpro-forms' ), array( 'status' => 400 ) );
+        }
+
+        // Verify form exists and is active
+        $form = $wpdb->get_row( $wpdb->prepare(
+            "SELECT * FROM {$wpdb->prefix}spf_forms WHERE id = %d AND status = 'active'",
+            $form_id
+        ) );
+
+        if ( ! $form ) {
+            return new WP_Error( 'spf_rest_form_not_found', __( 'Form not found or inactive', 'syntekpro-forms' ), array( 'status' => 404 ) );
+        }
+
+        // Check form availability (schedule, submission limits)
+        $form_settings = json_decode( (string) $form->settings, true );
+        if ( ! is_array( $form_settings ) ) {
+            $form_settings = array();
+        }
+
+        $availability = $this->builder->get_form_availability_state( $form_settings, $form_id );
+        if ( $availability['status'] !== 'open' ) {
+            return new WP_Error( 'spf_rest_form_closed', $availability['message'], array( 'status' => 403 ) );
+        }
+
+        // Rate limiting
+        $settings = get_option( 'spf_settings', array() );
+        $client_ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
+        $rate_limit_seconds = isset( $settings['rate_limit_seconds'] ) ? absint( $settings['rate_limit_seconds'] ) : 0;
+        if ( ! empty( $settings['rate_limit_enabled'] ) && $rate_limit_seconds > 0 && ! empty( $client_ip ) ) {
+            $lock_key = 'spf_rl_' . md5( $client_ip );
+            if ( get_transient( $lock_key ) ) {
+                return new WP_Error( 'spf_rest_rate_limited', sprintf( __( 'Please wait %d seconds before submitting again.', 'syntekpro-forms' ), $rate_limit_seconds ), array( 'status' => 429 ) );
+            }
+            set_transient( $lock_key, time(), $rate_limit_seconds );
+        }
+
+        // Honeypot check
+        if ( ! empty( $settings['enable_honeypot'] ) && ! empty( $params['spf_hp_field'] ) ) {
+            return new WP_Error( 'spf_rest_spam', __( 'Spam detected', 'syntekpro-forms' ), array( 'status' => 403 ) );
+        }
+
+        // Sanitize entry data
+        $sanitized = array();
+        if ( is_array( $data ) ) {
+            foreach ( $data as $key => $value ) {
+                $key = sanitize_text_field( $key );
+                if ( is_array( $value ) ) {
+                    $sanitized[ $key ] = array_map( 'sanitize_text_field', $value );
+                } else {
+                    $sanitized[ $key ] = sanitize_text_field( (string) $value );
+                }
+            }
         }
 
         $result = $wpdb->insert(
             $wpdb->prefix . 'spf_entries',
             array(
                 'form_id'    => $form_id,
-                'entry_data' => $data,
+                'entry_data' => wp_json_encode( $sanitized ),
+                'user_id'    => get_current_user_id(),
+                'ip_address' => $client_ip,
+                'user_agent' => isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) ) : '',
                 'created_at' => current_time( 'mysql' ),
             ),
-            array( '%d', '%s', '%s' )
+            array( '%d', '%s', '%d', '%s', '%s', '%s' )
         );
 
         if ( $result === false ) {
@@ -367,6 +420,8 @@ class SyntekPro_Forms_REST_API {
         }
 
         $entry_id = (int) $wpdb->insert_id;
+        delete_transient( 'spf_count_' . $form_id );
+
         $entry    = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$wpdb->prefix}spf_entries WHERE id = %d", $entry_id ) );
         $entry->entry_data = json_decode( (string) $entry->entry_data, true );
 

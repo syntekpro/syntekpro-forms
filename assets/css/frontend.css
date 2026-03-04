@@ -850,3 +850,103 @@
         grid-template-columns: minmax(0, 1fr);
     }
 }
+
+/* ---- Calculation Fields ---- */
+.spf-calculation-field {
+    position: relative;
+}
+.spf-calculation-field .spf-calc-result {
+    font-weight: 600;
+    background: #f8f9fa;
+    cursor: default;
+}
+.spf-calc-affix {
+    font-size: 0.85em;
+    color: #666;
+    margin-top: 4px;
+    display: block;
+}
+
+/* ---- Repeater Fields ---- */
+.spf-repeater-field {
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 12px;
+}
+.spf-repeater-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed #eee;
+}
+.spf-repeater-row:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+.spf-repeater-cell {
+    flex: 1;
+}
+.spf-repeater-cell label {
+    display: block;
+    font-size: 0.8em;
+    font-weight: 600;
+    color: var(--spf-label-color, #1d2327);
+    margin-bottom: 4px;
+}
+.spf-repeater-remove {
+    background: none;
+    border: none;
+    color: #d63384;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px 8px;
+    flex-shrink: 0;
+}
+.spf-repeater-remove:hover {
+    color: #a61d55;
+}
+.spf-repeater-add {
+    margin-top: 8px;
+}
+
+/* ---- Signature Fields ---- */
+.spf-signature-field {
+    display: inline-block;
+}
+.spf-signature-canvas {
+    display: block;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    max-width: 100%;
+}
+.spf-signature-clear {
+    margin-top: 6px;
+}
+
+/* ---- Multi-File Preview ---- */
+.spf-file-list {
+    margin-top: 8px;
+}
+.spf-file-item {
+    padding: 4px 0;
+    font-size: 13px;
+    color: #555;
+}
+
+/* ---- Access Denied ---- */
+.spf-form-access-denied {
+    max-width: 980px;
+    margin: 24px auto;
+    text-align: center;
+}
+
+/* ---- Captcha widget alignment ---- */
+.spf-captcha,
+.spf-turnstile-wrap,
+.spf-hcaptcha-wrap {
+    margin: 12px 0;
+}

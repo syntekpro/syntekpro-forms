@@ -49,6 +49,25 @@ if ($availability['status'] !== 'open') {
     return;
 }
 
+// Form access control – restrict by login or user role
+$access_type = !empty($settings['access_control']) ? $settings['access_control'] : 'everyone';
+if ($access_type === 'logged_in' && !is_user_logged_in()) {
+    echo '<div class="spf-form-access-denied" style="background:#f8d7da;border:1px solid #f5c2c7;padding:20px;border-radius:4px;color:#842029;">';
+    echo wpautop(wp_kses_post(!empty($settings['access_denied_message']) ? $settings['access_denied_message'] : __('You must be logged in to submit this form.', 'syntekpro-forms')));
+    echo '</div>';
+    return;
+}
+if ($access_type === 'role' && !empty($settings['access_roles'])) {
+    $allowed_roles = array_map('trim', explode(',', $settings['access_roles']));
+    $user = wp_get_current_user();
+    if (!is_user_logged_in() || empty(array_intersect($allowed_roles, (array) $user->roles))) {
+        echo '<div class="spf-form-access-denied" style="background:#f8d7da;border:1px solid #f5c2c7;padding:20px;border-radius:4px;color:#842029;">';
+        echo wpautop(wp_kses_post(!empty($settings['access_denied_message']) ? $settings['access_denied_message'] : __('You do not have permission to submit this form.', 'syntekpro-forms')));
+        echo '</div>';
+        return;
+    }
+}
+
 // Track form view
 $wpdb->query($wpdb->prepare(
     "UPDATE {$wpdb->prefix}spf_forms SET views = views + 1 WHERE id = %d",
@@ -414,13 +433,18 @@ if (empty($steps)) {
                             case 'file':
                             case 'post-image':
                                 $accept = ($field['type'] === 'post-image') ? 'image/*' : '';
+                                $multiple = !empty($field['multiple']);
                                 ?>
                                 <input type="file" 
                                        id="spf-field-<?php echo esc_attr($field['id']); ?>"
-                                       name="<?php echo esc_attr($field['name']); ?>"
+                                       name="<?php echo esc_attr($field['name']); ?><?php echo $multiple ? '[]' : ''; ?>"
                                        class="spf-field-file"
                                        <?php if ($accept): ?>accept="<?php echo esc_attr($accept); ?>"<?php endif; ?>
+                                       <?php if ($multiple): ?>multiple<?php endif; ?>
                                        <?php echo !empty($field['required']) ? 'required' : ''; ?>>
+                                <?php if ($multiple): ?>
+                                    <div class="spf-file-list" data-field="<?php echo esc_attr($field['name']); ?>"></div>
+                                <?php endif; ?>
                                 <?php
                                 break;
                             
@@ -536,20 +560,25 @@ if (empty($steps)) {
                                 break;
                             
                             case 'captcha':
-                                // Simple honeypot CAPTCHA
+                                // Server-side validated captcha using transients
+                                $cap_a = rand(1, 10);
+                                $cap_b = rand(1, 10);
+                                $cap_answer = $cap_a + $cap_b;
+                                $captcha_key = 'spf_captcha_' . wp_generate_password(16, false);
+                                set_transient($captcha_key, $cap_answer, 600);
                                 ?>
                                 <div class="spf-captcha-field" style="background: #f9f9f9; padding: 20px; border: 1px solid #ddd; border-radius: 8px; text-align: center;">
                                     <p><?php _e('Please verify you are human:', 'syntekpro-forms'); ?></p>
                                     <label>
-                                        <?php $captcha_answer = rand(1, 10) + rand(1, 10); ?>
-                                        <?php _e('What is', 'syntekpro-forms'); ?> <?php echo ($captcha_answer - rand(1, 5)); ?> + <?php echo rand(1, 5); ?>?
+                                        <?php printf(__('What is %d + %d?', 'syntekpro-forms'), $cap_a, $cap_b); ?>
                                         <input type="text" 
                                                name="<?php echo esc_attr($field['name']); ?>"
                                                class="spf-field-input"
                                                required
+                                               autocomplete="off"
                                                style="width: 80px; margin-left: 10px;">
                                     </label>
-                                    <input type="hidden" name="<?php echo esc_attr($field['name']); ?>_answer" value="<?php echo esc_attr($captcha_answer); ?>">
+                                    <input type="hidden" name="<?php echo esc_attr($field['name']); ?>_key" value="<?php echo esc_attr($captcha_key); ?>">
                                 </div>
                                 <?php
                                 break;
@@ -582,6 +611,71 @@ if (empty($steps)) {
                                 </label>
                                 <?php
                                 break;
+
+                            case 'calculation':
+                                // Read-only field whose value is computed by frontend JS
+                                $formula = !empty($field['formula']) ? $field['formula'] : '';
+                                ?>
+                                <div class="spf-calculation-field">
+                                    <input type="text"
+                                           id="spf-field-<?php echo esc_attr($field['id']); ?>"
+                                           name="<?php echo esc_attr($field['name']); ?>"
+                                           class="spf-field-input spf-calc-result"
+                                           data-formula="<?php echo esc_attr($formula); ?>"
+                                           readonly
+                                           value="0">
+                                    <?php if (!empty($field['prefix']) || !empty($field['suffix'])): ?>
+                                        <span class="spf-calc-affix">
+                                            <?php echo esc_html(($field['prefix'] ?? '') . ' {value} ' . ($field['suffix'] ?? '')); ?>
+                                        </span>
+                                    <?php endif; ?>
+                                </div>
+                                <?php
+                                break;
+
+                            case 'repeater':
+                                // A group of sub-fields that users can add/remove
+                                $sub_fields = !empty($field['sub_fields']) ? (array) $field['sub_fields'] : array(array('name' => 'item', 'label' => 'Item', 'type' => 'text'));
+                                $min_rows = max(1, intval($field['min_rows'] ?? 1));
+                                $max_rows = max($min_rows, intval($field['max_rows'] ?? 10));
+                                ?>
+                                <div class="spf-repeater-field" data-field-name="<?php echo esc_attr($field['name']); ?>" data-min="<?php echo $min_rows; ?>" data-max="<?php echo $max_rows; ?>">
+                                    <div class="spf-repeater-rows">
+                                        <?php for ($ri = 0; $ri < $min_rows; $ri++): ?>
+                                        <div class="spf-repeater-row" data-row-index="<?php echo $ri; ?>">
+                                            <?php foreach ($sub_fields as $sf): ?>
+                                                <div class="spf-repeater-cell">
+                                                    <label><?php echo esc_html($sf['label'] ?? $sf['name']); ?></label>
+                                                    <input type="text"
+                                                           name="<?php echo esc_attr($field['name'] . '[' . $ri . '][' . ($sf['name'] ?? 'item') . ']'); ?>"
+                                                           class="spf-field-input"
+                                                           placeholder="<?php echo esc_attr($sf['placeholder'] ?? ''); ?>">
+                                                </div>
+                                            <?php endforeach; ?>
+                                            <?php if ($min_rows < $max_rows): ?>
+                                                <button type="button" class="spf-repeater-remove" style="display:<?php echo $ri === 0 ? 'none' : 'inline-block'; ?>;">&times;</button>
+                                            <?php endif; ?>
+                                        </div>
+                                        <?php endfor; ?>
+                                    </div>
+                                    <?php if ($min_rows < $max_rows): ?>
+                                        <button type="button" class="spf-repeater-add button"><?php _e('+ Add Row', 'syntekpro-forms'); ?></button>
+                                    <?php endif; ?>
+                                </div>
+                                <?php
+                                break;
+
+                            case 'signature':
+                                ?>
+                                <div class="spf-signature-field" data-field-name="<?php echo esc_attr($field['name']); ?>">
+                                    <canvas class="spf-signature-canvas" width="400" height="150" style="border:1px solid #ddd;border-radius:4px;cursor:crosshair;touch-action:none;"></canvas>
+                                    <input type="hidden" name="<?php echo esc_attr($field['name']); ?>" class="spf-signature-data">
+                                    <div style="margin-top:6px;">
+                                        <button type="button" class="spf-signature-clear button"><?php _e('Clear', 'syntekpro-forms'); ?></button>
+                                    </div>
+                                </div>
+                                <?php
+                                break;
                         }
                         ?>
                         
@@ -608,9 +702,19 @@ if (empty($steps)) {
         <?php endif; ?>
         
         <?php
-        // Add reCAPTCHA if enabled
-        if (!empty($plugin_settings['recaptcha_site_key'])):
-            $invisible = !empty($plugin_settings['recaptcha_invisible']);
+        // Per-form reCAPTCHA toggle: form settings can override global
+        $recaptcha_enabled_for_form = true; // default: follow global setting
+        if (isset($settings['recaptcha_enabled'])) {
+            $recaptcha_enabled_for_form = !empty($settings['recaptcha_enabled']);
+        }
+
+        // Add reCAPTCHA if enabled globally AND for this form
+        if (!empty($plugin_settings['recaptcha_site_key']) && $recaptcha_enabled_for_form):
+            $captcha_provider = !empty($plugin_settings['captcha_provider']) ? $plugin_settings['captcha_provider'] : 'recaptcha';
+
+            // Only render reCAPTCHA widget if provider is recaptcha (Turnstile/hCaptcha handled by addon)
+            if ($captcha_provider === 'recaptcha' || empty($captcha_provider)):
+                $invisible = !empty($plugin_settings['recaptcha_invisible']);
         ?>
             <div class="spf-recaptcha">
                 <div class="g-recaptcha" 
@@ -621,7 +725,12 @@ if (empty($steps)) {
                      <?php endif; ?>></div>
             </div>
             <script src="https://www.google.com/recaptcha/api.js" async defer></script>
-        <?php endif; ?>
+        <?php endif; endif; ?>
+
+        <?php
+        // Action hook for addons to inject captcha widgets (Turnstile, hCaptcha, etc.)
+        do_action('syntekpro_forms_after_fields', $form_id, $settings, $plugin_settings);
+        ?>
         
         <div class="spf-form-footer spf-submit-align-<?php echo esc_attr(!empty($atts['submitAlign']) ? $atts['submitAlign'] : $submit_align); ?>">
             <button type="submit" class="spf-submit-button" <?php echo count($steps) > 1 ? 'style="display:none;"' : ''; ?>

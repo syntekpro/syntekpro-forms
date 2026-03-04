@@ -83,6 +83,10 @@ $trash_count = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}spf_forms WHE
         <button type="button" class="button spf-add-new-btn" id="spf-add-new-form">
             <?php _e('Add New', 'syntekpro-forms'); ?>
         </button>
+        <button type="button" class="button" id="spf-import-form-btn" style="margin-left:4px;">
+            <span class="dashicons dashicons-upload" style="vertical-align:middle;margin-top:-2px;"></span> <?php _e('Import Form', 'syntekpro-forms'); ?>
+        </button>
+        <input type="file" id="spf-import-form-file" accept=".json" style="display:none;">
     </div>
 
     <!-- Status Tabs and Search Bar -->
@@ -207,6 +211,7 @@ $trash_count = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}spf_forms WHE
                                 <span class="entries"><a href="<?php echo admin_url('admin.php?page=syntekpro-forms-entries&form_id=' . $form->id); ?>"><?php _e('Entries', 'syntekpro-forms'); ?></a> | </span>
                                 <span class="view"><a href="#" class="spf-preview-form" data-form-id="<?php echo $form->id; ?>"><?php _e('Preview', 'syntekpro-forms'); ?></a> | </span>
                                 <span class="duplicate"><a href="#" class="spf-duplicate-form" data-form-id="<?php echo $form->id; ?>"><?php _e('Duplicate', 'syntekpro-forms'); ?></a> | </span>
+                                <span class="export"><a href="#" class="spf-export-form" data-form-id="<?php echo $form->id; ?>"><?php _e('Export', 'syntekpro-forms'); ?></a> | </span>
                                 <?php if ($form->status === 'trash'): ?>
                                     <span class="delete"><a href="#" class="spf-delete-form" data-form-id="<?php echo $form->id; ?>"><?php _e('Delete Permanently', 'syntekpro-forms'); ?></a></span>
                                 <?php else: ?>
@@ -1300,6 +1305,93 @@ jQuery(document).ready(function($) {
                 $link.text('<?php echo esc_js(__('Duplicate', 'syntekpro-forms')); ?>');
             }
         });
+    });
+
+    // Export Form (download JSON)
+    $(document).on('click', '.spf-export-form', function(e) {
+        e.preventDefault();
+        var formId = $(this).data('form-id');
+        var $link = $(this);
+        $link.text('<?php echo esc_js(__('Exporting...', 'syntekpro-forms')); ?>');
+
+        $.ajax({
+            url: spfAdmin.ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'spf_export_form',
+                nonce: spfAdmin.nonce,
+                form_id: formId
+            },
+            success: function(response) {
+                $link.text('<?php echo esc_js(__('Export', 'syntekpro-forms')); ?>');
+                if (response.success && response.data) {
+                    var blob = new Blob([JSON.stringify(response.data, null, 2)], {type: 'application/json'});
+                    var url = URL.createObjectURL(blob);
+                    var a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'spf-form-' + formId + '.json';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                } else {
+                    alert(response.data || '<?php echo esc_js(__('Failed to export form.', 'syntekpro-forms')); ?>');
+                }
+            },
+            error: function() {
+                $link.text('<?php echo esc_js(__('Export', 'syntekpro-forms')); ?>');
+                alert('<?php echo esc_js(__('An error occurred. Please try again.', 'syntekpro-forms')); ?>');
+            }
+        });
+    });
+
+    // Import Form (upload JSON)
+    $('#spf-import-form-btn').on('click', function() {
+        $('#spf-import-form-file').trigger('click');
+    });
+
+    $('#spf-import-form-file').on('change', function(e) {
+        var file = e.target.files[0];
+        if (!file) return;
+
+        if (!file.name.endsWith('.json')) {
+            alert('<?php echo esc_js(__('Please select a valid JSON file.', 'syntekpro-forms')); ?>');
+            $(this).val('');
+            return;
+        }
+
+        var reader = new FileReader();
+        reader.onload = function(ev) {
+            try {
+                var formData = JSON.parse(ev.target.result);
+            } catch (err) {
+                alert('<?php echo esc_js(__('Invalid JSON file.', 'syntekpro-forms')); ?>');
+                return;
+            }
+
+            $.ajax({
+                url: spfAdmin.ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'spf_import_form',
+                    nonce: spfAdmin.nonce,
+                    form_json: JSON.stringify(formData)
+                },
+                success: function(response) {
+                    if (response.success) {
+                        alert('<?php echo esc_js(__('Form imported successfully!', 'syntekpro-forms')); ?>');
+                        window.location.reload();
+                    } else {
+                        alert(response.data || '<?php echo esc_js(__('Failed to import form.', 'syntekpro-forms')); ?>');
+                    }
+                },
+                error: function() {
+                    alert('<?php echo esc_js(__('An error occurred. Please try again.', 'syntekpro-forms')); ?>');
+                }
+            });
+        };
+        reader.readAsText(file);
+        $(this).val('');
     });
 });
 </script>
