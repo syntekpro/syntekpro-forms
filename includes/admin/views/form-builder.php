@@ -182,24 +182,20 @@ if ($form_id > 0) {
             </div>
         </div>
 
-        <!-- Right Sidebar - Tabs (Add Fields | Form Settings | Styling | Field Settings) -->
+        <!-- Right Sidebar - Menus (Add Fields | Field Settings + Settings Flyout) -->
         <div class="spf-sidebar spf-sidebar-right">
             <div class="spf-sidebar-tabs">
                 <button type="button" class="spf-tab-btn active" data-tab="fields">
                     <span class="dashicons dashicons-plus-alt"></span>
                     <span class="spf-tab-label"><?php _e('Add Fields', 'syntekpro-forms'); ?></span>
                 </button>
-                <button type="button" class="spf-tab-btn" data-tab="settings">
-                    <span class="dashicons dashicons-admin-settings"></span>
-                    <span class="spf-tab-label"><?php _e('Form Settings', 'syntekpro-forms'); ?></span>
-                </button>
-                <button type="button" class="spf-tab-btn" data-tab="styling">
-                    <span class="dashicons dashicons-admin-customizer"></span>
-                    <span class="spf-tab-label"><?php _e('Styling', 'syntekpro-forms'); ?></span>
-                </button>
                 <button type="button" class="spf-tab-btn" data-tab="field-settings">
                     <span class="dashicons dashicons-admin-tools"></span>
                     <span class="spf-tab-label"><?php _e('Field Settings', 'syntekpro-forms'); ?></span>
+                </button>
+                <button type="button" class="spf-tab-btn" data-tab="form-config">
+                    <span class="dashicons dashicons-admin-settings"></span>
+                    <span class="spf-tab-label"><?php _e('Form Config', 'syntekpro-forms'); ?></span>
                 </button>
             </div>
 
@@ -368,8 +364,11 @@ if ($form_id > 0) {
                     
                 </div>
 
-                <div id="spf-tab-settings" class="spf-tab-content">
+                <div id="spf-tab-form-config" class="spf-tab-content">
                     <div class="spf-settings-panel">
+                        <div class="spf-config-section-divider">
+                            <h2 class="spf-config-section-heading"><span class="dashicons dashicons-admin-generic"></span> <?php _e('Form Settings', 'syntekpro-forms'); ?></h2>
+                        </div>
                         <div class="spf-setting-row">
                             <label><?php _e('Form Title', 'syntekpro-forms'); ?></label>
                             <input type="text" id="spf-form-title-sidebar" class="spf-sync-title" 
@@ -467,11 +466,10 @@ if ($form_id > 0) {
                                 <p class="description"><?php _e('One URL per line. Payload includes form metadata and submitted fields.', 'syntekpro-forms'); ?></p>
                             </div>
                         </div>
-                    </div>
-                </div>
 
-                <div id="spf-tab-styling" class="spf-tab-content">
-                    <div class="spf-settings-panel">
+                        <div class="spf-config-section-divider">
+                            <h2 class="spf-config-section-heading"><span class="dashicons dashicons-admin-customizer"></span> <?php _e('Styling', 'syntekpro-forms'); ?></h2>
+                        </div>
                         <h3><?php _e('Theme Selection', 'syntekpro-forms'); ?></h3>
                         <div class="spf-panel-collapsible-content">
                             <div class="spf-setting-row">
@@ -2315,6 +2313,216 @@ var spfFormData = {
 .spf-submit-button {
     font-size: 13px !important;
     padding: 9px 14px !important;
+}
+
+/* Sidebar Menus Refresh */
+.spf-sidebar-tabs {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.spf-sidebar-tabs .spf-tab-btn {
+    min-height: 48px;
+    margin: 0;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    flex: 1;
+    box-shadow: 0 3px 10px rgba(15, 23, 42, 0.06);
+    transition: all 0.2s ease;
+}
+
+.spf-sidebar-tabs .spf-tab-btn .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    color: #64748b;
+}
+
+.spf-sidebar-tabs .spf-tab-btn .spf-tab-label {
+    font-size: 12px;
+    letter-spacing: 0.2px;
+    text-transform: none;
+    color: #334155;
+    font-weight: 600;
+    display: inline-block;
+    opacity: 1;
+}
+
+.spf-sidebar-tabs .spf-tab-btn:hover {
+    border-color: #94a3b8;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.1);
+    background: #f8fafc;
+}
+
+.spf-sidebar-tabs .spf-tab-btn.active {
+    border-color: #2271b1;
+    background: #f0f6fc;
+    box-shadow: none;
+}
+
+.spf-sidebar-tabs .spf-tab-btn.active .dashicons,
+.spf-sidebar-tabs .spf-tab-btn.active .spf-tab-label {
+    color: #2271b1 !important;
+    opacity: 1;
+}
+
+.spf-field-settings-tab-btn {
+    position: relative;
+    padding-right: 44px !important;
+}
+
+.spf-tab-gear-btn {
+    position: absolute;
+    right: 9px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 26px;
+    height: 26px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #dc3232;
+    border: 1px solid #b91c1c;
+    box-shadow: 0 4px 10px rgba(220, 50, 50, 0.25);
+    cursor: pointer;
+}
+
+.spf-tab-gear-btn .dashicons {
+    color: #ffffff !important;
+    font-size: 14px !important;
+    width: 14px !important;
+    height: 14px !important;
+}
+
+.spf-field-settings-tab-btn.is-utility-view {
+    border-color: #dc3232 !important;
+    box-shadow: 0 0 0 1px rgba(220, 50, 50, 0.25), 0 8px 18px rgba(220, 50, 50, 0.16) !important;
+}
+
+.spf-settings-flyout {
+    position: absolute;
+    right: 14px;
+    top: calc(100% + 8px);
+    width: 220px;
+    padding: 8px;
+    border-radius: 12px;
+    border: 1px solid #fecaca;
+    background: #ffffff;
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.16);
+    display: none;
+    z-index: 20;
+}
+
+.spf-settings-flyout.is-open {
+    display: block;
+}
+
+.spf-settings-flyout-item {
+    width: 100%;
+    border: 1px solid #fee2e2;
+    border-radius: 8px;
+    background: #fff7f7;
+    color: #991b1b;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-align: left;
+    padding: 10px;
+    cursor: pointer;
+    margin-bottom: 6px;
+}
+
+.spf-settings-flyout-item:last-child {
+    margin-bottom: 0;
+}
+
+.spf-settings-flyout-item:hover,
+.spf-settings-flyout-item.is-active {
+    background: #dc3232;
+    border-color: #dc3232;
+    color: #ffffff;
+}
+
+.spf-settings-hub-inline {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.spf-settings-hub-inline-title {
+    font-size: 12px;
+    color: #334155;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.spf-settings-hub-inline-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid #b91c1c;
+    background: #dc3232;
+    color: #ffffff;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 5px 10px;
+    cursor: pointer;
+}
+
+.spf-settings-hub-inline-btn .dashicons {
+    font-size: 13px;
+    width: 13px;
+    height: 13px;
+}
+/* Form Config — combined settings+styling section headings */
+.spf-config-section-divider {
+    margin: 18px -15px 14px;
+    padding: 10px 15px 0;
+    border-top: 2px solid #e2e8f0;
+}
+.spf-config-section-divider:first-child {
+    margin-top: 0;
+    border-top: none;
+}
+.spf-config-section-heading {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #334155;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin: 0 0 10px;
+    padding: 0;
+}
+.spf-config-section-heading .dashicons {
+    color: #dc3232;
+    font-size: 15px;
+    width: 15px;
+    height: 15px;
 }
 
 /* Responsive adjustments */

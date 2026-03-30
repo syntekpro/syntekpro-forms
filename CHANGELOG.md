@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.6.2] - 2026-03-30
+
+### Changed
+- Enabled plugin automatic background updates by default for fresh installs.
+
+## [1.6.1] - 2026-03-30
+
+### Added
+- Plugin auto-update wiring: the "Automatic Background Updates" setting now controls WordPress background updates for this plugin on each installed site.
+
+### Changed
+- Form builder sidebar menu structure restored to direct tabs (Add Fields, Field Settings, Form Config).
+
+### Fixed
+- Sidebar tab label visibility on active click.
+- Entries rendering now normalizes array/object values and formats keys into readable labels.
+
 ## [1.6.0] - 2026-03-04
 
 ### Added

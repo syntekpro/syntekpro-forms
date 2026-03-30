@@ -98,9 +98,11 @@
                             html += '<div class="spf-entry-detail-section">';
                             if (response.data.entry_data) {
                                 $.each(response.data.entry_data, function(key, value) {
+                                    var displayValue = self.normalizeEntryValue(value);
+                                    var displayLabel = self.formatEntryKeyLabel(key);
                                     html += '<div class="spf-entry-detail-row">';
-                                    html += '<div class="spf-detail-label" data-field-key="' + self.escapeHtml(key) + '">' + key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) + '</div>';
-                                    html += '<div class="spf-detail-value">' + (Array.isArray(value) ? value.join(', ') : value) + '</div>';
+                                    html += '<div class="spf-detail-label" data-field-key="' + self.escapeHtml(key) + '">' + self.escapeHtml(displayLabel) + '</div>';
+                                    html += '<div class="spf-detail-value">' + self.escapeHtml(displayValue) + '</div>';
                                     html += '</div>';
                                 });
                             }
@@ -475,13 +477,74 @@
                         return;
                     }
                     var value = entryData[key];
-                    var displayValue = Array.isArray(value) ? value.join(', ') : String(value || '');
-                    html += '<span class="spf-preview-item"><strong>' + self.escapeHtml(key.replace(/_/g, ' ').replace(/\b\w/g, function(l) { return l.toUpperCase(); })) + ':</strong> ' + self.escapeHtml(displayValue.slice(0, 50)) + '</span>';
+                    var displayValue = self.normalizeEntryValue(value);
+                    html += '<span class="spf-preview-item"><strong>' + self.escapeHtml(self.formatEntryKeyLabel(key)) + ':</strong> ' + self.escapeHtml(displayValue.slice(0, 50)) + '</span>';
                     count++;
                 });
             }
 
             return html;
+        },
+
+        formatEntryKeyLabel: function(key) {
+            var normalized = String(key || '')
+                .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+                .replace(/[_-]+/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+
+            if (!normalized) {
+                return '';
+            }
+
+            return normalized.replace(/\b\w/g, function(letter) {
+                return letter.toUpperCase();
+            });
+        },
+
+        normalizeEntryValue: function(value) {
+            var self = this;
+
+            if (value === null || typeof value === 'undefined') {
+                return '';
+            }
+
+            if (Array.isArray(value)) {
+                return value
+                    .map(function(item) {
+                        return self.normalizeEntryValue(item);
+                    })
+                    .filter(function(item) {
+                        return item !== '';
+                    })
+                    .join(', ');
+            }
+
+            if (typeof value === 'object') {
+                var pairs = Object.keys(value)
+                    .map(function(key) {
+                        var nestedValue = self.normalizeEntryValue(value[key]);
+                        if (nestedValue === '') {
+                            return '';
+                        }
+                        return key.replace(/_/g, ' ') + ': ' + nestedValue;
+                    })
+                    .filter(function(item) {
+                        return item !== '';
+                    });
+
+                if (pairs.length) {
+                    return pairs.join(' | ');
+                }
+
+                try {
+                    return JSON.stringify(value);
+                } catch (e) {
+                    return '';
+                }
+            }
+
+            return String(value);
         },
 
         initLivePreview: function() {
@@ -642,13 +705,23 @@
             document.head.appendChild(link);
         },
 
+        switchSidebarTab: function($sidebar, tabName) {
+            if (!$sidebar || !$sidebar.length || !tabName) {
+                return;
+            }
+
+            $sidebar.find('.spf-tab-btn').removeClass('active');
+            $sidebar.find('.spf-tab-btn[data-tab="' + tabName + '"]').addClass('active');
+            $sidebar.find('.spf-tab-content').removeClass('active');
+            $sidebar.find('#spf-tab-' + tabName).addClass('active');
+        },
+
         initTabs: function() {
-            $('.spf-tab-btn').on('click', function() {
-                var tab = $(this).data('tab');
-                $('.spf-tab-btn').removeClass('active');
-                $(this).addClass('active');
-                $('.spf-tab-content').removeClass('active');
-                $('#spf-tab-' + tab).addClass('active');
+            var self = this;
+
+            $(document).off('click', '.spf-tab-btn').on('click', '.spf-tab-btn', function(e) {
+                e.preventDefault();
+                self.switchSidebarTab($(this).closest('.spf-sidebar'), $(this).data('tab'));
             });
         },
 
@@ -1523,20 +1596,7 @@
                 window.open(previewUrl, '_blank');
             });
 
-            // NEW: Tab switching in right sidebar
-            $(document).off('click', '.spf-tab-btn').on('click', '.spf-tab-btn', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                var tabName = $(this).data('tab');
-                var $sidebar = $(this).closest('.spf-sidebar');
-                
-                $sidebar.find('.spf-tab-btn').removeClass('active');
-                $(this).addClass('active');
-                
-                $sidebar.find('.spf-tab-content').removeClass('active');
-                $sidebar.find('#spf-tab-' + tabName).addClass('active');
-            });
+            // Sidebar menu switching is managed by initTabs().
 
             // NEW: Collapsible sidebar panels (H3) with accordion behavior
             var initPanelAccordion = function() {

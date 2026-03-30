@@ -40,7 +40,7 @@ For a step-by-step walkthrough of every capability, see the comprehensive tutori
 
 ## Version
 
-1.5.1
+1.6.2
 
 ## Author
 
@@ -53,6 +53,14 @@ See [CHANGELOG.md](CHANGELOG.md) for a full history of changes.
 ### Unreleased
 - Added WordPress Consent API compatibility through the `syntekpro_forms` consent type so consent banners can control form submission, webhook dispatch, and notification delivery.
 - Added Growth features: payment summary engine with optional Stripe Checkout session links, automation connectors, draft save/resume links for multi-step forms, and a new Analytics admin dashboard.
+
+### 1.6.1 (2026-03-30)
+- Added a working site-level plugin auto-update toggle using the existing "Automatic Background Updates" setting.
+- Refined form builder right sidebar tab behavior and visibility after active-state click.
+- Improved entries rendering for array/object values and human-readable key labels.
+
+### 1.6.2 (2026-03-30)
+- Enabled automatic background updates by default for fresh installs.
 
 ### 1.5.1 (2026-03-04)
 - Added REST API feature controls and expanded growth tooling (payments/connectors/drafts/analytics)

@@ -3,7 +3,7 @@
  * Plugin Name: SyntekPro Forms
  * Plugin URI: https://syntekpro.com
  * Description: Professional WordPress form builder with drag & drop interface, Gutenberg support, and advanced entry management
- * Version: 1.6.0
+ * Version: 1.6.2
  * Update URI: https://github.com/syntekpro/syntekpro-forms
  * Author: SyntekPro
  * Author URI: https://syntekpro.com
@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('SPF_VERSION', '1.6.0');
+define('SPF_VERSION', '1.6.2');
 define('SPF_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SPF_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('SPF_PLUGIN_FILE', __FILE__);
@@ -127,6 +127,7 @@ class SyntekPro_Forms_Builder {
         add_filter('pre_set_site_transient_update_plugins', array($this, 'check_github_update'));
         add_filter('plugins_api', array($this, 'github_plugin_info'), 10, 3);
         add_filter('upgrader_post_install', array($this, 'github_upgrader_post_install'), 10, 3);
+        add_filter('auto_update_plugin', array($this, 'maybe_enable_auto_update_for_plugin'), 10, 2);
         add_action('spf_process_webhook_queue', array($this, 'process_webhook_queue'));
 
         // REST API initialization
@@ -273,7 +274,7 @@ class SyntekPro_Forms_Builder {
             'default_theme' => 'classic',
             'enable_toolbar_menu' => 1,
             'enable_dashboard_widget' => 1,
-            'enable_background_updates' => 0,
+            'enable_background_updates' => 1,
             'no_conflict_mode' => 0,
             'enable_akismet' => 0,
             'enable_data_collection' => 0,
@@ -500,6 +501,21 @@ class SyntekPro_Forms_Builder {
         return $result;
     }
 
+    public function maybe_enable_auto_update_for_plugin($update, $item) {
+        if (empty($item) || empty($item->plugin)) {
+            return $update;
+        }
+
+        if ($item->plugin !== plugin_basename(SPF_PLUGIN_FILE)) {
+            return $update;
+        }
+
+        $settings = get_option('spf_settings', array());
+        $enabled = !empty($settings['enable_background_updates']);
+
+        return $enabled ? true : $update;
+    }
+
     public function init_rest_api() {
         $settings = get_option('spf_settings', array());
         $enabled = isset($settings['rest_api_enabled']) ? (int)$settings['rest_api_enabled'] : 0;
@@ -608,7 +624,7 @@ class SyntekPro_Forms_Builder {
     public function add_admin_menu() {
         add_menu_page(
             __('SyntekPro Forms', 'syntekpro-forms'),
-            __('Forms', 'syntekpro-forms'),
+            __('SyntekPro Forms', 'syntekpro-forms'),
             'manage_options',
             'syntekpro-forms',
             array($this, 'render_forms_page'),

@@ -57,7 +57,7 @@ $defaults = array(
     'default_theme' => 'classic',
     'enable_toolbar_menu' => 1,
     'enable_dashboard_widget' => 1,
-    'enable_background_updates' => 0,
+    'enable_background_updates' => 1,
     'no_conflict_mode' => 0,
     'enable_akismet' => 0,
     'enable_data_collection' => 0,
@@ -279,7 +279,7 @@ $plugin_cards = array(
                                 <?php _e('Enable Automatic Background Updates', 'syntekpro-forms'); ?>
                             </label>
                         </div>
-                        <p class="spf-setting-description"><?php _e('Enable to allow SyntekPro Forms to download and install bug fixes and security updates automatically in the background. Requires a valid license key.', 'syntekpro-forms'); ?></p>
+                        <p class="spf-setting-description"><?php _e('Enable to automatically install SyntekPro Forms updates on this site when a new version is available.', 'syntekpro-forms'); ?></p>
                     </div>
 
                     <div class="spf-setting-field">
