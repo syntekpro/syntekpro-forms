@@ -99,6 +99,37 @@ if (file_exists(SPF_PLUGIN_DIR . 'includes/class-preview-links.php')) {
 }
 if (file_exists(SPF_PLUGIN_DIR . 'includes/class-form-clone.php')) {
     require_once SPF_PLUGIN_DIR . 'includes/class-form-clone.php';
+// v2.0 Phase 2 Feature Classes (Architectural Stubs)
+if (file_exists(SPF_PLUGIN_DIR . 'includes/class-form-versioning.php')) {
+    require_once SPF_PLUGIN_DIR . 'includes/class-form-versioning.php';
+}
+if (file_exists(SPF_PLUGIN_DIR . 'includes/class-email-templates.php')) {
+    require_once SPF_PLUGIN_DIR . 'includes/class-email-templates.php';
+}
+if (file_exists(SPF_PLUGIN_DIR . 'includes/class-ab-testing.php')) {
+    require_once SPF_PLUGIN_DIR . 'includes/class-ab-testing.php';
+}
+if (file_exists(SPF_PLUGIN_DIR . 'includes/class-funnel-analytics.php')) {
+    require_once SPF_PLUGIN_DIR . 'includes/class-funnel-analytics.php';
+}
+if (file_exists(SPF_PLUGIN_DIR . 'includes/class-data-visualization.php')) {
+    require_once SPF_PLUGIN_DIR . 'includes/class-data-visualization.php';
+}
+if (file_exists(SPF_PLUGIN_DIR . 'includes/class-geolocation-fraud.php')) {
+    require_once SPF_PLUGIN_DIR . 'includes/class-geolocation-fraud.php';
+}
+if (file_exists(SPF_PLUGIN_DIR . 'includes/class-integrations.php')) {
+    require_once SPF_PLUGIN_DIR . 'includes/class-integrations.php';
+}
+if (file_exists(SPF_PLUGIN_DIR . 'includes/class-graphql.php')) {
+    require_once SPF_PLUGIN_DIR . 'includes/class-graphql.php';
+}
+if (file_exists(SPF_PLUGIN_DIR . 'includes/class-javascript-sdk.php')) {
+    require_once SPF_PLUGIN_DIR . 'includes/class-javascript-sdk.php';
+}
+if (file_exists(SPF_PLUGIN_DIR . 'includes/class-pii-masking.php')) {
+    require_once SPF_PLUGIN_DIR . 'includes/class-pii-masking.php';
+}
 }
 
 class SyntekPro_Forms_Builder {
