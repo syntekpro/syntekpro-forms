@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.6.3] - 2026-04-27
+
+### Fixed
+- Hardened GitHub plugin updater directory replacement on Windows by normalizing destination paths before comparison.
+- Added safer replacement fallback to copy plugin files when direct filesystem move fails during update.
+
 ## [1.6.2] - 2026-03-30
 
 ### Changed
