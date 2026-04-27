@@ -4,6 +4,115 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-04-27
+
+### Added - MAJOR v2.0 Release
+
+**Form Management & Operations**
+- ✅ **Form Cloning**: Duplicate forms with all fields and settings via "Duplicate Form" button on forms list.
+- ✅ **Form Audit Log**: Track all form modifications (create, edit, delete, clone) with user, timestamp, and change details. New `spf_audit_log` table.
+- ✅ **Form Versioning Infrastructure**: Foundation for form version snapshots with rollback capability. New `spf_form_versions` table.
+- ✅ **Automated Form Backups**: Nightly automatic backups of all active forms with 30-day retention. Manual backup/restore UI in settings. New `spf_form_backups` table.
+- ✅ **Form Preview Links**: Generate shareable, time-limited (24h default) preview URLs for forms. No login required. New `spf_preview_links` table.
+
+**Advanced Admin Controls**
+- ✅ **Custom Capabilities System**: New WordPress capabilities for fine-grained form admin access:
+  - `spf_manage_forms`: Manage forms and form settings
+  - `spf_view_entries`: View form submissions
+  - `spf_manage_settings`: Manage plugin settings
+  - `spf_manage_addons`: Manage add-ons
+  - Allows non-admin users (Editors, custom roles) to manage forms without full site access.
+
+**Entry Management Enhancements**
+- ✅ **Advanced Entry Filtering**: Enhanced entries list with:
+  - Date range picker for filtering by submission date
+  - Combined filters (form + status + date + search)
+  - Persistent filter state across page loads
+- ✅ **Bulk Entry Export**: Export filtered entries to CSV or JSON with column selection.
+- ✅ **Scheduled Entry Exports**: Foundation for automated weekly/monthly export summaries via email.
+
+**Data Persistence & Recovery**
+- ✅ **Progressive Draft Autosave**: Auto-save form draft every 30 seconds with "Last saved X seconds ago" indicator. Frontend draft resume on form re-entry.
+- ✅ **Database Optimization Tools**: New admin tools page with:
+  - "Optimize Tables" button (runs OPTIMIZE TABLE on all SPF tables)
+  - "Vacuum Drafts" tool (delete drafts older than X days)
+  - "Rebuild Indexes" tool (repair entry indexes)
+  - Dry-run mode with estimated space savings
+
+**Webhook & Integration Improvements**
+- ✅ **Webhook Signature Verification**: All webhooks now signed with HMAC-SHA256. Developers receive `X-Syntekpro-Signature` header for secure third-party integration validation.
+- ✅ **Enhanced Webhook Visibility**: Expanded webhook queue dashboard with:
+  - Payload logs (last 5 attempts per endpoint)
+  - Date/status filtering
+  - Manual retry trigger for specific webhooks
+  - Dead letter queue for permanently failed webhooks
+- ✅ **Webhook Logs Table**: New `spf_webhook_logs` table for historical webhook audit trail.
+
+**User Experience**
+- ✅ **Conditional Section Visibility**: Extend conditional logic to Section and Page Break containers. Hide entire pages if condition not met.
+- ✅ **Field PII Masking Infrastructure**: Framework for designating fields as Personal Identifiable Information (PII). Admin can mask sensitive data in entry displays (show only last 4 chars, initials for names, etc.).
+
+**Developer Experience**
+- ✅ **Webhook Signature Documentation**: Code samples for signature validation in Node.js, PHP, Python.
+- ✅ **WP-CLI Enhancements**: New commands for v2.0 features:
+  - `wp spf form clone <id>` - Clone a form
+  - `wp spf form backup <id>` - Manually backup a form
+  - `wp spf form restore-backup <backup_id>` - Restore from backup
+  - `wp spf preview-link create <form_id>` - Generate shareable preview link
+  - `wp spf db optimize` - Run database optimization
+
+**Infrastructure & Architecture**
+- ✅ **New Database Tables**:
+  - `spf_audit_log`: Form change history and audit trail
+  - `spf_form_backups`: Form definition snapshots for recovery
+  - `spf_form_versions`: Version control infrastructure (ready for rollback feature)
+  - `spf_webhook_logs`: Webhook request/response history
+  - `spf_preview_links`: Shareable form preview URLs
+- ✅ **New Scheduled Crons**:
+  - `spf_backup_forms_cron` (daily): Automatic form backups
+  - `spf_cleanup_preview_links` (daily): Expire old preview links
+  - `spf_cleanup_webhook_logs` (daily): Archive old webhook logs
+- ✅ **Feature Flags & Hooks**:
+  - `spf_enable_audit_logging`: Toggle audit log (default: true)
+  - `spf_enable_form_cloning`: Toggle cloning (default: true)
+  - `spf_enable_autosave_draft`: Toggle autosave (default: true)
+  - `spf_backup_retention_days`: Set backup retention window (default: 30 days)
+  - `spf_autosave_interval`: Configure autosave frequency (default: 30 seconds)
+
+**Phase 2 Stubs (Architectural Foundation for Future Releases)**
+- 🔲 Form versioning with full rollback capability
+- 🔲 Advanced email templates with visual builder (conditional blocks, loop sections)
+- 🔲 A/B testing infrastructure (form variants, traffic split, analytics)
+- 🔲 Advanced funnel analysis dashboard (field drop-off, time-to-complete, geo breakdown)
+- 🔲 Entry data visualization (charts, custom dashboards)
+- 🔲 IP geolocation & fraud scoring (MaxMind integration)
+- 🔲 Native integrations add-ons: SendGrid, Twilio, Google Sheets, Airtable, Notion
+- 🔲 GraphQL API endpoint
+- 🔲 JavaScript SDK (@syntekpro/forms-js for headless forms)
+- 🔲 Fine-grained PII field masking UI (admin controls)
+
+### Changed
+- Updated plugin architecture for v2.0 feature ecosystem.
+- Enhanced activation flow to create v2.0 database tables.
+- Deactivation now cleans up all v2.0 scheduled events.
+
+### Security
+- Added webhook request signing for secure third-party integrations.
+- Audit log captures IP address and user context for all form changes.
+- Field masking infrastructure for PII data protection.
+- Custom capabilities prevent privilege escalation from non-admin form managers.
+
+### Performance
+- Database optimization tools allow admins to maintain query performance on large form/entry datasets.
+- Indexed audit log queries for fast form change history retrieval.
+- Webhook log cleanup prevents unbounded table growth.
+- Preview link expiry cleanup prevents stale token accumulation.
+
+### Database Migrations
+- ✅ Automatic table creation on plugin activation (5 new tables).
+- ✅ Backward compatible with existing data (no breaking changes).
+- ✅ Safe uninstall cleans up all v2.0 tables when plugin is deleted with option enabled.
+
 ## [1.6.3] - 2026-04-27
 
 ### Fixed

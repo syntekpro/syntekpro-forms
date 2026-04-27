@@ -3,7 +3,7 @@
  * Plugin Name: SyntekPro Forms
  * Plugin URI: https://syntekpro.com
  * Description: Professional WordPress form builder with drag & drop interface, Gutenberg support, and advanced entry management
- * Version: 1.6.3
+ * Version: 2.0.0
  * Update URI: https://github.com/syntekpro/syntekpro-forms
  * Author: SyntekPro
  * Author URI: https://syntekpro.com
@@ -17,7 +17,15 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('SPF_VERSION', '1.6.3');
+define('SPF_VERSION', '2.0.0');
+define('SPF_DB_VERSION', '2.0.0');
+define('SPF_ENABLE_AUDIT_LOG', true);
+define('SPF_ENABLE_BACKUPS', true);
+define('SPF_ENABLE_PREVIEW_LINKS', true);
+define('SPF_ENABLE_WEBHOOK_SIGNATURES', true);
+define('SPF_BACKUP_RETENTION_DAYS', 30);
+define('SPF_AUTOSAVE_INTERVAL', 30);
+define('SPF_PREVIEW_LINK_EXPIRY', 86400);
 define('SPF_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SPF_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('SPF_PLUGIN_FILE', __FILE__);
@@ -79,6 +87,20 @@ if (defined('WP_CLI') && WP_CLI && file_exists(SPF_PLUGIN_DIR . 'includes/class-
     require_once SPF_PLUGIN_DIR . 'includes/class-wpcli.php';
 }
 
+// v2.0 Feature Classes
+if (file_exists(SPF_PLUGIN_DIR . 'includes/class-audit-log.php')) {
+    require_once SPF_PLUGIN_DIR . 'includes/class-audit-log.php';
+}
+if (file_exists(SPF_PLUGIN_DIR . 'includes/class-form-backup.php')) {
+    require_once SPF_PLUGIN_DIR . 'includes/class-form-backup.php';
+}
+if (file_exists(SPF_PLUGIN_DIR . 'includes/class-preview-links.php')) {
+    require_once SPF_PLUGIN_DIR . 'includes/class-preview-links.php';
+}
+if (file_exists(SPF_PLUGIN_DIR . 'includes/class-form-clone.php')) {
+    require_once SPF_PLUGIN_DIR . 'includes/class-form-clone.php';
+}
+
 class SyntekPro_Forms_Builder {
 
     private static $instance = null;
@@ -101,6 +123,21 @@ class SyntekPro_Forms_Builder {
         $this->entries = new SyntekPro_Forms_Entries($this);
         $this->ajax_handler = new SyntekPro_Forms_Ajax_Handler($this, $this->spam_filter, $this->growth_services);
         $this->init_hooks();
+        $this->register_custom_capabilities();
+    }
+    
+    private function register_custom_capabilities() {
+        global $wp_roles;
+        if (!isset($wp_roles)) {
+            $wp_roles = new WP_Roles();
+        }
+        $admin_role = $wp_roles->get_role('administrator');
+        if ($admin_role) {
+            $admin_role->add_cap('spf_manage_forms');
+            $admin_role->add_cap('spf_view_entries');
+            $admin_role->add_cap('spf_manage_settings');
+            $admin_role->add_cap('spf_manage_addons');
+        }
     }
 
     private function init_hooks() {
@@ -136,6 +173,14 @@ class SyntekPro_Forms_Builder {
         // GDPR privacy hooks
         add_filter('wp_privacy_personal_data_exporters', array($this, 'register_gdpr_exporter'));
         add_filter('wp_privacy_personal_data_erasers', array($this, 'register_gdpr_eraser'));
+        
+        // v2.0 Feature Hooks
+        add_action('spf_backup_forms_cron', array($this, 'backup_all_forms'));
+        add_action('spf_cleanup_preview_links', array($this, 'cleanup_expired_preview_links'));
+        add_action('spf_cleanup_webhook_logs', array($this, 'cleanup_old_webhook_logs'));
+        add_filter('spf_enable_audit_logging', '__return_true');
+        add_filter('spf_enable_form_cloning', '__return_true');
+        add_filter('spf_enable_autosave_draft', '__return_true');
 
         $this->ajax_handler->register_hooks();
         $this->entries->register_hooks();
@@ -228,6 +273,81 @@ class SyntekPro_Forms_Builder {
             KEY created_at (created_at),
             KEY field_name (field_name)
         ) $charset_collate;";
+        
+        // v2.0 Tables
+        $audit_log_table = $wpdb->prefix . 'spf_audit_log';
+        $audit_log_sql = "CREATE TABLE $audit_log_table (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            form_id bigint(20) NOT NULL,
+            user_id bigint(20),
+            action varchar(50) NOT NULL,
+            changes longtext,
+            ip_address varchar(45),
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY form_id (form_id),
+            KEY created_at (created_at),
+            KEY action (action)
+        ) $charset_collate;";
+        
+        $form_backup_table = $wpdb->prefix . 'spf_form_backups';
+        $form_backup_sql = "CREATE TABLE $form_backup_table (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            form_id bigint(20) NOT NULL,
+            backup_data longtext NOT NULL,
+            backup_date datetime DEFAULT CURRENT_TIMESTAMP,
+            created_by bigint(20),
+            restored_at datetime DEFAULT NULL,
+            PRIMARY KEY (id),
+            KEY form_id (form_id),
+            KEY backup_date (backup_date)
+        ) $charset_collate;";
+        
+        $form_version_table = $wpdb->prefix . 'spf_form_versions';
+        $form_version_sql = "CREATE TABLE $form_version_table (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            form_id bigint(20) NOT NULL,
+            version_num int(11) NOT NULL,
+            snapshot_data longtext NOT NULL,
+            created_by bigint(20),
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY form_id (form_id),
+            KEY created_at (created_at),
+            UNIQUE KEY form_version (form_id, version_num)
+        ) $charset_collate;";
+        
+        $webhook_log_table = $wpdb->prefix . 'spf_webhook_logs';
+        $webhook_log_sql = "CREATE TABLE $webhook_log_table (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            webhook_url varchar(500) NOT NULL,
+            form_id bigint(20),
+            entry_id bigint(20),
+            payload_hash varchar(64),
+            response_code int(11),
+            response_body text,
+            attempts int(11) DEFAULT 0,
+            error_message text,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY form_id (form_id),
+            KEY entry_id (entry_id),
+            KEY created_at (created_at)
+        ) $charset_collate;";
+        
+        $preview_link_table = $wpdb->prefix . 'spf_preview_links';
+        $preview_link_sql = "CREATE TABLE $preview_link_table (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            form_id bigint(20) NOT NULL,
+            token varchar(64) NOT NULL,
+            expires_at datetime NOT NULL,
+            created_by bigint(20),
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY token (token),
+            KEY form_id (form_id),
+            KEY expires_at (expires_at)
+        ) $charset_collate;";
 
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
         dbDelta($forms_sql);
@@ -235,6 +355,11 @@ class SyntekPro_Forms_Builder {
         dbDelta($webhook_queue_sql);
         dbDelta($drafts_sql);
         dbDelta($analytics_sql);
+        dbDelta($audit_log_sql);
+        dbDelta($form_backup_sql);
+        dbDelta($form_version_sql);
+        dbDelta($webhook_log_sql);
+        dbDelta($preview_link_sql);
 
         update_option('spf_version', SPF_VERSION);
         add_option('spf_settings', $this->get_default_settings());
@@ -245,6 +370,17 @@ class SyntekPro_Forms_Builder {
 
         if (!wp_next_scheduled('spf_process_webhook_queue')) {
             wp_schedule_event(time() + MINUTE_IN_SECONDS, 'spf_five_minutes', 'spf_process_webhook_queue');
+        }
+        
+        // v2.0 Scheduled Events
+        if (!wp_next_scheduled('spf_backup_forms_cron')) {
+            wp_schedule_event(time() + HOUR_IN_SECONDS, 'daily', 'spf_backup_forms_cron');
+        }
+        if (!wp_next_scheduled('spf_cleanup_preview_links')) {
+            wp_schedule_event(time() + HOUR_IN_SECONDS, 'daily', 'spf_cleanup_preview_links');
+        }
+        if (!wp_next_scheduled('spf_cleanup_webhook_logs')) {
+            wp_schedule_event(time() + HOUR_IN_SECONDS, 'daily', 'spf_cleanup_webhook_logs');
         }
     }
 
@@ -312,6 +448,38 @@ class SyntekPro_Forms_Builder {
     public function deactivate() {
         wp_clear_scheduled_hook('spf_apply_data_retention');
         wp_clear_scheduled_hook('spf_process_webhook_queue');
+        wp_clear_scheduled_hook('spf_backup_forms_cron');
+        wp_clear_scheduled_hook('spf_cleanup_preview_links');
+        wp_clear_scheduled_hook('spf_cleanup_webhook_logs');
+    }
+
+    public function backup_all_forms() {
+        global $wpdb;
+        
+        $forms = $wpdb->get_results("SELECT id FROM {$wpdb->prefix}spf_forms WHERE status = 'active'");
+        
+        if ($forms) {
+            foreach ($forms as $form) {
+                SyntekPro_Forms_Backup::backup_form($form->id);
+            }
+        }
+        
+        // Cleanup old backups
+        $retention_days = apply_filters('spf_backup_retention_days', SPF_BACKUP_RETENTION_DAYS);
+        SyntekPro_Forms_Backup::cleanup_old_backups($retention_days);
+    }
+    
+    public function cleanup_expired_preview_links() {
+        SyntekPro_Forms_Preview_Links::cleanup_expired_links();
+    }
+    
+    public function cleanup_old_webhook_logs() {
+        global $wpdb;
+        $cutoff_date = date('Y-m-d H:i:s', strtotime('-30 days'));
+        $wpdb->query($wpdb->prepare(
+            "DELETE FROM {$wpdb->prefix}spf_webhook_logs WHERE created_at < %s",
+            $cutoff_date
+        ));
     }
 
     public function load_textdomain() {
