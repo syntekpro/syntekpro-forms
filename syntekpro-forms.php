@@ -483,15 +483,40 @@ class SyntekPro_Forms_Builder {
         }
 
         $plugin_folder = WP_PLUGIN_DIR . '/' . dirname(plugin_basename(SPF_PLUGIN_FILE));
-        if (!isset($result['destination']) || $result['destination'] === $plugin_folder) {
+        if (!isset($result['destination'])) {
+            return $response;
+        }
+
+        $destination = untrailingslashit(wp_normalize_path($result['destination']));
+        $plugin_folder_normalized = untrailingslashit(wp_normalize_path($plugin_folder));
+        if ($destination === $plugin_folder_normalized) {
             return $response;
         }
 
         if ($wp_filesystem->is_dir($plugin_folder)) {
-            $wp_filesystem->delete($plugin_folder, true);
+            $deleted = $wp_filesystem->delete($plugin_folder, true);
+            if (!$deleted && $wp_filesystem->is_dir($plugin_folder)) {
+                return new WP_Error('spf_update_delete_failed', __('SyntekPro Forms update failed while removing old plugin directory. Please check file permissions.', 'syntekpro-forms'));
+            }
         }
 
         $moved = $wp_filesystem->move($result['destination'], $plugin_folder, true);
+        if (!$moved) {
+            if (!function_exists('copy_dir')) {
+                require_once ABSPATH . 'wp-admin/includes/file.php';
+            }
+
+            if (!$wp_filesystem->is_dir($plugin_folder)) {
+                $wp_filesystem->mkdir($plugin_folder);
+            }
+
+            $copied = copy_dir($result['destination'], $plugin_folder);
+            if (!is_wp_error($copied)) {
+                $wp_filesystem->delete($result['destination'], true);
+                $moved = true;
+            }
+        }
+
         if (!$moved) {
             return new WP_Error('spf_update_move_failed', __('SyntekPro Forms update failed while replacing plugin directory.', 'syntekpro-forms'));
         }
