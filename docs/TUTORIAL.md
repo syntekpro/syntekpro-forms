@@ -116,6 +116,30 @@ Per form, enable **Webhooks** and add one URL per line. On successful submission
 - Filter `syntekpro_forms_addons_paths` to register custom directories.
 - Hooks and filters are scattered through rendering, submissions, and notifications; inspect the core class for entry points.
 
+*New in 1.4.1* – **REST API & developer hooks**
+
+Three new endpoints allow external systems to work with forms and entries directly via `wp-json/syntekpro-forms/v1`.
+
+- `GET /forms` (list, supports `page`, `per_page`, `search`)
+- `POST /forms` (create)
+- `GET /forms/<id>`, `PUT /forms/<id>`, `DELETE /forms/<id>`
+- `GET /entries` (filterable by `form_id`, `status`, `search`)
+- `POST /entries` (public, accepts `form_id` and `entry_data` payload)
+- `GET|PUT|DELETE /entries/<id>`
+
+All administrative routes require `manage_options` capability; create action is open so you can submit forms from headless sites. A slew of new actions/filters accompany each REST event (`syntekpro_forms_rest_insert_form`, `syntekpro_forms_rest_prepare_entry`, etc.), giving developers fine-grained control of API behavior.
+
+## 14. Growth Features (New)
+
+The plugin now includes product-growth tooling to increase conversion and post-submit automation:
+
+- **Payments (Stripe-ready):** Number/payment fields are aggregated into a payment summary with coupon support. When Stripe keys are configured and payment is enabled for a form, successful submission can return a Stripe Checkout URL.
+- **Automation connectors:** Global endpoints for Zapier and Make, plus native Mailchimp and HubSpot sync support after successful submission.
+- **Save & Resume:** Multi-step forms can be saved as drafts and resumed later from a tokenized resume URL.
+- **Analytics dashboard:** Open **Forms → Analytics** to view per-form views, starts, completions, abandons, and top field-dropoff events.
+
+## 15. Troubleshooting Checklist
+
 ## 14. Troubleshooting Checklist
 
 1. **Form not showing?** Confirm shortcode ID matches a published form and status is **Active**.
@@ -124,7 +148,7 @@ Per form, enable **Webhooks** and add one URL per line. On successful submission
 4. **Conditional logic script missing?** The plugin only enqueues `conditional-logic.js` when a form block/shortcode is detected. Wrap forms in `do_shortcode()` so detection works.
 5. **Rate limit warning?** Reduce the cooldown seconds or disable rate limiting while testing.
 
-## 15. Recommended Launch Checklist
+## 16. Recommended Launch Checklist
 
 - ✅ Test each step (including validation, AJAX errors, success message/redirect).
 - ✅ Submit sample entries and confirm they appear under **Entries** and email notifications land as expected.

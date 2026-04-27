@@ -13,6 +13,11 @@ For a step-by-step walkthrough of every capability, see the comprehensive tutori
 2. Upload to `/wp-content/plugins/syntekpro-forms` directory
 3. Activate the plugin through the 'Plugins' menu in WordPress
 
+### Important Update Note
+
+- For upgrades, use a release ZIP that contains the root folder named exactly `syntekpro-forms`.
+- Do **not** upload GitHub source-code ZIPs (for example `syntekpro-forms-main.zip` or `syntekpro-forms-origin.zip`) because WordPress treats those as a new plugin folder and installs side-by-side.
+
 ## Features
 
 - **Drag & Drop Form Builder**: Build forms with an intuitive interface and advanced conditional logic.
@@ -24,7 +29,10 @@ For a step-by-step walkthrough of every capability, see the comprehensive tutori
 - **Email Notifications**: Customizable admin notifications and user confirmation emails.
 - **File Uploads**: Secure file attachments via AJAX (FormData) submissions.
 - **Privacy & Anti-spam**: Honeypot, rate limiting, Akismet checks, IP anonymization, and data retention controls.
+- **Consent-aware submissions**: Registers the `syntekpro_forms` consent type via the WordPress Consent API so banners can gate submissions, webhooks, and notifications.
 - **Add-ons Ready**: Add-ons loader and admin Add-ons page to extend functionality.
+- **Developer API**: CRUD endpoints under `/wp-json/syntekpro-forms/v1` for forms and entries, plus filters/actions for every major action.
+- **Growth Suite**: Stripe-ready payment totals + coupons, automation connectors (Zapier/Make/Mailchimp/HubSpot), draft save/resume for multi-step forms, and built-in analytics (views, starts, completions, abandonment, field dropoff).
 
 ## Documentation & Tutorials
 
@@ -32,7 +40,7 @@ For a step-by-step walkthrough of every capability, see the comprehensive tutori
 
 ## Version
 
-1.2.9
+1.6.2
 
 ## Author
 
@@ -42,11 +50,33 @@ Syntek Pro
 
 See [CHANGELOG.md](CHANGELOG.md) for a full history of changes.
 
-### 1.2.9 (2026-02-03)
-- Added comprehensive tutorial covering setup, builder workflow, styling, notifications, scheduling, anti-spam, Gutenberg usage, entries/exporting, and webhooks
-- Updated README references so users can jump straight to the tutorial from plugin documentation
-- Bumped plugin version to ship the new docs and in-dashboard links
-- Added quick-access tutorial buttons in the plugin settings page and admin toolbar menu
+### Unreleased
+- Added WordPress Consent API compatibility through the `syntekpro_forms` consent type so consent banners can control form submission, webhook dispatch, and notification delivery.
+- Added Growth features: payment summary engine with optional Stripe Checkout session links, automation connectors, draft save/resume links for multi-step forms, and a new Analytics admin dashboard.
+
+### 1.6.1 (2026-03-30)
+- Added a working site-level plugin auto-update toggle using the existing "Automatic Background Updates" setting.
+- Refined form builder right sidebar tab behavior and visibility after active-state click.
+- Improved entries rendering for array/object values and human-readable key labels.
+
+### 1.6.2 (2026-03-30)
+- Enabled automatic background updates by default for fresh installs.
+
+### 1.5.1 (2026-03-04)
+- Added REST API feature controls and expanded growth tooling (payments/connectors/drafts/analytics)
+- Added dedicated Help page under main plugin menu (User/Developer/Designer docs)
+- Reorganized admin IA (Add-ons/Webhooks/Growth tabs, Settings consolidation, About cleanup)
+- Improved Entries page visual design while preserving all existing functionality
+- Improved Add-ons tab responsiveness with instant client-side switching
+- Standardized page headings to concise titles across admin pages
+
+### 1.4.0 (2026-02-20)
+- Major builder UX refresh with improved canvas controls, bulk actions, selection flow, and cleaner Gravity-style editor look
+- Frontend form rendering overhaul with responsive grid alignment, better field spacing, and reduced overlap/squeezing in narrow block/theme containers
+- New styling controls for title/description/label alignment (left/center/right) with live preview and frontend output support
+- Expanded typography with Google Fonts support in builder settings and Gutenberg block controls
+- Added webhook queue/retry manager with admin dashboard, retry tools, and cron-based processing
+- Add-ons system expanded with richer Add-ons page visuals, featured pinning, and starter production add-ons
 
 ### 1.2.8 (2026-02-02)
 - Multi-step forms with progress, step validation, and final-step submit button

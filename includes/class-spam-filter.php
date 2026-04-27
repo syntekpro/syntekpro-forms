@@ -43,6 +43,62 @@ class SyntekPro_Forms_Spam_Filter {
     }
 
     /**
+     * Verify a Cloudflare Turnstile response token.
+     */
+    public function verify_turnstile($response, $secret) {
+        if (empty($response) || empty($secret)) {
+            return false;
+        }
+
+        $remote_ip = isset($_SERVER['REMOTE_ADDR']) ? sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR'])) : '';
+
+        $request = wp_remote_post('https://challenges.cloudflare.com/turnstile/v0/siteverify', array(
+            'body' => array(
+                'secret'   => $secret,
+                'response' => $response,
+                'remoteip' => $remote_ip,
+            ),
+        ));
+
+        if (is_wp_error($request)) {
+            return false;
+        }
+
+        $body = wp_remote_retrieve_body($request);
+        $result = json_decode($body, true);
+
+        return !empty($result['success']);
+    }
+
+    /**
+     * Verify an hCaptcha response token.
+     */
+    public function verify_hcaptcha($response, $secret) {
+        if (empty($response) || empty($secret)) {
+            return false;
+        }
+
+        $remote_ip = isset($_SERVER['REMOTE_ADDR']) ? sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR'])) : '';
+
+        $request = wp_remote_post('https://hcaptcha.com/siteverify', array(
+            'body' => array(
+                'secret'   => $secret,
+                'response' => $response,
+                'remoteip' => $remote_ip,
+            ),
+        ));
+
+        if (is_wp_error($request)) {
+            return false;
+        }
+
+        $body = wp_remote_retrieve_body($request);
+        $result = json_decode($body, true);
+
+        return !empty($result['success']);
+    }
+
+    /**
      * Verify a reCAPTCHA response token with Google.
      */
     public function verify_recaptcha($response, $secret) {
@@ -50,7 +106,7 @@ class SyntekPro_Forms_Spam_Filter {
             return false;
         }
 
-        $remote_ip = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '';
+        $remote_ip = isset($_SERVER['REMOTE_ADDR']) ? sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR'])) : '';
         $url = 'https://www.google.com/recaptcha/api/siteverify';
 
         $request = wp_remote_post($url, array(

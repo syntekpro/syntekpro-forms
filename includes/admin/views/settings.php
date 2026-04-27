@@ -7,36 +7,45 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+global $wpdb;
+
 // Handle form submission
 if (isset($_POST['spf_save_settings']) && check_admin_referer('spf_settings_nonce')) {
+    $post_data = wp_unslash($_POST);
     $settings = array(
-        'license_key' => sanitize_text_field($_POST['license_key']),
-        'currency' => sanitize_text_field($_POST['currency']),
-        'enable_logging' => isset($_POST['enable_logging']) ? 1 : 0,
-        'default_theme' => sanitize_text_field($_POST['default_theme']),
-        'enable_toolbar_menu' => isset($_POST['enable_toolbar_menu']) ? 1 : 0,
-        'enable_dashboard_widget' => isset($_POST['enable_dashboard_widget']) ? 1 : 0,
-        'enable_background_updates' => isset($_POST['enable_background_updates']) ? 1 : 0,
-        'no_conflict_mode' => isset($_POST['no_conflict_mode']) ? 1 : 0,
-        'enable_akismet' => isset($_POST['enable_akismet']) ? 1 : 0,
-        'enable_data_collection' => isset($_POST['enable_data_collection']) ? 1 : 0,
+        'license_key' => sanitize_text_field($post_data['license_key'] ?? ''),
+        'currency' => sanitize_text_field($post_data['currency'] ?? ''),
+        'enable_logging' => !empty($post_data['enable_logging']) ? 1 : 0,
+        'default_theme' => sanitize_text_field($post_data['default_theme'] ?? ''),
+        'enable_toolbar_menu' => !empty($post_data['enable_toolbar_menu']) ? 1 : 0,
+        'enable_dashboard_widget' => !empty($post_data['enable_dashboard_widget']) ? 1 : 0,
+        'enable_background_updates' => !empty($post_data['enable_background_updates']) ? 1 : 0,
+        'no_conflict_mode' => !empty($post_data['no_conflict_mode']) ? 1 : 0,
+        'enable_akismet' => !empty($post_data['enable_akismet']) ? 1 : 0,
+        'enable_data_collection' => !empty($post_data['enable_data_collection']) ? 1 : 0,
         
-        'recaptcha_site_key' => sanitize_text_field($_POST['recaptcha_site_key']),
-        'recaptcha_secret_key' => sanitize_text_field($_POST['recaptcha_secret_key']),
-        'recaptcha_invisible' => isset($_POST['recaptcha_invisible']) ? 1 : 0,
-        'enable_honeypot' => isset($_POST['enable_honeypot']) ? 1 : 0,
+        'recaptcha_site_key' => sanitize_text_field($post_data['recaptcha_site_key'] ?? ''),
+        'recaptcha_secret_key' => sanitize_text_field($post_data['recaptcha_secret_key'] ?? ''),
+        'recaptcha_invisible' => !empty($post_data['recaptcha_invisible']) ? 1 : 0,
+        'enable_honeypot' => !empty($post_data['enable_honeypot']) ? 1 : 0,
         
-        'from_email' => sanitize_email($_POST['from_email']),
-        'from_name' => sanitize_text_field($_POST['from_name']),
-        'delete_entries_on_uninstall' => isset($_POST['delete_entries_on_uninstall']) ? 1 : 0,
-        'enable_ip_logging' => isset($_POST['enable_ip_logging']) ? 1 : 0,
-        'anonymize_ip' => isset($_POST['anonymize_ip']) ? 1 : 0,
-        'data_retention_days' => isset($_POST['data_retention_days']) ? absint($_POST['data_retention_days']) : 0,
-        'rate_limit_enabled' => isset($_POST['rate_limit_enabled']) ? 1 : 0,
-        'rate_limit_seconds' => isset($_POST['rate_limit_seconds']) ? absint($_POST['rate_limit_seconds']) : 0
+        'from_email' => sanitize_email($post_data['from_email'] ?? ''),
+        'from_name' => sanitize_text_field($post_data['from_name'] ?? ''),
+        'delete_entries_on_uninstall' => !empty($post_data['delete_entries_on_uninstall']) ? 1 : 0,
+        'enable_ip_logging' => !empty($post_data['enable_ip_logging']) ? 1 : 0,
+        'anonymize_ip' => !empty($post_data['anonymize_ip']) ? 1 : 0,
+        'data_retention_days' => isset($post_data['data_retention_days']) ? absint($post_data['data_retention_days']) : 0,
+        'trash_retention_days' => isset($post_data['trash_retention_days']) ? absint($post_data['trash_retention_days']) : 40,
+        'rate_limit_enabled' => !empty($post_data['rate_limit_enabled']) ? 1 : 0,
+        'rate_limit_seconds' => isset($post_data['rate_limit_seconds']) ? absint($post_data['rate_limit_seconds']) : 0,
+        'rest_api_enabled' => !empty($post_data['rest_api_enabled']) ? 1 : 0
     );
     
-    update_option('spf_settings', $settings);
+    $existing_settings = get_option('spf_settings', array());
+    if (!is_array($existing_settings)) {
+        $existing_settings = array();
+    }
+    update_option('spf_settings', array_merge($existing_settings, $settings));
     echo '<div class="notice notice-success is-dismissible"><p>' . __('Settings saved successfully!', 'syntekpro-forms') . '</p></div>';
 }
 
@@ -48,7 +57,7 @@ $defaults = array(
     'default_theme' => 'classic',
     'enable_toolbar_menu' => 1,
     'enable_dashboard_widget' => 1,
-    'enable_background_updates' => 0,
+    'enable_background_updates' => 1,
     'no_conflict_mode' => 0,
     'enable_akismet' => 0,
     'enable_data_collection' => 0,
@@ -62,11 +71,74 @@ $defaults = array(
     'enable_ip_logging' => 1,
     'anonymize_ip' => 0,
     'data_retention_days' => 0,
+    'trash_retention_days' => 40,
     'rate_limit_enabled' => 0,
-    'rate_limit_seconds' => 30
+    'rate_limit_seconds' => 30,
+    'rest_api_enabled' => 1,
+    'stripe_publishable_key' => '',
+    'stripe_secret_key' => '',
+    'payment_currency' => 'USD',
+    'automation_zapier_url' => '',
+    'automation_make_url' => '',
+    'mailchimp_api_key' => '',
+    'mailchimp_audience_id' => '',
+    'hubspot_private_token' => '',
+    'hubspot_default_list_id' => ''
 );
 $settings = wp_parse_args($settings, $defaults);
 $tutorial_url = esc_url(plugins_url('docs/TUTORIAL.md', SPF_PLUGIN_FILE));
+
+$settings_theme = wp_get_theme();
+$settings_timezone = wp_timezone_string();
+if ($settings_timezone === '') {
+    $settings_timezone = sprintf('UTC%s', get_option('gmt_offset') ? get_option('gmt_offset') : '+0');
+}
+
+$settings_system_info = array(
+    __('Plugin Version', 'syntekpro-forms') => defined('SPF_VERSION') ? SPF_VERSION : __('N/A', 'syntekpro-forms'),
+    __('WordPress Version', 'syntekpro-forms') => get_bloginfo('version'),
+    __('PHP Version', 'syntekpro-forms') => phpversion(),
+    __('Database Version', 'syntekpro-forms') => method_exists($wpdb, 'db_version') ? $wpdb->db_version() : __('N/A', 'syntekpro-forms'),
+    __('Active Theme', 'syntekpro-forms') => $settings_theme->get('Name') . ' ' . $settings_theme->get('Version'),
+    __('Timezone', 'syntekpro-forms') => $settings_timezone,
+    __('Memory Limit', 'syntekpro-forms') => defined('WP_MEMORY_LIMIT') ? WP_MEMORY_LIMIT : ini_get('memory_limit'),
+    __('WP Debug', 'syntekpro-forms') => (defined('WP_DEBUG') && WP_DEBUG) ? __('Enabled', 'syntekpro-forms') : __('Disabled', 'syntekpro-forms'),
+);
+
+$analytics_days = isset($_GET['days']) ? absint($_GET['days']) : 30;
+if ($analytics_days < 1) {
+    $analytics_days = 30;
+}
+$analytics_summary = array();
+$field_dropoff = array();
+if (class_exists('SyntekPro_Forms_Builder')) {
+    $builder_instance = SyntekPro_Forms_Builder::get_instance();
+    if (method_exists($builder_instance, 'get_growth_services')) {
+        $growth_service = $builder_instance->get_growth_services();
+        if ($growth_service) {
+            $analytics_summary = $growth_service->get_analytics_summary($analytics_days);
+            $field_dropoff = $growth_service->get_field_dropoff($analytics_days);
+        }
+    }
+}
+
+$plugin_cards = array(
+    array(
+        'title' => __('SyntekPro Animation', 'syntekpro-forms'),
+        'description' => __('Create smooth, branded animation effects for your website components and UI sections.', 'syntekpro-forms'),
+        'url' => 'https://plugins.syntekpro.com/animations',
+    ),
+    array(
+        'title' => __('SyntekPro Toggle', 'syntekpro-forms'),
+        'description' => __('Control feature switches and interactive toggles with lightweight, reliable behavior.', 'syntekpro-forms'),
+        'url' => 'https://plugins.syntekpro.com/animations/toggle',
+    ),
+    array(
+        'title' => __('SyntekPro License Server', 'syntekpro-forms'),
+        'description' => __('Handle license activation, verification, and entitlement checks for SyntekPro products.', 'syntekpro-forms'),
+        'url' => 'https://plugins.syntekpro.com/animations/license',
+    ),
+);
 ?>
 
 <div class="wrap spf-settings-page">
@@ -77,15 +149,15 @@ $tutorial_url = esc_url(plugins_url('docs/TUTORIAL.md', SPF_PLUGIN_FILE));
             <img src="<?php echo SPF_PLUGIN_URL; ?>assets/images/Syntekpro%20Forms%20Logo.png" class="spf-admin-logo" alt="SyntekPro">
         </div>
         <div class="spf-admin-header-right">
-            <a href="<?php echo $tutorial_url; ?>" target="_blank" class="button button-primary" style="display:inline-flex;align-items:center;gap:6px;">
+            <a href="<?php echo $tutorial_url; ?>" target="_blank" class="button button-primary spf-inline-icon-btn">
                 <span class="dashicons dashicons-book"></span>
                 <?php _e('Open Full Tutorial', 'syntekpro-forms'); ?>
             </a>
         </div>
     </div>
 
-    <div class="spf-admin-page-title-wrap" style="display: flex; justify-content: space-between; align-items: center;">
-        <h2 class="spf-admin-page-title"><?php _e('SyntekPro Forms Settings', 'syntekpro-forms'); ?></h2>
+    <div class="spf-admin-page-title-wrap spf-page-toolbar">
+        <h1 class="spf-admin-page-title"><?php _e('Settings', 'syntekpro-forms'); ?></h1>
         <span class="spf-badge"><?php _e('v', 'syntekpro-forms'); ?><?php echo SPF_VERSION; ?></span>
     </div>
 
@@ -103,13 +175,17 @@ $tutorial_url = esc_url(plugins_url('docs/TUTORIAL.md', SPF_PLUGIN_FILE));
                     <span class="dashicons dashicons-shield"></span>
                     <?php _e('ReCAPTCHA & Protection', 'syntekpro-forms'); ?>
                 </button>
+                <button type="button" class="spf-settings-tab-btn" data-tab="rest-api">
+                    <span class="dashicons dashicons-rest-api"></span>
+                    <?php _e('Rest Api', 'syntekpro-forms'); ?>
+                </button>
+                <button type="button" class="spf-settings-tab-btn" data-tab="analytics">
+                    <span class="dashicons dashicons-chart-area"></span>
+                    <?php _e('Analytics', 'syntekpro-forms'); ?>
+                </button>
                 <button type="button" class="spf-settings-tab-btn" data-tab="uninstall">
                     <span class="dashicons dashicons-trash"></span>
                     <?php _e('Uninstall', 'syntekpro-forms'); ?>
-                </button>
-                <button type="button" class="spf-settings-tab-btn" data-tab="pro">
-                    <span class="dashicons dashicons-awards"></span>
-                    <?php _e('Pro', 'syntekpro-forms'); ?>
                 </button>
                 <button type="button" class="spf-settings-tab-btn" data-tab="about">
                     <span class="dashicons dashicons-info"></span>
@@ -123,7 +199,7 @@ $tutorial_url = esc_url(plugins_url('docs/TUTORIAL.md', SPF_PLUGIN_FILE));
                 <!-- General Settings Tab -->
                 <div id="spf-settings-tab-general" class="spf-settings-tab-pane active">
                     <h2><span class="dashicons dashicons-admin-settings"></span> <?php _e('General Settings', 'syntekpro-forms'); ?></h2>
-                    
+
                     <div class="spf-setting-field">
                         <label class="spf-setting-label"><?php _e('License Key', 'syntekpro-forms'); ?></label>
                         <div class="spf-license-box">
@@ -203,7 +279,7 @@ $tutorial_url = esc_url(plugins_url('docs/TUTORIAL.md', SPF_PLUGIN_FILE));
                                 <?php _e('Enable Automatic Background Updates', 'syntekpro-forms'); ?>
                             </label>
                         </div>
-                        <p class="spf-setting-description"><?php _e('Enable to allow SyntekPro Forms to download and install bug fixes and security updates automatically in the background. Requires a valid license key.', 'syntekpro-forms'); ?></p>
+                        <p class="spf-setting-description"><?php _e('Enable to automatically install SyntekPro Forms updates on this site when a new version is available.', 'syntekpro-forms'); ?></p>
                     </div>
 
                     <div class="spf-setting-field">
@@ -308,6 +384,12 @@ $tutorial_url = esc_url(plugins_url('docs/TUTORIAL.md', SPF_PLUGIN_FILE));
                             </div>
 
                             <div class="spf-setting-field">
+                                <label class="spf-setting-label"><?php _e('Auto-Clear Trash (days)', 'syntekpro-forms'); ?></label>
+                                <input type="number" min="0" name="trash_retention_days" value="<?php echo esc_attr($settings['trash_retention_days']); ?>" class="small-text">
+                                <p class="spf-setting-description"><?php _e('Permanently delete forms in Trash after this many days. Set to 0 to keep trashed forms indefinitely.', 'syntekpro-forms'); ?></p>
+                            </div>
+
+                            <div class="spf-setting-field">
                                 <label>
                                     <input type="checkbox" name="rate_limit_enabled" value="1" <?php checked($settings['rate_limit_enabled'], 1); ?>>
                                     <strong><?php _e('Enable Rate Limiting', 'syntekpro-forms'); ?></strong>
@@ -328,9 +410,121 @@ $tutorial_url = esc_url(plugins_url('docs/TUTORIAL.md', SPF_PLUGIN_FILE));
                     </div>
                 </div>
 
+                <!-- Rest Api Tab -->
+                <div id="spf-settings-tab-rest-api" class="spf-settings-tab-pane">
+                    <h2><span class="dashicons dashicons-rest-api"></span> <?php _e('Rest Api', 'syntekpro-forms'); ?></h2>
+
+                    <div class="spf-setting-field">
+                        <label class="spf-setting-label"><?php _e('Enable REST API', 'syntekpro-forms'); ?></label>
+                        <div class="spf-setting-input-wrap">
+                            <label>
+                                <input type="checkbox" name="rest_api_enabled" value="1" <?php checked($settings['rest_api_enabled'], 1); ?>>
+                                <?php _e('Allow external access via SyntekPro Forms REST endpoints', 'syntekpro-forms'); ?>
+                            </label>
+                        </div>
+                        <p class="spf-setting-description"><?php _e('Disable this to stop registering custom routes under /wp-json/syntekpro-forms/v1.', 'syntekpro-forms'); ?></p>
+                    </div>
+
+                    <div class="spf-setting-field">
+                        <label class="spf-setting-label"><?php _e('Available Base Endpoint', 'syntekpro-forms'); ?></label>
+                        <div class="spf-setting-input-wrap">
+                            <input type="text" class="regular-text" readonly value="<?php echo esc_attr(rest_url('syntekpro-forms/v1')); ?>">
+                        </div>
+                        <p class="spf-setting-description"><?php _e('Use this base URL for forms and entries API requests.', 'syntekpro-forms'); ?></p>
+                    </div>
+
+                    <div class="spf-settings-footer">
+                        <button type="submit" name="spf_save_settings" class="button button-primary button-large">
+                            <?php _e('Save REST API Settings', 'syntekpro-forms'); ?>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Analytics Tab -->
+                <div id="spf-settings-tab-analytics" class="spf-settings-tab-pane">
+                    <h2><span class="dashicons dashicons-chart-area"></span> <?php _e('Forms Analytics', 'syntekpro-forms'); ?></h2>
+
+                    <div style="display:flex;gap:8px;align-items:center;margin:0 0 14px;">
+                        <label for="spf-analytics-days"><?php _e('Date window', 'syntekpro-forms'); ?></label>
+                        <select id="spf-analytics-days" name="days">
+                            <option value="7" <?php selected($analytics_days, 7); ?>><?php _e('7 days', 'syntekpro-forms'); ?></option>
+                            <option value="14" <?php selected($analytics_days, 14); ?>><?php _e('14 days', 'syntekpro-forms'); ?></option>
+                            <option value="30" <?php selected($analytics_days, 30); ?>><?php _e('30 days', 'syntekpro-forms'); ?></option>
+                            <option value="60" <?php selected($analytics_days, 60); ?>><?php _e('60 days', 'syntekpro-forms'); ?></option>
+                            <option value="90" <?php selected($analytics_days, 90); ?>><?php _e('90 days', 'syntekpro-forms'); ?></option>
+                        </select>
+                        <button type="button" id="spf-apply-analytics-window" class="button button-primary"><?php _e('Apply', 'syntekpro-forms'); ?></button>
+                    </div>
+
+                    <div class="spf-admin-content-card" style="padding:16px;">
+                        <h3><?php _e('Conversion Funnel by Form', 'syntekpro-forms'); ?></h3>
+                        <?php if (empty($analytics_summary)): ?>
+                            <p><?php _e('No analytics data available yet. Open a form and start submitting to populate this dashboard.', 'syntekpro-forms'); ?></p>
+                        <?php else: ?>
+                            <table class="widefat striped">
+                                <thead>
+                                <tr>
+                                    <th><?php _e('Form', 'syntekpro-forms'); ?></th>
+                                    <th><?php _e('Views', 'syntekpro-forms'); ?></th>
+                                    <th><?php _e('Starts', 'syntekpro-forms'); ?></th>
+                                    <th><?php _e('Completions', 'syntekpro-forms'); ?></th>
+                                    <th><?php _e('Abandons', 'syntekpro-forms'); ?></th>
+                                    <th><?php _e('Dropoff Events', 'syntekpro-forms'); ?></th>
+                                    <th><?php _e('Completion Rate', 'syntekpro-forms'); ?></th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <?php foreach ($analytics_summary as $row): ?>
+                                    <?php
+                                    $starts = (int) ($row['start'] ?? 0);
+                                    $completions = (int) ($row['complete'] ?? 0);
+                                    $completion_rate = $starts > 0 ? round(($completions / $starts) * 100, 2) : 0;
+                                    ?>
+                                    <tr>
+                                        <td><?php echo esc_html($row['form_title'] !== '' ? $row['form_title'] : '#' . (int) $row['form_id']); ?></td>
+                                        <td><?php echo (int) ($row['view'] ?? 0); ?></td>
+                                        <td><?php echo $starts; ?></td>
+                                        <td><?php echo $completions; ?></td>
+                                        <td><?php echo (int) ($row['abandon'] ?? 0); ?></td>
+                                        <td><?php echo (int) ($row['field_dropoff'] ?? 0); ?></td>
+                                        <td><?php echo esc_html(number_format_i18n($completion_rate, 2)); ?>%</td>
+                                    </tr>
+                                <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="spf-admin-content-card" style="padding:16px;margin-top:16px;">
+                        <h3><?php _e('Top Field Dropoff', 'syntekpro-forms'); ?></h3>
+                        <?php if (empty($field_dropoff)): ?>
+                            <p><?php _e('No field dropoff data yet.', 'syntekpro-forms'); ?></p>
+                        <?php else: ?>
+                            <table class="widefat striped">
+                                <thead>
+                                <tr>
+                                    <th><?php _e('Form ID', 'syntekpro-forms'); ?></th>
+                                    <th><?php _e('Field', 'syntekpro-forms'); ?></th>
+                                    <th><?php _e('Events', 'syntekpro-forms'); ?></th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <?php foreach ($field_dropoff as $item): ?>
+                                    <tr>
+                                        <td><?php echo (int) $item->form_id; ?></td>
+                                        <td><?php echo esc_html((string) $item->field_name); ?></td>
+                                        <td><?php echo (int) $item->total; ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
                 <!-- Uninstall Tab -->
                 <div id="spf-settings-tab-uninstall" class="spf-settings-tab-pane">
-                    <h2><span class="dashicons dashicons-trash"></span> <?php _e('Uninstall SyntekPro Forms', 'syntekpro-forms'); ?></h2>
+                    <h2><span class="dashicons dashicons-trash"></span> <?php _e('Uninstall', 'syntekpro-forms'); ?></h2>
                     
                     <div class="spf-danger-zone">
                         <h3><span class="dashicons dashicons-warning"></span> <?php _e('Danger Zone', 'syntekpro-forms'); ?></h3>
@@ -374,51 +568,65 @@ $tutorial_url = esc_url(plugins_url('docs/TUTORIAL.md', SPF_PLUGIN_FILE));
 
                 <!-- About Tab -->
                 <div id="spf-settings-tab-about" class="spf-settings-tab-pane">
-                    <h2><span class="dashicons dashicons-info"></span> <?php _e('About SyntekPro Forms', 'syntekpro-forms'); ?></h2>
-                    
-                    <div class="spf-about-card">
-                        <div class="spf-about-logo" style="margin-bottom: 25px; text-align: center; background: #fff; padding: 20px; border-radius: 8px; border: 1px solid #eee; display: inline-block; width: 100%; box-sizing: border-box;">
-                            <img src="<?php echo SPF_PLUGIN_URL; ?>assets/images/Syntekpro%20Forms%20Logo.png" alt="SyntekPro Forms Logo" style="max-width: 300px; height: auto;">
-                        </div>
-                        <h3><?php _e('Professional Form Builder for WordPress', 'syntekpro-forms'); ?></h3>
-                        <p><?php _e('Thank you for choosing SyntekPro Forms. We are dedicated to providing the best form building experience for WordPress users.', 'syntekpro-forms'); ?></p>
-                        
-                        <div class="spf-about-links">
-                            <a href="https://syntekpro.com/wpplugins" target="_blank" class="button button-secondary">
-                                <span class="dashicons dashicons-external"></span> <?php _e('Check Other Products', 'syntekpro-forms'); ?>
-                            </a>
-                            <a href="https://syntekpro.com/support" target="_blank" class="button button-secondary">
-                                <span class="dashicons dashicons-sos"></span> <?php _e('Get Support', 'syntekpro-forms'); ?>
-                            </a>
-                        </div>
+                    <h2><span class="dashicons dashicons-info"></span> <?php _e('About', 'syntekpro-forms'); ?></h2>
 
-                        <div style="margin-top: 50px; color: #646970; font-size: 13px;">
-                            <p>&copy; 2026 <a href="https://syntekpro.com" target="_blank" class="spf-footer-link"><img src="<?php echo SPF_PLUGIN_URL; ?>assets/images/company-logo.png" alt="SyntekPro" class="spf-footer-logo"> SyntekProSyntekPro</a>. All rights reserved.</p>
-                        </div>
-                    </div>
-                </div>
+                    <p class="description spf-about-intro">
+                        <?php esc_html_e('SyntekPro Forms is a professional form builder for WordPress that blends drag & drop ease with the flexibility of Gutenberg blocks and shortcodes.', 'syntekpro-forms'); ?>
+                    </p>
 
-                <!-- Pro Tab -->
-                <div id="spf-settings-tab-pro" class="spf-settings-tab-pane">
-                    <h2><span class="dashicons dashicons-awards"></span> <?php _e('Go Pro', 'syntekpro-forms'); ?></h2>
-                    <div class="spf-about-card" style="display:grid;grid-template-columns:1fr;gap:20px;max-width:900px;">
-                        <div>
-                            <p style="font-size:15px;"><?php _e('Unlock advanced capabilities to supercharge your forms and workflows.', 'syntekpro-forms'); ?></p>
-                            <ul style="list-style:disc;padding-left:20px;line-height:1.7;">
-                                <li><?php _e('Multi-step forms with progress bars and per-step validation', 'syntekpro-forms'); ?></li>
-                                <li><?php _e('Payments with Stripe/PayPal, coupons, and conditional totals', 'syntekpro-forms'); ?></li>
-                                <li><?php _e('Save & Resume plus draft links for partially completed forms', 'syntekpro-forms'); ?></li>
-                                <li><?php _e('Advanced conditional logic and calculations across fields', 'syntekpro-forms'); ?></li>
-                                <li><?php _e('Webhooks, Zapier/Make connectors, and CRM/email integrations', 'syntekpro-forms'); ?></li>
+                    <div class="spf-about-grid">
+                        <div class="spf-about-card">
+                            <div class="spf-about-logo">
+                                <img src="<?php echo SPF_PLUGIN_URL; ?>assets/images/Syntekpro%20Forms%20Logo.png" alt="SyntekPro Forms Logo">
+                            </div>
+                            <h3><?php _e('What This Plugin Provides', 'syntekpro-forms'); ?></h3>
+                            <ul>
+                                <li><?php esc_html_e('A responsive form builder with workflow-friendly entry management and export tools.', 'syntekpro-forms'); ?></li>
+                                <li><?php esc_html_e('Built-in conditional logic, validation, and spam defenses to keep submissions reliable.', 'syntekpro-forms'); ?></li>
+                                <li><?php esc_html_e('Seamless Gutenberg blocks, shortcodes, and global settings so forms can be reused across pages.', 'syntekpro-forms'); ?></li>
+                                <li><?php esc_html_e('Action hooks for notifications, webhooks, and integrations so you can connect to your favorite services.', 'syntekpro-forms'); ?></li>
                             </ul>
                         </div>
-                        <div style="background:#f6f7fb;border:1px solid #e5e8f0;border-radius:12px;padding:20px;">
-                            <h3 style="margin-top:0;display:flex;align-items:center;gap:8px;"><span class="dashicons dashicons-star-filled" style="color:#eab308;"></span><?php _e('Upgrade to SyntekPro Forms Pro', 'syntekpro-forms'); ?></h3>
-                            <p style="margin:10px 0 16px;"><?php _e('Get priority support, premium templates, and automation add-ons.', 'syntekpro-forms'); ?></p>
-                            <a href="https://syntekpro.com/forms-pro" target="_blank" class="button button-primary button-hero" style="background:#7c5bff;border-color:#7c5bff;">
-                                <?php _e('Get Pro', 'syntekpro-forms'); ?>
-                            </a>
-                            <p style="margin:12px 0 0;font-size:13px;color:#555;"><?php _e('30-day money-back guarantee.', 'syntekpro-forms'); ?></p>
+
+                        <div class="spf-about-card">
+                            <h3><?php esc_html_e('Why It Matters', 'syntekpro-forms'); ?></h3>
+                            <p><?php esc_html_e('Every submission is stored, timestamped, and searchable so you never miss a lead or support request, and the plugin is tuned for performance even on high-traffic sites.', 'syntekpro-forms'); ?></p>
+
+                            <h3><?php esc_html_e('Stay in Touch', 'syntekpro-forms'); ?></h3>
+                            <p><?php _e('Thank you for choosing SyntekPro Forms. Build high-converting forms, manage entries faster, and run your forms with dependable performance.', 'syntekpro-forms'); ?></p>
+                            <p>
+                                <a href="<?php echo esc_url('https://syntekpro.com'); ?>" target="_blank" rel="noopener noreferrer" class="button button-secondary"><?php _e('Visit syntekpro.com', 'syntekpro-forms'); ?></a>
+                                <a href="<?php echo esc_url(admin_url('admin.php?page=syntekpro-forms-add-new')); ?>" class="button button-primary" style="margin-left:8px;"><?php _e('Create a Form', 'syntekpro-forms'); ?></a>
+                            </p>
+                        </div>
+
+                        <div class="spf-about-card spf-system-info-card">
+                            <h3><?php _e('System Information', 'syntekpro-forms'); ?></h3>
+                            <table class="spf-system-info-table" role="table">
+                                <tbody>
+                                <?php foreach ($settings_system_info as $label => $value): ?>
+                                    <tr>
+                                        <th scope="row"><?php echo esc_html($label); ?></th>
+                                        <td><?php echo esc_html((string) $value); ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="spf-about-card">
+                            <h3><?php _e('Other Plugins', 'syntekpro-forms'); ?></h3>
+                            <p><?php esc_html_e('Explore SyntekPro plugin services from one clean panel.', 'syntekpro-forms'); ?></p>
+
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:12px 0 18px;">
+                                <?php foreach ($plugin_cards as $card): ?>
+                                    <div style="border:1px solid #dcdcde;border-radius:8px;padding:12px;background:#fff;">
+                                        <h4 style="margin:0 0 6px;font-size:14px;"><?php echo esc_html($card['title']); ?></h4>
+                                        <p style="margin:0 0 10px;color:#646970;font-size:13px;"><?php echo esc_html($card['description']); ?></p>
+                                        <a href="<?php echo esc_url($card['url']); ?>" target="_blank" rel="noopener noreferrer" class="button button-secondary"><?php _e('Open Plugin', 'syntekpro-forms'); ?></a>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -428,15 +636,10 @@ $tutorial_url = esc_url(plugins_url('docs/TUTORIAL.md', SPF_PLUGIN_FILE));
     </form>
 </div>
 
-<div class="spf-admin-footer" style="background:#f8ebb4;border:1px solid #ccd0d4;border-radius:4px;padding:10px 20px;margin-top:20px;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 1px rgba(0,0,0,0.04);">
-    <a class="spf-footer-brand" href="https://syntekpro.com" target="_blank" rel="noopener noreferrer">
-        <span><?php _e('Powered by', 'syntekpro-forms'); ?></span>
-        <img src="<?php echo SPF_PLUGIN_URL; ?>assets/images/SYNTEK%20PRO%20LOGO%20Transparent%20Icon%20500x150.png" class="spf-footer-icon" alt="SyntekPro" style="height:32px !important;width:32px !important;max-height:32px !important;max-width:32px !important;object-fit:contain;display:inline-block;vertical-align:middle;">
-    </a>
-</div>
-
 <script>
 jQuery(document).ready(function($) {
+    var requestedTab = '<?php echo esc_js(isset($_GET['spf_settings_tab']) ? sanitize_key((string) $_GET['spf_settings_tab']) : ''); ?>';
+
     // Tab switching logic
     $('.spf-settings-tab-btn').on('click', function() {
         var tabId = $(this).data('tab');
@@ -446,6 +649,19 @@ jQuery(document).ready(function($) {
         
         $('.spf-settings-tab-pane').removeClass('active');
         $('#spf-settings-tab-' + tabId).addClass('active');
+    });
+
+    if (requestedTab && $('.spf-settings-tab-btn[data-tab="' + requestedTab + '"]').length) {
+        $('.spf-settings-tab-btn[data-tab="' + requestedTab + '"]').trigger('click');
+    }
+
+    $('#spf-apply-analytics-window').on('click', function() {
+        var days = $('#spf-analytics-days').val() || '30';
+        var url = new URL(window.location.href);
+        url.searchParams.set('page', 'syntekpro-forms-settings');
+        url.searchParams.set('spf_settings_tab', 'analytics');
+        url.searchParams.set('days', days);
+        window.location.href = url.toString();
     });
 
     // Handle Reset Button

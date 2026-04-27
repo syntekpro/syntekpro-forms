@@ -118,6 +118,188 @@ class SyntekPro_Forms_Templates {
                     'primary_color' => '#ffc107',
                     'submit_align' => 'center'
                 )
+            ),
+            'newsletter' => array(
+                'title' => __('Newsletter Subscription', 'syntekpro-forms'),
+                'description' => __('Simple newsletter signup form.', 'syntekpro-forms'),
+                'icon' => 'dashicons-email-alt',
+                'fields' => array(
+                    array('id' => 'field_name', 'type' => 'text', 'name' => 'subscriber_name', 'label' => __('Name', 'syntekpro-forms'), 'placeholder' => __('Your name', 'syntekpro-forms'), 'required' => true),
+                    array('id' => 'field_email', 'type' => 'email', 'name' => 'subscriber_email', 'label' => __('Email Address', 'syntekpro-forms'), 'placeholder' => __('your@email.com', 'syntekpro-forms'), 'required' => true),
+                    array('id' => 'field_freq', 'type' => 'radio', 'name' => 'frequency', 'label' => __('Email Frequency', 'syntekpro-forms'), 'options' => array('Daily', 'Weekly', 'Monthly'))
+                ),
+                'settings' => array(
+                    'theme' => 'modern',
+                    'submit_button_text' => __('Subscribe Now', 'syntekpro-forms'),
+                    'success_message' => __('Welcome! You are now subscribed to our newsletter.', 'syntekpro-forms'),
+                    'primary_color' => '#ff6b6b',
+                    'submit_align' => 'center'
+                )
+            ),
+            'registration' => array(
+                'title' => __('Event Registration', 'syntekpro-forms'),
+                'description' => __('Register attendees for events and webinars.', 'syntekpro-forms'),
+                'icon' => 'dashicons-calendar-alt',
+                'fields' => array(
+                    array('id' => 'field_name', 'type' => 'text', 'name' => 'full_name', 'label' => __('Full Name', 'syntekpro-forms'), 'required' => true),
+                    array('id' => 'field_email', 'type' => 'email', 'name' => 'email', 'label' => __('Email Address', 'syntekpro-forms'), 'required' => true),
+                    array('id' => 'field_phone', 'type' => 'text', 'name' => 'phone', 'label' => __('Phone Number', 'syntekpro-forms'), 'required' => true),
+                    array('id' => 'field_company', 'type' => 'text', 'name' => 'company', 'label' => __('Company Name', 'syntekpro-forms')),
+                    array('id' => 'field_tickets', 'type' => 'number', 'name' => 'ticket_count', 'label' => __('Number of Tickets', 'syntekpro-forms'), 'required' => true),
+                    array('id' => 'field_dietary', 'type' => 'select', 'name' => 'dietary', 'label' => __('Dietary Requirements', 'syntekpro-forms'), 'options' => array('None', 'Vegetarian', 'Vegan', 'Gluten-Free', 'Other'))
+                ),
+                'settings' => array(
+                    'theme' => 'elegant',
+                    'submit_button_text' => __('Register Now', 'syntekpro-forms'),
+                    'success_message' => __('Registration successful! Check your email for event details.', 'syntekpro-forms'),
+                    'primary_color' => '#9c27b0',
+                    'submit_align' => 'center'
+                )
+            ),
+            'survey' => array(
+                'title' => __('Customer Survey', 'syntekpro-forms'),
+                'description' => __('Gather insights from your customers.', 'syntekpro-forms'),
+                'icon' => 'dashicons-chart-bar',
+                'fields' => array(
+                    array('id' => 'field_age', 'type' => 'select', 'name' => 'age_group', 'label' => __('Age Group', 'syntekpro-forms'), 'options' => array('18-24', '25-34', '35-44', '45-54', '55+')),
+                    array('id' => 'field_freq', 'type' => 'radio', 'name' => 'usage_frequency', 'label' => __('How often do you use our service?', 'syntekpro-forms'), 'options' => array('Daily', 'Weekly', 'Monthly', 'Rarely')),
+                    array('id' => 'field_rating', 'type' => 'radio', 'name' => 'satisfaction', 'label' => __('Satisfaction Level', 'syntekpro-forms'), 'options' => array('Very Satisfied', 'Satisfied', 'Neutral', 'Unsatisfied')),
+                    array('id' => 'field_recommend', 'type' => 'radio', 'name' => 'recommend', 'label' => __('Would you recommend us?', 'syntekpro-forms'), 'options' => array('Yes', 'Maybe', 'No')),
+                    array('id' => 'field_comments', 'type' => 'textarea', 'name' => 'additional_comments', 'label' => __('Additional Comments', 'syntekpro-forms'))
+                ),
+                'settings' => array(
+                    'theme' => 'modern',
+                    'submit_button_text' => __('Submit Survey', 'syntekpro-forms'),
+                    'success_message' => __('Thank you for completing our survey!', 'syntekpro-forms'),
+                    'primary_color' => '#00bcd4',
+                    'submit_align' => 'center'
+                )
+            ),
+            'support' => array(
+                'title' => __('Support Ticket', 'syntekpro-forms'),
+                'description' => __('Submit technical support requests.', 'syntekpro-forms'),
+                'icon' => 'dashicons-sos',
+                'fields' => array(
+                    array('id' => 'field_name', 'type' => 'text', 'name' => 'customer_name', 'label' => __('Your Name', 'syntekpro-forms'), 'required' => true),
+                    array('id' => 'field_email', 'type' => 'email', 'name' => 'email', 'label' => __('Email Address', 'syntekpro-forms'), 'required' => true),
+                    array('id' => 'field_priority', 'type' => 'select', 'name' => 'priority', 'label' => __('Priority Level', 'syntekpro-forms'), 'options' => array('Low', 'Medium', 'High', 'Critical'), 'required' => true),
+                    array('id' => 'field_category', 'type' => 'select', 'name' => 'issue_category', 'label' => __('Issue Category', 'syntekpro-forms'), 'options' => array('Technical', 'Billing', 'Account', 'Other'), 'required' => true),
+                    array('id' => 'field_subject', 'type' => 'text', 'name' => 'subject', 'label' => __('Subject', 'syntekpro-forms'), 'required' => true),
+                    array('id' => 'field_description', 'type' => 'textarea', 'name' => 'issue_description', 'label' => __('Issue Description', 'syntekpro-forms'), 'placeholder' => __('Describe your issue in detail...', 'syntekpro-forms'), 'required' => true),
+                    array('id' => 'field_attachment', 'type' => 'file', 'name' => 'screenshot', 'label' => __('Attach Screenshot (Optional)', 'syntekpro-forms'))
+                ),
+                'settings' => array(
+                    'theme' => 'classic',
+                    'submit_button_text' => __('Submit Ticket', 'syntekpro-forms'),
+                    'success_message' => __('Support ticket created. Ticket ID: #' . rand(10000, 99999), 'syntekpro-forms'),
+                    'primary_color' => '#dc3545',
+                    'submit_align' => 'left'
+                )
+            ),
+            'booking' => array(
+                'title' => __('Appointment Booking', 'syntekpro-forms'),
+                'description' => __('Schedule appointments and consultations.', 'syntekpro-forms'),
+                'icon' => 'dashicons-clock',
+                'fields' => array(
+                    array('id' => 'field_name', 'type' => 'text', 'name' => 'client_name', 'label' => __('Your Name', 'syntekpro-forms'), 'required' => true),
+                    array('id' => 'field_email', 'type' => 'email', 'name' => 'email', 'label' => __('Email', 'syntekpro-forms'), 'required' => true),
+                    array('id' => 'field_phone', 'type' => 'text', 'name' => 'phone', 'label' => __('Phone Number', 'syntekpro-forms'), 'required' => true),
+                    array('id' => 'field_service', 'type' => 'select', 'name' => 'service_type', 'label' => __('Service Type', 'syntekpro-forms'), 'options' => array('Consultation', 'Treatment', 'Follow-up', 'Other'), 'required' => true),
+                    array('id' => 'field_date', 'type' => 'date', 'name' => 'preferred_date', 'label' => __('Preferred Date', 'syntekpro-forms'), 'required' => true),
+                    array('id' => 'field_time', 'type' => 'select', 'name' => 'preferred_time', 'label' => __('Preferred Time', 'syntekpro-forms'), 'options' => array('9:00 AM', '10:00 AM', '11:00 AM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM'), 'required' => true),
+                    array('id' => 'field_notes', 'type' => 'textarea', 'name' => 'additional_notes', 'label' => __('Additional Notes', 'syntekpro-forms'))
+                ),
+                'settings' => array(
+                    'theme' => 'modern',
+                    'submit_button_text' => __('Book Appointment', 'syntekpro-forms'),
+                    'success_message' => __('Your appointment request has been received. We will confirm shortly.', 'syntekpro-forms'),
+                    'primary_color' => '#17a2b8',
+                    'submit_align' => 'center'
+                )
+            ),
+            'donation' => array(
+                'title' => __('Donation Form', 'syntekpro-forms'),
+                'description' => __('Accept donations and contributions.', 'syntekpro-forms'),
+                'icon' => 'dashicons-heart',
+                'fields' => array(
+                    array('id' => 'field_name', 'type' => 'text', 'name' => 'donor_name', 'label' => __('Your Name', 'syntekpro-forms'), 'required' => true),
+                    array('id' => 'field_email', 'type' => 'email', 'name' => 'email', 'label' => __('Email Address', 'syntekpro-forms'), 'required' => true),
+                    array('id' => 'field_amount', 'type' => 'radio', 'name' => 'donation_amount', 'label' => __('Donation Amount', 'syntekpro-forms'), 'options' => array('$25', '$50', '$100', '$250', 'Custom'), 'required' => true),
+                    array('id' => 'field_custom', 'type' => 'number', 'name' => 'custom_amount', 'label' => __('Custom Amount ($)', 'syntekpro-forms')),
+                    array('id' => 'field_cause', 'type' => 'select', 'name' => 'donation_cause', 'label' => __('Donation Purpose', 'syntekpro-forms'), 'options' => array('General Fund', 'Education', 'Healthcare', 'Environment', 'Emergency Relief')),
+                    array('id' => 'field_anonymous', 'type' => 'checkbox', 'name' => 'anonymous', 'label' => __('Preferences', 'syntekpro-forms'), 'options' => array('Make my donation anonymous', 'Send me updates')),
+                    array('id' => 'field_message', 'type' => 'textarea', 'name' => 'message', 'label' => __('Personal Message (Optional)', 'syntekpro-forms'))
+                ),
+                'settings' => array(
+                    'theme' => 'elegant',
+                    'submit_button_text' => __('Make Donation', 'syntekpro-forms'),
+                    'success_message' => __('Thank you for your generous donation! You will receive a receipt via email.', 'syntekpro-forms'),
+                    'primary_color' => '#e91e63',
+                    'submit_align' => 'center'
+                )
+            ),
+            'order' => array(
+                'title' => __('Order Form', 'syntekpro-forms'),
+                'description' => __('Simple product or service order form.', 'syntekpro-forms'),
+                'icon' => 'dashicons-cart',
+                'fields' => array(
+                    array('id' => 'field_name', 'type' => 'text', 'name' => 'customer_name', 'label' => __('Full Name', 'syntekpro-forms'), 'required' => true),
+                    array('id' => 'field_email', 'type' => 'email', 'name' => 'email', 'label' => __('Email Address', 'syntekpro-forms'), 'required' => true),
+                    array('id' => 'field_phone', 'type' => 'text', 'name' => 'phone', 'label' => __('Phone Number', 'syntekpro-forms'), 'required' => true),
+                    array('id' => 'field_product', 'type' => 'select', 'name' => 'product', 'label' => __('Select Product', 'syntekpro-forms'), 'options' => array('Product A - $99', 'Product B - $149', 'Product C - $199'), 'required' => true),
+                    array('id' => 'field_quantity', 'type' => 'number', 'name' => 'quantity', 'label' => __('Quantity', 'syntekpro-forms'), 'required' => true),
+                    array('id' => 'field_address', 'type' => 'textarea', 'name' => 'shipping_address', 'label' => __('Shipping Address', 'syntekpro-forms'), 'required' => true),
+                    array('id' => 'field_notes', 'type' => 'textarea', 'name' => 'order_notes', 'label' => __('Order Notes (Optional)', 'syntekpro-forms'))
+                ),
+                'settings' => array(
+                    'theme' => 'modern',
+                    'submit_button_text' => __('Place Order', 'syntekpro-forms'),
+                    'success_message' => __('Order received! Your order number is #' . rand(1000, 9999), 'syntekpro-forms'),
+                    'primary_color' => '#ff9800',
+                    'submit_align' => 'center'
+                )
+            ),
+            'membership' => array(
+                'title' => __('Membership Application', 'syntekpro-forms'),
+                'description' => __('Apply for membership or club enrollment.', 'syntekpro-forms'),
+                'icon' => 'dashicons-groups',
+                'fields' => array(
+                    array('id' => 'field_name', 'type' => 'text', 'name' => 'applicant_name', 'label' => __('Full Name', 'syntekpro-forms'), 'required' => true),
+                    array('id' => 'field_email', 'type' => 'email', 'name' => 'email', 'label' => __('Email Address', 'syntekpro-forms'), 'required' => true),
+                    array('id' => 'field_phone', 'type' => 'text', 'name' => 'phone', 'label' => __('Phone Number', 'syntekpro-forms'), 'required' => true),
+                    array('id' => 'field_dob', 'type' => 'date', 'name' => 'date_of_birth', 'label' => __('Date of Birth', 'syntekpro-forms'), 'required' => true),
+                    array('id' => 'field_type', 'type' => 'radio', 'name' => 'membership_type', 'label' => __('Membership Type', 'syntekpro-forms'), 'options' => array('Individual - $50/year', 'Family - $100/year', 'Corporate - $500/year'), 'required' => true),
+                    array('id' => 'field_interests', 'type' => 'checkbox', 'name' => 'interests', 'label' => __('Areas of Interest', 'syntekpro-forms'), 'options' => array('Events', 'Workshops', 'Networking', 'Volunteer')),
+                    array('id' => 'field_referral', 'type' => 'text', 'name' => 'referral', 'label' => __('How did you hear about us?', 'syntekpro-forms')),
+                    array('id' => 'field_reason', 'type' => 'textarea', 'name' => 'reason', 'label' => __('Why do you want to join?', 'syntekpro-forms'), 'required' => true)
+                ),
+                'settings' => array(
+                    'theme' => 'elegant',
+                    'submit_button_text' => __('Submit Application', 'syntekpro-forms'),
+                    'success_message' => __('Application submitted! We will review and contact you within 3-5 business days.', 'syntekpro-forms'),
+                    'primary_color' => '#673ab7',
+                    'submit_align' => 'center'
+                )
+            ),
+            'rsvp' => array(
+                'title' => __('RSVP Form', 'syntekpro-forms'),
+                'description' => __('Collect RSVPs for events and parties.', 'syntekpro-forms'),
+                'icon' => 'dashicons-tickets-alt',
+                'fields' => array(
+                    array('id' => 'field_name', 'type' => 'text', 'name' => 'guest_name', 'label' => __('Your Name', 'syntekpro-forms'), 'required' => true),
+                    array('id' => 'field_email', 'type' => 'email', 'name' => 'email', 'label' => __('Email Address', 'syntekpro-forms'), 'required' => true),
+                    array('id' => 'field_attending', 'type' => 'radio', 'name' => 'attendance', 'label' => __('Will you be attending?', 'syntekpro-forms'), 'options' => array('Yes, I will attend', 'No, I cannot attend'), 'required' => true),
+                    array('id' => 'field_guests', 'type' => 'number', 'name' => 'guest_count', 'label' => __('Number of Guests (including you)', 'syntekpro-forms'), 'required' => true),
+                    array('id' => 'field_dietary', 'type' => 'text', 'name' => 'dietary_restrictions', 'label' => __('Dietary Restrictions', 'syntekpro-forms')),
+                    array('id' => 'field_message', 'type' => 'textarea', 'name' => 'special_message', 'label' => __('Special Message to Host', 'syntekpro-forms'))
+                ),
+                'settings' => array(
+                    'theme' => 'modern',
+                    'submit_button_text' => __('Send RSVP', 'syntekpro-forms'),
+                    'success_message' => __('Thank you for your RSVP! We look forward to seeing you.', 'syntekpro-forms'),
+                    'primary_color' => '#4caf50',
+                    'submit_align' => 'center'
+                )
             )
         );
     }

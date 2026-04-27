@@ -17,27 +17,31 @@ if (isset($settings['delete_entries_on_uninstall']) && $settings['delete_entries
     // Delete tables
     $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}spf_forms");
     $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}spf_entries");
+    $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}spf_webhook_queue");
+    $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}spf_drafts");
+    $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}spf_analytics");
 
     // Delete options
     delete_option('spf_settings');
     delete_option('spf_version');
     
-    // Delete custom upload directory if it exists
+    // Delete custom upload directories (current and legacy name)
     $upload_dir = wp_upload_dir();
-    $custom_dir = $upload_dir['basedir'] . '/advanced-forms';
-    
-    if (file_exists($custom_dir)) {
-        // Simple recursive delete
-        $files = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($custom_dir, RecursiveDirectoryIterator::SKIP_DOTS),
-            RecursiveIteratorIterator::CHILD_FIRST
-        );
+    foreach (array('syntekpro-forms', 'advanced-forms') as $spf_dir_name) {
+        $custom_dir = $upload_dir['basedir'] . '/' . $spf_dir_name;
 
-        foreach ($files as $fileinfo) {
-            $todo = ($fileinfo->isDir() ? 'rmdir' : 'unlink');
-            $todo($fileinfo->getRealPath());
+        if (file_exists($custom_dir)) {
+            $files = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($custom_dir, RecursiveDirectoryIterator::SKIP_DOTS),
+                RecursiveIteratorIterator::CHILD_FIRST
+            );
+
+            foreach ($files as $fileinfo) {
+                $todo = ($fileinfo->isDir() ? 'rmdir' : 'unlink');
+                $todo($fileinfo->getRealPath());
+            }
+
+            rmdir($custom_dir);
         }
-
-        rmdir($custom_dir);
     }
 }
