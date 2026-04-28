@@ -73,6 +73,7 @@ class SyntekPro_Forms_Ajax_Handler {
         $table = $wpdb->prefix . 'spf_forms';
 
         $form_id = isset($_POST['form_id']) ? intval($_POST['form_id']) : 0;
+        $is_update = $form_id > 0;
         $title = isset($_POST['title']) ? sanitize_text_field($_POST['title']) : '';
         $description = isset($_POST['description']) ? sanitize_textarea_field($_POST['description']) : '';
 
@@ -105,6 +106,28 @@ class SyntekPro_Forms_Ajax_Handler {
 
         if (!empty($wpdb->last_error)) {
             wp_send_json_error('Database error: ' . $wpdb->last_error);
+        }
+
+        if (class_exists('SyntekPro_Forms_Versioning')) {
+            $saved_form = $wpdb->get_row($wpdb->prepare(
+                "SELECT id, title, description, fields, settings FROM {$table} WHERE id = %d",
+                $form_id
+            ));
+
+            if ($saved_form) {
+                $snapshot_data = array(
+                    'title' => (string) $saved_form->title,
+                    'description' => (string) $saved_form->description,
+                    'fields' => json_decode((string) $saved_form->fields, true),
+                    'settings' => json_decode((string) $saved_form->settings, true),
+                );
+
+                $description_text = $is_update
+                    ? __('Form updated from builder', 'syntekpro-forms')
+                    : __('Initial form version', 'syntekpro-forms');
+
+                SyntekPro_Forms_Versioning::create_version_snapshot($form_id, $snapshot_data, $description_text);
+            }
         }
 
         wp_send_json_success(array(

@@ -3,7 +3,7 @@
  * Plugin Name: SyntekPro Forms
  * Plugin URI: https://syntekpro.com
  * Description: Professional WordPress form builder with drag & drop interface, Gutenberg support, and advanced entry management
- * Version: 2.0.0
+ * Version: 2.1.0
  * Update URI: https://github.com/syntekpro/syntekpro-forms
  * Author: SyntekPro
  * Author URI: https://syntekpro.com
@@ -17,8 +17,8 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('SPF_VERSION', '2.0.0');
-define('SPF_DB_VERSION', '2.0.0');
+define('SPF_VERSION', '2.1.0');
+define('SPF_DB_VERSION', '2.1.0');
 define('SPF_ENABLE_AUDIT_LOG', true);
 define('SPF_ENABLE_BACKUPS', true);
 define('SPF_ENABLE_PREVIEW_LINKS', true);
@@ -99,6 +99,7 @@ if (file_exists(SPF_PLUGIN_DIR . 'includes/class-preview-links.php')) {
 }
 if (file_exists(SPF_PLUGIN_DIR . 'includes/class-form-clone.php')) {
     require_once SPF_PLUGIN_DIR . 'includes/class-form-clone.php';
+}
 // v2.0 Phase 2 Feature Classes (Architectural Stubs)
 if (file_exists(SPF_PLUGIN_DIR . 'includes/class-form-versioning.php')) {
     require_once SPF_PLUGIN_DIR . 'includes/class-form-versioning.php';
@@ -129,7 +130,6 @@ if (file_exists(SPF_PLUGIN_DIR . 'includes/class-javascript-sdk.php')) {
 }
 if (file_exists(SPF_PLUGIN_DIR . 'includes/class-pii-masking.php')) {
     require_once SPF_PLUGIN_DIR . 'includes/class-pii-masking.php';
-}
 }
 
 class SyntekPro_Forms_Builder {
@@ -347,6 +347,28 @@ class SyntekPro_Forms_Builder {
             KEY created_at (created_at),
             UNIQUE KEY form_version (form_id, version_num)
         ) $charset_collate;";
+
+        $email_templates_table = $wpdb->prefix . 'spf_email_templates';
+        $email_templates_sql = "CREATE TABLE $email_templates_table (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            form_id bigint(20) NOT NULL,
+            name varchar(255) NOT NULL,
+            subject varchar(255) NOT NULL,
+            from_email varchar(255) DEFAULT NULL,
+            reply_to varchar(255) DEFAULT NULL,
+            recipients longtext,
+            conditions longtext,
+            html_content longtext NOT NULL,
+            is_active tinyint(1) DEFAULT 1,
+            created_by bigint(20) DEFAULT 0,
+            updated_by bigint(20) DEFAULT 0,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY form_id (form_id),
+            KEY is_active (is_active),
+            KEY created_at (created_at)
+        ) $charset_collate;";
         
         $webhook_log_table = $wpdb->prefix . 'spf_webhook_logs';
         $webhook_log_sql = "CREATE TABLE $webhook_log_table (
@@ -389,6 +411,7 @@ class SyntekPro_Forms_Builder {
         dbDelta($audit_log_sql);
         dbDelta($form_backup_sql);
         dbDelta($form_version_sql);
+        dbDelta($email_templates_sql);
         dbDelta($webhook_log_sql);
         dbDelta($preview_link_sql);
 

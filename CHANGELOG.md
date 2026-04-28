@@ -4,6 +4,32 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-04-28
+
+### Added
+- Implemented production backend for form versioning in `class-form-versioning.php`:
+  - Version snapshot creation with incremental `version_num`
+  - Version listing and paginated history helpers
+  - Version-to-version diff (added/removed/modified fields + settings changes)
+  - Rollback to selected version with automatic pre-rollback backup snapshot
+- Implemented production backend for advanced email templates in `class-email-templates.php`:
+  - Persist templates in new `spf_email_templates` table
+  - Create/update template APIs with validation and sanitization
+  - Template rendering with merge tags (`{field_name}`)
+  - Conditional blocks (`[[if field]]...[[/if]]`, `[[if field=="value"]]...[[/if]]`)
+  - Loop blocks for repeater-like data (`[[loop items]]...[[/loop]]` with `{{item.key}}`)
+  - Template preview rendering and conditions schema generation based on form fields
+- Added automatic version snapshot generation on form save in `class-ajax-handler.php`.
+- Added new database table migration: `spf_email_templates`.
+
+### Changed
+- Bumped plugin version to `2.1.0`.
+- Bumped DB version constant to `2.1.0`.
+
+### Fixed
+- Fixed plugin bootstrap include block structure in `syntekpro-forms.php` to avoid malformed include nesting.
+- Extended uninstall cleanup to drop `spf_email_templates`.
+
 ## [2.0.0] - 2026-04-27
 
 ### Added - MAJOR v2.0 Release
