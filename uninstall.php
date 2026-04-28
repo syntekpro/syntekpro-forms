@@ -27,6 +27,10 @@ if (isset($settings['delete_entries_on_uninstall']) && $settings['delete_entries
     $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}spf_ab_variants");
     $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}spf_ab_events");
     $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}spf_dashboards");
+    $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}spf_fraud_settings");
+    $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}spf_fraud_events");
+    $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}spf_integrations");
+    $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}spf_integration_logs");
     $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}spf_webhook_logs");
     $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}spf_preview_links");
 

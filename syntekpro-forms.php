@@ -3,7 +3,7 @@
  * Plugin Name: SyntekPro Forms
  * Plugin URI: https://syntekpro.com
  * Description: Professional WordPress form builder with drag & drop interface, Gutenberg support, and advanced entry management
- * Version: 2.2.0
+ * Version: 2.3.0
  * Update URI: https://github.com/syntekpro/syntekpro-forms
  * Author: SyntekPro
  * Author URI: https://syntekpro.com
@@ -17,8 +17,8 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('SPF_VERSION', '2.2.0');
-define('SPF_DB_VERSION', '2.2.0');
+define('SPF_VERSION', '2.3.0');
+define('SPF_DB_VERSION', '2.3.0');
 define('SPF_ENABLE_AUDIT_LOG', true);
 define('SPF_ENABLE_BACKUPS', true);
 define('SPF_ENABLE_PREVIEW_LINKS', true);
@@ -415,6 +415,74 @@ class SyntekPro_Forms_Builder {
             KEY form_id (form_id),
             KEY created_at (created_at)
         ) $charset_collate;";
+
+        $fraud_settings_table = $wpdb->prefix . 'spf_fraud_settings';
+        $fraud_settings_sql = "CREATE TABLE $fraud_settings_table (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            form_id bigint(20) NOT NULL,
+            settings_data longtext NOT NULL,
+            updated_by bigint(20) DEFAULT 0,
+            updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY form_id (form_id),
+            KEY updated_at (updated_at)
+        ) $charset_collate;";
+
+        $fraud_events_table = $wpdb->prefix . 'spf_fraud_events';
+        $fraud_events_sql = "CREATE TABLE $fraud_events_table (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            form_id bigint(20) NOT NULL,
+            entry_id bigint(20) DEFAULT NULL,
+            ip_address varchar(45) DEFAULT NULL,
+            fraud_score int(11) DEFAULT 0,
+            fraud_reasons longtext,
+            geo_data longtext,
+            action_status varchar(20) DEFAULT 'flag',
+            reviewed_by bigint(20) DEFAULT 0,
+            reviewed_at datetime DEFAULT NULL,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY form_id (form_id),
+            KEY entry_id (entry_id),
+            KEY fraud_score (fraud_score),
+            KEY created_at (created_at)
+        ) $charset_collate;";
+
+        $integrations_table = $wpdb->prefix . 'spf_integrations';
+        $integrations_sql = "CREATE TABLE $integrations_table (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            form_id bigint(20) NOT NULL,
+            integration_name varchar(50) NOT NULL,
+            config_data longtext NOT NULL,
+            enabled tinyint(1) DEFAULT 0,
+            last_tested datetime DEFAULT NULL,
+            last_error text,
+            updated_by bigint(20) DEFAULT 0,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY form_integration (form_id, integration_name),
+            KEY integration_name (integration_name),
+            KEY enabled (enabled)
+        ) $charset_collate;";
+
+        $integration_logs_table = $wpdb->prefix . 'spf_integration_logs';
+        $integration_logs_sql = "CREATE TABLE $integration_logs_table (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            form_id bigint(20) NOT NULL,
+            entry_id bigint(20) DEFAULT 0,
+            integration_name varchar(50) NOT NULL,
+            status varchar(20) DEFAULT 'success',
+            response_code int(11) DEFAULT NULL,
+            response_body longtext,
+            error_message text,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY form_id (form_id),
+            KEY entry_id (entry_id),
+            KEY integration_name (integration_name),
+            KEY created_at (created_at)
+        ) $charset_collate;";
         
         $webhook_log_table = $wpdb->prefix . 'spf_webhook_logs';
         $webhook_log_sql = "CREATE TABLE $webhook_log_table (
@@ -461,6 +529,10 @@ class SyntekPro_Forms_Builder {
         dbDelta($ab_variants_sql);
         dbDelta($ab_events_sql);
         dbDelta($dashboards_sql);
+        dbDelta($fraud_settings_sql);
+        dbDelta($fraud_events_sql);
+        dbDelta($integrations_sql);
+        dbDelta($integration_logs_sql);
         dbDelta($webhook_log_sql);
         dbDelta($preview_link_sql);
 
@@ -669,6 +741,27 @@ class SyntekPro_Forms_Builder {
         return !empty($release->zipball_url) ? (string) $release->zipball_url : '';
     }
 
+    private function get_update_asset_meta() {
+        $icon = SPF_PLUGIN_URL . 'assets/images/Syntekpro%20Forms%20Colored%20Favicons.png';
+        $banner = SPF_PLUGIN_URL . 'assets/images/Syntekpro%20Forms%20Logo.png';
+
+        return array(
+            'icons' => array(
+                '1x' => $icon,
+                '2x' => $icon,
+                'default' => $icon,
+            ),
+            'banners' => array(
+                'low' => $banner,
+                'high' => $banner,
+            ),
+            'banners_rtl' => array(
+                'low' => $banner,
+                'high' => $banner,
+            ),
+        );
+    }
+
     public function check_github_update($transient) {
         if (!is_object($transient)) {
             return $transient;
@@ -693,13 +786,17 @@ class SyntekPro_Forms_Builder {
 
         $plugin_basename = plugin_basename(SPF_PLUGIN_FILE);
         $package = $this->get_github_package_url($release);
+        $assets = $this->get_update_asset_meta();
 
         $transient->response[$plugin_basename] = (object) array(
             'slug' => dirname($plugin_basename),
             'plugin' => $plugin_basename,
             'new_version' => $latest_version,
             'url' => !empty($release->html_url) ? $release->html_url : SPF_GITHUB_REPO_URL,
-            'package' => $package
+            'package' => $package,
+            'icons' => $assets['icons'],
+            'banners' => $assets['banners'],
+            'banners_rtl' => $assets['banners_rtl'],
         );
 
         return $transient;
@@ -726,6 +823,7 @@ class SyntekPro_Forms_Builder {
         }
 
         $latest_version = ltrim((string) $release->tag_name, 'v');
+        $assets = $this->get_update_asset_meta();
 
         return (object) array(
             'name' => 'SyntekPro Forms',
@@ -739,7 +837,10 @@ class SyntekPro_Forms_Builder {
                 'description' => !empty($release->body) ? wp_kses_post(wpautop($release->body)) : 'GitHub release update.',
                 'changelog' => !empty($release->body) ? wp_kses_post(wpautop($release->body)) : ''
             ),
-            'download_link' => $this->get_github_package_url($release)
+            'download_link' => $this->get_github_package_url($release),
+            'icons' => $assets['icons'],
+            'banners' => $assets['banners'],
+            'banners_rtl' => $assets['banners_rtl'],
         );
     }
 

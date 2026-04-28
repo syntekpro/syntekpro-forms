@@ -4,6 +4,39 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-04-28
+
+### Added
+- Added plugin icon/banner metadata injection into WordPress update payload so update UI shows branded icon instead of generic placeholder:
+  - `check_github_update()` now supplies `icons`, `banners`, and `banners_rtl`
+  - `github_plugin_info()` now supplies `icons`, `banners`, and `banners_rtl`
+- Started Phase 2.3 implementation with production backend foundations:
+  - Implemented geolocation/fraud backend in `class-geolocation-fraud.php`:
+    - Fraud settings persistence and normalization
+    - Risk scoring engine (velocity, blocked IPs/domains, suspicious keywords, VPN hint)
+    - Fraud event logging/reporting and manual review actions
+  - Implemented native integrations backend in `class-integrations.php`:
+    - Integration config persistence with encrypted secret storage
+    - Provider connection testing (SendGrid, Twilio, Google, Airtable, Notion)
+    - Runtime trigger dispatch with execution logs
+    - SendGrid email and Twilio SMS direct API dispatch support
+- Added Phase 2.3 database tables:
+  - `spf_fraud_settings`
+  - `spf_fraud_events`
+  - `spf_integrations`
+  - `spf_integration_logs`
+- Submission pipeline enhancements:
+  - Fraud score check and block decision before insert
+  - Fraud assessment logging after insert
+  - Automatic trigger of enabled integrations after notifications
+
+### Changed
+- Bumped plugin version to `2.3.0`.
+- Bumped DB version constant to `2.3.0`.
+
+### Fixed
+- Extended uninstall cleanup to remove all Phase 2.3 tables.
+
 ## [2.2.0] - 2026-04-28
 
 ### Added

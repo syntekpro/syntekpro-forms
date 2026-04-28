@@ -506,6 +506,14 @@ class SyntekPro_Forms_Ajax_Handler {
             );
         }
 
+        $fraud_score = 0;
+        if (class_exists('SyntekPro_Forms_Geolocation_Fraud')) {
+            $fraud_score = SyntekPro_Forms_Geolocation_Fraud::calculate_fraud_score($form_id, $sanitized_data, $ip_address_logged);
+            if (SyntekPro_Forms_Geolocation_Fraud::should_block_submission($fraud_score, $form_id)) {
+                $this->send_submission_error(__('Submission blocked by fraud protection rules.', 'syntekpro-forms'));
+            }
+        }
+
         do_action(
             'syntekpro_forms_submission_before_insert',
             $form_id,
@@ -558,6 +566,10 @@ class SyntekPro_Forms_Ajax_Handler {
                 $settings
             );
 
+            if (class_exists('SyntekPro_Forms_Geolocation_Fraud')) {
+                SyntekPro_Forms_Geolocation_Fraud::assess_and_log_submission($form_id, $entry_id, $sanitized_data, $ip_address_logged);
+            }
+
             if (!empty($lock_key) && !empty($settings['rate_limit_enabled']) && $rate_limit_seconds > 0) {
                 $this->spam_filter->acquire_rate_limit_lock($lock_key, $rate_limit_seconds);
             }
@@ -583,6 +595,10 @@ class SyntekPro_Forms_Ajax_Handler {
             if ($this->growth_services) {
                 $this->growth_services->dispatch_connectors($form, $sanitized_data, $entry_id, $form_settings, $settings);
                 $this->growth_services->track_event($form_id, 'complete', '', isset($_POST['spf_session_id']) ? sanitize_text_field((string) $_POST['spf_session_id']) : '');
+            }
+
+            if (class_exists('SyntekPro_Forms_Integrations')) {
+                SyntekPro_Forms_Integrations::trigger_all_integrations($entry_id, $form_id, $sanitized_data);
             }
 
             if (class_exists('SyntekPro_Forms_AB_Testing')) {
