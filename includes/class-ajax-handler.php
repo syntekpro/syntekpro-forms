@@ -585,6 +585,13 @@ class SyntekPro_Forms_Ajax_Handler {
                 $this->growth_services->track_event($form_id, 'complete', '', isset($_POST['spf_session_id']) ? sanitize_text_field((string) $_POST['spf_session_id']) : '');
             }
 
+            if (class_exists('SyntekPro_Forms_AB_Testing')) {
+                $variant_id = isset($_POST['variant_id']) ? absint($_POST['variant_id']) : 0;
+                if ($variant_id > 0) {
+                    SyntekPro_Forms_AB_Testing::record_interaction($form_id, $variant_id, 'submit');
+                }
+            }
+
             do_action(
                 'syntekpro_forms_submission_after_notifications',
                 $entry_id,

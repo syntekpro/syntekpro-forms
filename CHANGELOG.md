@@ -4,6 +4,39 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-04-28
+
+### Added
+- Implemented A/B testing backend in `class-ab-testing.php`:
+  - Create/manage variants with traffic allocation
+  - Deterministic user-to-variant routing
+  - Interaction tracking (`view`/`submit`) and conversion metrics
+  - Pause/stop/declare winner workflows with optional winner rollout
+- Implemented funnel analytics backend in `class-funnel-analytics.php`:
+  - Funnel totals (views, submissions, abandonment, completion/drop-off rates)
+  - Field-level drop-off analysis from entry payloads
+  - Time-to-complete metrics from analytics sessions
+  - Device and geo-style IP grouping breakdowns
+  - CSV report generation for funnel analytics
+- Implemented data visualization backend in `class-data-visualization.php`:
+  - Field-based chart availability discovery
+  - Chart data generation (bar, pie, line, histogram)
+  - Dashboard create/load with widget data hydration
+  - Summary stat engine (submissions, completion, abandonment, avg rating)
+  - SVG chart export scaffold
+- Added new database tables:
+  - `spf_ab_variants`
+  - `spf_ab_events`
+  - `spf_dashboards`
+
+### Changed
+- Bumped plugin version to `2.2.0`.
+- Bumped DB version constant to `2.2.0`.
+- Submission pipeline now records A/B submit events when `variant_id` is provided.
+
+### Fixed
+- Extended uninstall cleanup to remove Phase 2.2 tables.
+
 ## [2.1.0] - 2026-04-28
 
 ### Added

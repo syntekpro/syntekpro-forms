@@ -3,7 +3,7 @@
  * Plugin Name: SyntekPro Forms
  * Plugin URI: https://syntekpro.com
  * Description: Professional WordPress form builder with drag & drop interface, Gutenberg support, and advanced entry management
- * Version: 2.1.0
+ * Version: 2.2.0
  * Update URI: https://github.com/syntekpro/syntekpro-forms
  * Author: SyntekPro
  * Author URI: https://syntekpro.com
@@ -17,8 +17,8 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('SPF_VERSION', '2.1.0');
-define('SPF_DB_VERSION', '2.1.0');
+define('SPF_VERSION', '2.2.0');
+define('SPF_DB_VERSION', '2.2.0');
 define('SPF_ENABLE_AUDIT_LOG', true);
 define('SPF_ENABLE_BACKUPS', true);
 define('SPF_ENABLE_PREVIEW_LINKS', true);
@@ -369,6 +369,52 @@ class SyntekPro_Forms_Builder {
             KEY is_active (is_active),
             KEY created_at (created_at)
         ) $charset_collate;";
+
+        $ab_variants_table = $wpdb->prefix . 'spf_ab_variants';
+        $ab_variants_sql = "CREATE TABLE $ab_variants_table (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            form_id bigint(20) NOT NULL,
+            variant_name varchar(255) NOT NULL,
+            variant_data longtext NOT NULL,
+            traffic_percentage int(11) DEFAULT 0,
+            status varchar(20) DEFAULT 'active',
+            created_by bigint(20) DEFAULT 0,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY form_id (form_id),
+            KEY status (status),
+            KEY created_at (created_at)
+        ) $charset_collate;";
+
+        $ab_events_table = $wpdb->prefix . 'spf_ab_events';
+        $ab_events_sql = "CREATE TABLE $ab_events_table (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            form_id bigint(20) NOT NULL,
+            variant_id bigint(20) NOT NULL,
+            session_id varchar(100) DEFAULT NULL,
+            event_type varchar(20) NOT NULL,
+            user_id bigint(20) DEFAULT 0,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY form_variant_event (form_id, variant_id, event_type),
+            KEY session_id (session_id),
+            KEY created_at (created_at)
+        ) $charset_collate;";
+
+        $dashboards_table = $wpdb->prefix . 'spf_dashboards';
+        $dashboards_sql = "CREATE TABLE $dashboards_table (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            form_id bigint(20) NOT NULL,
+            dashboard_name varchar(255) NOT NULL,
+            widget_config longtext NOT NULL,
+            created_by bigint(20) DEFAULT 0,
+            updated_by bigint(20) DEFAULT 0,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY form_id (form_id),
+            KEY created_at (created_at)
+        ) $charset_collate;";
         
         $webhook_log_table = $wpdb->prefix . 'spf_webhook_logs';
         $webhook_log_sql = "CREATE TABLE $webhook_log_table (
@@ -412,6 +458,9 @@ class SyntekPro_Forms_Builder {
         dbDelta($form_backup_sql);
         dbDelta($form_version_sql);
         dbDelta($email_templates_sql);
+        dbDelta($ab_variants_sql);
+        dbDelta($ab_events_sql);
+        dbDelta($dashboards_sql);
         dbDelta($webhook_log_sql);
         dbDelta($preview_link_sql);
 
