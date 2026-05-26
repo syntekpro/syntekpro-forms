@@ -1,132 +1,329 @@
 # SyntekPro Forms
 
-A custom form builder plugin for WordPress.
-
-## Description
-
-SyntekPro Forms is a WordPress plugin that allows you to create and manage custom forms.
-For a step-by-step walkthrough of every capability, see the comprehensive tutorial in [docs/TUTORIAL.md](docs/TUTORIAL.md).
-
-## Installation
-
-1. Download the plugin files
-2. Upload to `/wp-content/plugins/syntekpro-forms` directory
-3. Activate the plugin through the 'Plugins' menu in WordPress
-
-### Important Update Note
-
-- For upgrades, use a release ZIP that contains the root folder named exactly `syntekpro-forms`.
-- Do **not** upload GitHub source-code ZIPs (for example `syntekpro-forms-main.zip` or `syntekpro-forms-origin.zip`) because WordPress treats those as a new plugin folder and installs side-by-side.
-
-## Features
-
-- **Drag & Drop Form Builder**: Build forms with an intuitive interface and advanced conditional logic.
-- **Multi-step Forms**: Progress bar, per-step validation, and next/previous navigation.
-- **Templates**: Start quickly with pre-defined form templates (Contact, Feedback, Quote, etc.).
-- **Modern Styling**: Multiple themes (classic, modern, minimal, elegant, contrast, pastel, outline, glass) with color and typography overrides.
-- **Entry Management**: View, filter, and export submissions to CSV from the dashboard.
-- **Gutenberg Support**: Dedicated block with styling and behavior controls in the inspector.
-- **Email Notifications**: Customizable admin notifications and user confirmation emails.
-- **File Uploads**: Secure file attachments via AJAX (FormData) submissions.
-- **Privacy & Anti-spam**: Honeypot, rate limiting, Akismet checks, IP anonymization, and data retention controls.
-- **Consent-aware submissions**: Registers the `syntekpro_forms` consent type via the WordPress Consent API so banners can gate submissions, webhooks, and notifications.
-- **Add-ons Ready**: Add-ons loader and admin Add-ons page to extend functionality.
-- **Developer API**: CRUD endpoints under `/wp-json/syntekpro-forms/v1` for forms and entries, plus filters/actions for every major action.
-- **Growth Suite**: Stripe-ready payment totals + coupons, automation connectors (Zapier/Make/Mailchimp/HubSpot), draft save/resume for multi-step forms, and built-in analytics (views, starts, completions, abandonment, field dropoff).
-
-## Documentation & Tutorials
-
-- [docs/TUTORIAL.md](docs/TUTORIAL.md): Complete walkthrough covering setup, form building, notifications, limits, anti-spam, Gutenberg block usage, entries, webhooks, and troubleshooting.
+Professional WordPress form builder plugin with advanced operations, analytics, security controls, integrations, and GitHub-powered updates.
 
 ## Version
 
-2.3.1
+Current release: 2.3.1
 
-## Author
+## Overview
 
-Syntek Pro
+SyntekPro Forms provides an end-to-end form platform inside WordPress:
 
-## Changelog
+- Visual drag-and-drop form building
+- Multi-step forms and conditional logic
+- Entry capture, moderation, export, and analytics
+- Email, webhook, and CRM/automation dispatch
+- Privacy, anti-spam, consent, and fraud controls
+- Developer APIs (REST, WP-CLI hooks, extensibility points)
+- GitHub release updater with remote push-install endpoint
 
-See [CHANGELOG.md](CHANGELOG.md) for a full history of changes.
+## What Is New In 2.3.1
 
-### Unreleased
-- Added WordPress Consent API compatibility through the `syntekpro_forms` consent type so consent banners can control form submission, webhook dispatch, and notification delivery.
-- Added Growth features: payment summary engine with optional Stripe Checkout session links, automation connectors, draft save/resume links for multi-step forms, and a new Analytics admin dashboard.
+- Added secure remote push-update install endpoint:
+  - POST /wp-json/syntekpro-forms/v1/push-update
+- Added token authorization support for push updates:
+  - filter: syntekpro_forms_push_update_token
+  - header: X-SPF-Update-Token
+- Added immediate update workflow:
+  - clears update caches
+  - refreshes GitHub release metadata
+  - installs update package when available
+- Enabled plugin auto-update by default (filterable):
+  - syntekpro_forms_force_auto_update
 
-### 2.3.1 (2026-05-27)
-- Added secure remote push endpoint to check and install updates immediately: `POST /wp-json/syntekpro-forms/v1/push-update`
-- Added optional token auth for remote push updates using the `syntekpro_forms_push_update_token` filter and `X-SPF-Update-Token` request header
-- Enabled SyntekPro Forms plugin auto-updates by default so all installs receive the next release automatically
+## Core Capabilities
 
-### 1.6.1 (2026-03-30)
-- Added a working site-level plugin auto-update toggle using the existing "Automatic Background Updates" setting.
-- Refined form builder right sidebar tab behavior and visibility after active-state click.
-- Improved entries rendering for array/object values and human-readable key labels.
+### 1. Form Builder
 
-### 1.6.2 (2026-03-30)
-- Enabled automatic background updates by default for fresh installs.
+- Drag-and-drop builder interface
+- Field insert/reorder/edit workflow
+- Form templates and duplicate/clone workflow
+- Section/page layout controls
+- Multi-step form support with progress logic
+- Live builder preview and layout adjustments
 
-### 1.5.1 (2026-03-04)
-- Added REST API feature controls and expanded growth tooling (payments/connectors/drafts/analytics)
-- Added dedicated Help page under main plugin menu (User/Developer/Designer docs)
-- Reorganized admin IA (Add-ons/Webhooks/Growth tabs, Settings consolidation, About cleanup)
-- Improved Entries page visual design while preserving all existing functionality
-- Improved Add-ons tab responsiveness with instant client-side switching
-- Standardized page headings to concise titles across admin pages
+### 2. Field Types
 
-### 1.4.0 (2026-02-20)
-- Major builder UX refresh with improved canvas controls, bulk actions, selection flow, and cleaner Gravity-style editor look
-- Frontend form rendering overhaul with responsive grid alignment, better field spacing, and reduced overlap/squeezing in narrow block/theme containers
-- New styling controls for title/description/label alignment (left/center/right) with live preview and frontend output support
-- Expanded typography with Google Fonts support in builder settings and Gutenberg block controls
-- Added webhook queue/retry manager with admin dashboard, retry tools, and cron-based processing
-- Add-ons system expanded with richer Add-ons page visuals, featured pinning, and starter production add-ons
+#### Standard Fields
 
-### 1.2.8 (2026-02-02)
-- Multi-step forms with progress, step validation, and final-step submit button
-- Improved AJAX submissions with FormData (better file handling)
-- Privacy (IP anonymization, retention) and anti-spam (honeypot, rate limit, Akismet)
-- New themes and add-ons administration page
+- Single line text
+- Paragraph text
+- Email
+- Number
+- Phone
+- Website
+- Select dropdown
+- Multi-select
+- Radio
+- Checkbox
+- Toggle
+- Hidden
+- HTML block
+- Section divider
+- Page break
 
-### 1.2.7 (2026-01-19)
-- Doubled the size of the sidebar and admin bar menu icons
-- Doubled the size of the company logo in the Settings page footer
+#### Advanced Fields
 
-### 1.2.6 (2026-01-19)
-- Updated WordPress side menu and top bar icons with branding-consistent assets
-- Replaced footer logo in Settings page and improved its visibility
-- Fixed admin bar CSS selectors for correct icon rendering
+- Name (first/last)
+- Date picker
+- Time picker
+- Address
+- File upload (single and multi-file)
+- CAPTCHA verification fields
+- Consent checkbox
+- List/dynamic row style input
+- Multiple choice
+- Image choice
 
-### 1.2.5 (2026-01-19)
-- Enhanced Gutenberg Block with comprehensive sidebar settings
-- Added support for custom styling (colors, typography, sizes) in the block editor
-- Added Advanced block settings (Form ID, Preview, AJAX toggle, Tabindex, Field Values)
-- Improved form preview in the Gutenberg editor to be less cramped
-- Implemented dynamic pre-filling of form fields via block attributes
+#### Post And Special Fields
 
-### 1.2.4 (2026-01-19)
-- Added SyntekPro logo to the footer copyright line in the Settings page
-- Implemented 'pop out' hover effect for the footer logo
-- Bumped version for CSS cache busting
+- Post title/body/excerpt/tags/category/image/custom field mapping
+- Calculation field
+- Repeater field
+- Signature field
 
-### 1.2.3 (2026-01-19)
-- Repositioned Templates modal to show next to the WordPress admin menu instead of covering it
-- Improved modal centering and responsiveness
-- Reduced template modal size for better usability on smaller screens
+### 3. Frontend Rendering And UX
 
-### 1.2.2 (2026-01-19)
-- Improved Form Template Selection UI with a proper popup modal
-- Added color scheme indicators to template previews
-- Centralized modal styles for consistency across the plugin
+- Shortcode rendering for classic editor/theme usage
+- Gutenberg block support with inspector controls
+- Conditional frontend asset loading for performance
+- AJAX form submission support
+- Dynamic success message or redirect handling
+- Builder and frontend theming options
 
-### 1.2.1 (2026-01-19)
-- Fixed Light Green background not showing on admin pages
-- Bumped version for cache busting
+### 4. Entry Management
 
-### 1.2.0 (2026-01-18)
-- Added Gutenberg Block support
-- Added File upload support
-- Added Dashboard widget
-- Improved Entry management
-- Fixed Admin UI issues
+- Entry list by form
+- Search/filter by form, status, date, and text
+- Star/unstar and notes support
+- Read/unread and bulk actions
+- Entry edit and delete flows
+- CSV export and JSON export helpers
+- PDF-oriented export support
+
+### 5. Email, Notification, And Template Features
+
+- Admin notification email routing
+- User confirmation email support
+- Per-form email settings
+- Merge-tag support in templates
+- Template preview controls
+- Conditional template rendering blocks
+- Loop block rendering for repeatable data
+- SMTP service integration via PHPMailer
+- SMTP/OAuth secret storage protections
+- SMTP test action and delivery logs
+
+### 6. Integrations And Automation
+
+- Webhook queue system with retries
+- Manual webhook retry and dashboard visibility
+- Webhook signature support (HMAC-based)
+- Global and per-form endpoint handling
+- Zapier support
+- Make support
+- Mailchimp contact/list sync support
+- HubSpot contact sync support
+- Native CRM connector dispatch:
+  - Salesforce lead push
+  - ActiveCampaign contact sync
+  - Brevo contact sync
+- Native integration backend foundations:
+  - SendGrid, Twilio, Google, Airtable, Notion connectors
+
+### 7. Analytics, Testing, And Reporting
+
+- Form-level analytics events:
+  - view
+  - start
+  - complete
+  - abandon
+  - field dropoff
+- Funnel metrics and abandonment analysis
+- A/B testing backend:
+  - variant allocation
+  - deterministic routing
+  - conversion tracking
+  - winner workflows
+- Data visualization backend:
+  - bar/pie/line/histogram datasets
+  - dashboard widgets
+  - summary statistics
+  - SVG export scaffold
+
+### 8. Security, Privacy, And Abuse Prevention
+
+- Nonce validation on privileged actions
+- Sanitization and validation pipeline
+- Honeypot checks
+- Rate limiting controls
+- CAPTCHA integrations:
+  - reCAPTCHA
+  - hCaptcha (addon)
+  - Turnstile (addon)
+- Akismet compatibility
+- OTP email verification gate before final submission
+- Password-protected form submission flow
+- Geolocation/fraud backend foundations:
+  - risk scoring
+  - fraud event logging
+  - manual review actions
+- WordPress Consent API registration:
+  - consent type: syntekpro_forms
+- GDPR exporter and eraser integration
+- IP logging and anonymization options
+- Data retention automation and scheduled cleanup
+
+### 9. Operations, Recovery, And Governance
+
+- Audit log for form lifecycle changes
+- Form backup system with retention controls
+- Form preview links with expiration handling
+- Form versioning backend:
+  - snapshots
+  - diffs
+  - rollback support
+- Database optimization helpers
+- Scheduled tasks for cleanup/maintenance workflows
+
+## Admin Areas Included
+
+- Forms list
+- Add new / form builder
+- Entries
+- Settings
+- Analytics
+- Add-ons
+- Webhook queue
+- Help
+- About
+
+## Add-on System
+
+Bundled add-on modules in the addon directory include:
+
+- Disposable email blocker
+- hCaptcha + Turnstile
+- Minimum submit-time guard
+- Slack + Discord dispatch
+- SMTP add-on module
+
+The plugin can auto-load supported add-on files from the add-ons path.
+
+## Developer Features
+
+### REST API
+
+Base namespace:
+
+- /wp-json/syntekpro-forms/v1
+
+Primary groups:
+
+- Forms CRUD endpoints
+- Entries CRUD endpoints
+- Public entry submission endpoint (with validation and anti-spam checks)
+
+### Push Update Endpoint (2.3.1)
+
+- POST /wp-json/syntekpro-forms/v1/push-update
+
+Behavior:
+
+- clears update cache
+- checks latest GitHub release
+- installs available plugin update
+
+Authorization options:
+
+- authenticated user with plugin update capability
+- shared token strategy via:
+  - syntekpro_forms_push_update_token filter
+  - X-SPF-Update-Token header
+
+### Useful Hooks And Filters
+
+- spf_github_repo
+- syntekpro_forms_force_auto_update
+- syntekpro_forms_push_update_token
+- syntekpro_forms_rest_prepare_forms
+- Additional submission and notification lifecycle hooks in core classes
+
+### WP-CLI Support
+
+- Plugin includes CLI support class for form/entry/cache operations.
+- Includes cache flush and feature-oriented helper commands for operational tasks.
+
+## Data Model Summary
+
+Main tables created/managed by plugin features include:
+
+- spf_forms
+- spf_entries
+- spf_webhook_queue
+- spf_drafts
+- spf_analytics
+- spf_email_logs
+- spf_audit_log
+- spf_form_backups
+- spf_form_versions
+- spf_preview_links
+- spf_webhook_logs
+- spf_email_templates
+- spf_ab_variants
+- spf_ab_events
+- spf_dashboards
+- spf_fraud_settings
+- spf_fraud_events
+- spf_integrations
+- spf_integration_logs
+
+## Installation
+
+1. Download the release package.
+2. Upload to WordPress plugins directory:
+   - wp-content/plugins/syntekpro-forms
+3. Activate SyntekPro Forms from the Plugins page.
+
+### Important Upgrade Rule
+
+For manual updates, use release zip assets that contain root folder name exactly:
+
+- syntekpro-forms
+
+Do not use GitHub source zip archives with alternate root folder names, or WordPress may install side-by-side instead of replacing the existing plugin directory.
+
+## Updating
+
+### Automatic
+
+- Plugin auto-update is enabled by default for this plugin and can be adjusted via filters/settings.
+- GitHub release metadata is used for update discovery.
+
+### Remote Push Install
+
+You can trigger immediate update install per site using:
+
+- POST /wp-json/syntekpro-forms/v1/push-update
+
+Example curl:
+
+curl -X POST "https://example.com/wp-json/syntekpro-forms/v1/push-update" -H "X-SPF-Update-Token: YOUR_SHARED_TOKEN"
+
+## Quick Start
+
+1. Create a form in the builder.
+2. Configure notifications, anti-spam, and success behavior.
+3. Publish using shortcode or Gutenberg block.
+4. Submit test entries and review under Entries.
+5. Enable integrations/webhooks as needed.
+
+## Documentation
+
+- docs/TUTORIAL.md for complete usage walkthrough
+- CHANGELOG.md for full release history
+
+## Support
+
+SyntekPro team support and release tracking are handled through your project channels and repository workflow.
