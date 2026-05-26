@@ -40,7 +40,7 @@ For a step-by-step walkthrough of every capability, see the comprehensive tutori
 
 ## Version
 
-1.6.2
+1.6.5
 
 ## Author
 
@@ -53,6 +53,11 @@ See [CHANGELOG.md](CHANGELOG.md) for a full history of changes.
 ### Unreleased
 - Added WordPress Consent API compatibility through the `syntekpro_forms` consent type so consent banners can control form submission, webhook dispatch, and notification delivery.
 - Added Growth features: payment summary engine with optional Stripe Checkout session links, automation connectors, draft save/resume links for multi-step forms, and a new Analytics admin dashboard.
+
+### 1.6.5 (2026-05-27)
+- Added secure remote push endpoint to check and install updates immediately: `POST /wp-json/syntekpro-forms/v1/push-update`
+- Added optional token auth for remote push updates using the `syntekpro_forms_push_update_token` filter and `X-SPF-Update-Token` request header
+- Enabled SyntekPro Forms plugin auto-updates by default so all installs receive the next release automatically
 
 ### 1.6.1 (2026-03-30)
 - Added a working site-level plugin auto-update toggle using the existing "Automatic Background Updates" setting.

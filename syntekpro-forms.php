@@ -3,7 +3,7 @@
  * Plugin Name: SyntekPro Forms
  * Plugin URI: https://syntekpro.com
  * Description: Professional WordPress form builder with drag & drop interface, Gutenberg support, and advanced entry management
- * Version: 1.6.4
+ * Version: 1.6.5
  * Update URI: https://github.com/syntekpro/syntekpro-forms
  * Author: SyntekPro
  * Author URI: https://syntekpro.com
@@ -17,8 +17,8 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('SPF_VERSION', '1.6.4');
-define('SPF_DB_VERSION', '1.6.4');
+define('SPF_VERSION', '1.6.5');
+define('SPF_DB_VERSION', '1.6.5');
 define('SPF_ENABLE_AUDIT_LOG', true);
 define('SPF_ENABLE_BACKUPS', true);
 define('SPF_ENABLE_PREVIEW_LINKS', true);
@@ -207,6 +207,7 @@ class SyntekPro_Forms_Builder {
 
         // REST API initialization
         add_action('rest_api_init', array($this, 'init_rest_api'));
+        add_action('rest_api_init', array($this, 'register_update_push_route'));
 
         // GDPR privacy hooks
         add_filter('wp_privacy_personal_data_exporters', array($this, 'register_gdpr_exporter'));
@@ -944,10 +945,93 @@ class SyntekPro_Forms_Builder {
             return $update;
         }
 
+        // Default to enabled so all installs can receive security/feature updates automatically.
+        if (apply_filters('syntekpro_forms_force_auto_update', true)) {
+            return true;
+        }
+
         $settings = get_option('spf_settings', array());
         $enabled = !empty($settings['enable_background_updates']);
 
         return $enabled ? true : $update;
+    }
+
+    public function register_update_push_route() {
+        register_rest_route('syntekpro-forms/v1', '/push-update', array(
+            'methods' => WP_REST_Server::CREATABLE,
+            'callback' => array($this, 'handle_push_update_install'),
+            'permission_callback' => array($this, 'can_run_push_update'),
+        ));
+    }
+
+    private function get_push_update_token() {
+        $token = apply_filters('syntekpro_forms_push_update_token', '');
+        return is_string($token) ? trim($token) : '';
+    }
+
+    public function can_run_push_update($request) {
+        $configured = $this->get_push_update_token();
+        if ($configured === '') {
+            return current_user_can('update_plugins');
+        }
+
+        $provided = $request->get_header('x-spf-update-token');
+        if ($provided === '' && isset($_GET['token'])) {
+            $provided = sanitize_text_field(wp_unslash($_GET['token']));
+        }
+
+        return is_string($provided) && hash_equals($configured, trim($provided));
+    }
+
+    public function handle_push_update_install($request) {
+        delete_site_transient('update_plugins');
+        delete_transient('spf_github_latest');
+        wp_clean_plugins_cache(true);
+        wp_update_plugins();
+
+        $plugin_file = plugin_basename(SPF_PLUGIN_FILE);
+        $updates = get_site_transient('update_plugins');
+        if (!is_object($updates) || empty($updates->response[$plugin_file])) {
+            return new WP_REST_Response(array(
+                'ok' => true,
+                'message' => __('No update available for SyntekPro Forms.', 'syntekpro-forms'),
+                'version' => SPF_VERSION,
+            ), 200);
+        }
+
+        if (!current_user_can('update_plugins')) {
+            return new WP_REST_Response(array(
+                'ok' => false,
+                'message' => __('Update found but current request is not authorized to install plugins.', 'syntekpro-forms'),
+                'target_version' => $updates->response[$plugin_file]->new_version,
+            ), 403);
+        }
+
+        if (!class_exists('Plugin_Upgrader')) {
+            require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+        }
+
+        $skin = new Automatic_Upgrader_Skin();
+        $upgrader = new Plugin_Upgrader($skin);
+        $result = $upgrader->upgrade($plugin_file);
+
+        if (is_wp_error($result) || $result === false) {
+            $message = is_wp_error($result)
+                ? $result->get_error_message()
+                : __('Unknown plugin upgrade failure.', 'syntekpro-forms');
+
+            return new WP_REST_Response(array(
+                'ok' => false,
+                'message' => $message,
+                'target_version' => $updates->response[$plugin_file]->new_version,
+            ), 500);
+        }
+
+        return new WP_REST_Response(array(
+            'ok' => true,
+            'message' => __('SyntekPro Forms updated successfully.', 'syntekpro-forms'),
+            'target_version' => $updates->response[$plugin_file]->new_version,
+        ), 200);
     }
 
     public function init_rest_api() {

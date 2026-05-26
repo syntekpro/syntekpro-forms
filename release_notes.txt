@@ -1,0 +1,28 @@
+# v1.6.5 - Remote Push Update Install
+
+## Overview
+SyntekPro Forms v1.6.5 adds a secure remote push-update endpoint and enables plugin auto-updates by default so all websites using the plugin can receive and install new releases faster.
+
+## Added
+- New endpoint: POST /wp-json/syntekpro-forms/v1/push-update
+- Endpoint authorization options:
+  - WordPress user auth with update_plugins capability
+  - Shared token auth via filter `syntekpro_forms_push_update_token` and header `X-SPF-Update-Token`
+- Push update flow now:
+  - Clears cached plugin update transients
+  - Requests latest GitHub release metadata
+  - Installs the update package immediately when available
+
+## Changed
+- Auto-update for this plugin is enabled by default via `syntekpro_forms_force_auto_update` (default true)
+- Plugin version bumped to 1.6.5
+- DB version constant bumped to 1.6.5
+
+## Example Push Request
+curl -X POST "https://example.com/wp-json/syntekpro-forms/v1/push-update" \
+  -H "X-SPF-Update-Token: YOUR_SHARED_TOKEN"
+
+## Notes
+- To define a shared token, add a filter in a must-use plugin or theme:
+  add_filter('syntekpro_forms_push_update_token', function () { return 'YOUR_SHARED_TOKEN'; });
+- Ensure your GitHub release includes a plugin zip whose root folder is `syntekpro-forms`.
