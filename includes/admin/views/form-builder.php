@@ -419,6 +419,51 @@ if ($form_id > 0) {
                                 <input type="text" id="spf-notification-emails" value="<?php echo isset($settings_array['notify_emails']) ? esc_attr($settings_array['notify_emails']) : (isset($settings_array['notification_emails']) ? esc_attr($settings_array['notification_emails']) : ''); ?>" placeholder="admin@example.com, manager@example.com">
                                 <p class="description"><?php _e('Comma-separated list. Leave blank to use the global admin email.', 'syntekpro-forms'); ?></p>
                             </div>
+                            <div class="spf-setting-row">
+                                <label><?php _e('Notification Subject', 'syntekpro-forms'); ?></label>
+                                <input type="text" id="spf-notify-subject" value="<?php echo isset($settings_array['notify_subject']) ? esc_attr($settings_array['notify_subject']) : ''; ?>" placeholder="New submission from {form_title}">
+                            </div>
+                            <div class="spf-setting-row">
+                                <label><?php _e('Email Template Builder', 'syntekpro-forms'); ?></label>
+                                <div id="spf-template-tag-palette" class="spf-template-tag-palette" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
+                                    <button type="button" class="button button-secondary spf-template-tag" draggable="true" data-tag="{site_name}">{site_name}</button>
+                                    <button type="button" class="button button-secondary spf-template-tag" draggable="true" data-tag="{submission_date}">{submission_date}</button>
+                                    <button type="button" class="button button-secondary spf-template-tag" draggable="true" data-tag="{form_title}">{form_title}</button>
+                                    <button type="button" class="button button-secondary spf-template-tag" draggable="true" data-tag="{entry_id}">{entry_id}</button>
+                                    <button type="button" class="button button-secondary spf-template-tag" draggable="true" data-tag="{all_fields}">{all_fields}</button>
+                                </div>
+                                <textarea id="spf-notify-message-template" rows="8" placeholder="<?php esc_attr_e('Build your email layout here. Drag merge tags above or click to insert.', 'syntekpro-forms'); ?>"><?php echo isset($settings_array['notify_message_template']) ? esc_textarea($settings_array['notify_message_template']) : ''; ?></textarea>
+                                <p class="description"><?php _e('Drag and drop merge tags into the template or click a tag to insert. Supports HTML and field merge tags like {email}.', 'syntekpro-forms'); ?></p>
+                                <div id="spf-notify-template-preview" style="margin-top:8px;padding:10px;border:1px solid #ddd;background:#fff;"></div>
+                            </div>
+                        </div>
+
+                        <h3><?php _e('Submission Security', 'syntekpro-forms'); ?></h3>
+                        <div class="spf-panel-collapsible-content">
+                            <div class="spf-setting-row">
+                                <label><input type="checkbox" id="spf-otp-enabled" <?php checked(!empty($settings_array['otp_enabled']), true); ?>> <?php _e('Require OTP email verification before final submit', 'syntekpro-forms'); ?></label>
+                            </div>
+                            <div class="spf-setting-row">
+                                <label><?php _e('OTP Email Field Name', 'syntekpro-forms'); ?></label>
+                                <input type="text" id="spf-otp-email-field" value="<?php echo isset($settings_array['otp_email_field']) ? esc_attr($settings_array['otp_email_field']) : ''; ?>" placeholder="email">
+                                <p class="description"><?php _e('Optional. If empty, the first submitted email-like field will be used.', 'syntekpro-forms'); ?></p>
+                            </div>
+                            <div class="spf-setting-row">
+                                <label><?php _e('OTP Subject', 'syntekpro-forms'); ?></label>
+                                <input type="text" id="spf-otp-subject" value="<?php echo isset($settings_array['otp_subject']) ? esc_attr($settings_array['otp_subject']) : ''; ?>" placeholder="Your verification code for {form_title}">
+                            </div>
+                            <div class="spf-setting-row">
+                                <label><?php _e('OTP Message', 'syntekpro-forms'); ?></label>
+                                <textarea id="spf-otp-message" rows="4" placeholder="Your one-time verification code is: {otp_code}"><?php echo isset($settings_array['otp_message']) ? esc_textarea($settings_array['otp_message']) : ''; ?></textarea>
+                            </div>
+                            <div class="spf-setting-row">
+                                <label><input type="checkbox" id="spf-password-protection-enabled" <?php checked(!empty($settings_array['password_protection_enabled']), true); ?>> <?php _e('Enable form access password', 'syntekpro-forms'); ?></label>
+                            </div>
+                            <div class="spf-setting-row">
+                                <label><?php _e('Form Access Password', 'syntekpro-forms'); ?></label>
+                                <input type="text" id="spf-form-access-password" value="<?php echo isset($settings_array['form_access_password']) ? esc_attr($settings_array['form_access_password']) : ''; ?>" placeholder="<?php esc_attr_e('Set shared access password', 'syntekpro-forms'); ?>">
+                                <p class="description"><?php _e('Users must enter this password before submission. A temporary access token is issued after successful validation.', 'syntekpro-forms'); ?></p>
+                            </div>
                         </div>
 
                         <h3><?php _e('Submission Limits', 'syntekpro-forms'); ?></h3>

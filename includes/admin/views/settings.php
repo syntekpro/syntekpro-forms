@@ -9,8 +9,11 @@ if (!defined('ABSPATH')) {
 
 global $wpdb;
 
+$smtp_notice = '';
+$smtp_notice_type = 'success';
+
 // Handle form submission
-if (isset($_POST['spf_save_settings']) && check_admin_referer('spf_settings_nonce')) {
+if ((isset($_POST['spf_save_settings']) || isset($_POST['spf_send_test_email'])) && check_admin_referer('spf_settings_nonce')) {
     $post_data = wp_unslash($_POST);
     $settings = array(
         'license_key' => sanitize_text_field($post_data['license_key'] ?? ''),
@@ -38,15 +41,94 @@ if (isset($_POST['spf_save_settings']) && check_admin_referer('spf_settings_nonc
         'trash_retention_days' => isset($post_data['trash_retention_days']) ? absint($post_data['trash_retention_days']) : 40,
         'rate_limit_enabled' => !empty($post_data['rate_limit_enabled']) ? 1 : 0,
         'rate_limit_seconds' => isset($post_data['rate_limit_seconds']) ? absint($post_data['rate_limit_seconds']) : 0,
-        'rest_api_enabled' => !empty($post_data['rest_api_enabled']) ? 1 : 0
+        'rest_api_enabled' => !empty($post_data['rest_api_enabled']) ? 1 : 0,
+        'salesforce_instance_url' => esc_url_raw($post_data['salesforce_instance_url'] ?? ''),
+        'salesforce_access_token' => sanitize_text_field($post_data['salesforce_access_token'] ?? ''),
+        'activecampaign_api_url' => esc_url_raw($post_data['activecampaign_api_url'] ?? ''),
+        'activecampaign_api_key' => sanitize_text_field($post_data['activecampaign_api_key'] ?? ''),
+        'brevo_api_key' => sanitize_text_field($post_data['brevo_api_key'] ?? ''),
+        'brevo_list_id' => isset($post_data['brevo_list_id']) ? absint($post_data['brevo_list_id']) : 0,
+        'smtp_enabled' => !empty($post_data['smtp_enabled']) ? 1 : 0,
+        'smtp_provider' => sanitize_key($post_data['smtp_provider'] ?? 'custom'),
+        'smtp_host' => sanitize_text_field($post_data['smtp_host'] ?? ''),
+        'smtp_port' => isset($post_data['smtp_port']) ? absint($post_data['smtp_port']) : 587,
+        'smtp_encryption' => sanitize_key($post_data['smtp_encryption'] ?? 'tls'),
+        'smtp_auth_type' => sanitize_key($post_data['smtp_auth_type'] ?? 'password'),
+        'smtp_username' => sanitize_text_field($post_data['smtp_username'] ?? ''),
+        'smtp_oauth_provider' => sanitize_key($post_data['smtp_oauth_provider'] ?? 'google'),
+        'smtp_oauth_client_id' => sanitize_text_field($post_data['smtp_oauth_client_id'] ?? ''),
+        'smtp_oauth_tenant_id' => sanitize_text_field($post_data['smtp_oauth_tenant_id'] ?? 'common')
     );
+
+    if ($settings['smtp_provider'] === '') {
+        $settings['smtp_provider'] = 'custom';
+    }
+    if (!in_array($settings['smtp_encryption'], array('tls', 'ssl', 'none'), true)) {
+        $settings['smtp_encryption'] = 'tls';
+    }
+    if (!in_array($settings['smtp_auth_type'], array('password', 'oauth2'), true)) {
+        $settings['smtp_auth_type'] = 'password';
+    }
+    if (!in_array($settings['smtp_oauth_provider'], array('google', 'microsoft'), true)) {
+        $settings['smtp_oauth_provider'] = 'google';
+    }
+    if ($settings['smtp_port'] < 1) {
+        $settings['smtp_port'] = 587;
+    }
+
+    if (class_exists('SyntekPro_Forms_SMTP')) {
+        if (array_key_exists('smtp_password', $post_data) && trim((string) ($post_data['smtp_password'] ?? '')) !== '') {
+            SyntekPro_Forms_SMTP::save_secret('password', (string) ($post_data['smtp_password'] ?? ''));
+        }
+        if (array_key_exists('smtp_oauth_client_secret', $post_data) && trim((string) ($post_data['smtp_oauth_client_secret'] ?? '')) !== '') {
+            SyntekPro_Forms_SMTP::save_secret('oauth_client_secret', (string) ($post_data['smtp_oauth_client_secret'] ?? ''));
+        }
+        if (array_key_exists('smtp_oauth_refresh_token', $post_data) && trim((string) ($post_data['smtp_oauth_refresh_token'] ?? '')) !== '') {
+            SyntekPro_Forms_SMTP::save_secret('oauth_refresh_token', (string) ($post_data['smtp_oauth_refresh_token'] ?? ''));
+        }
+    }
     
     $existing_settings = get_option('spf_settings', array());
     if (!is_array($existing_settings)) {
         $existing_settings = array();
     }
     update_option('spf_settings', array_merge($existing_settings, $settings));
-    echo '<div class="notice notice-success is-dismissible"><p>' . __('Settings saved successfully!', 'syntekpro-forms') . '</p></div>';
+
+    if (isset($_POST['spf_send_test_email'])) {
+        $test_email = sanitize_email($post_data['smtp_test_email'] ?? get_option('admin_email'));
+        if (!is_email($test_email)) {
+            $smtp_notice = __('Please enter a valid email address for the SMTP test.', 'syntekpro-forms');
+            $smtp_notice_type = 'error';
+        } else {
+            $subject = __('SyntekPro Forms SMTP Test Email', 'syntekpro-forms');
+            $message = sprintf(
+                /* translators: 1: site name, 2: date/time */
+                __('This is a test email from %1$s sent at %2$s.', 'syntekpro-forms'),
+                get_bloginfo('name'),
+                wp_date(get_option('date_format') . ' ' . get_option('time_format'))
+            );
+
+            $sent = wp_mail($test_email, $subject, $message);
+            if ($sent) {
+                $smtp_notice = sprintf(
+                    /* translators: %s: recipient email */
+                    __('SMTP test email sent successfully to %s.', 'syntekpro-forms'),
+                    $test_email
+                );
+                $smtp_notice_type = 'success';
+            } else {
+                $smtp_notice = __('SMTP test failed. Please verify SMTP host, credentials, and OAuth2 settings.', 'syntekpro-forms');
+                $smtp_notice_type = 'error';
+            }
+        }
+    } else {
+        $smtp_notice = __('Settings saved successfully!', 'syntekpro-forms');
+        $smtp_notice_type = 'success';
+    }
+}
+
+if ($smtp_notice !== '') {
+    echo '<div class="notice notice-' . esc_attr($smtp_notice_type) . ' is-dismissible"><p>' . esc_html($smtp_notice) . '</p></div>';
 }
 
 $settings = get_option('spf_settings', array());
@@ -83,10 +165,34 @@ $defaults = array(
     'mailchimp_api_key' => '',
     'mailchimp_audience_id' => '',
     'hubspot_private_token' => '',
-    'hubspot_default_list_id' => ''
+    'hubspot_default_list_id' => '',
+    'salesforce_instance_url' => '',
+    'salesforce_access_token' => '',
+    'activecampaign_api_url' => '',
+    'activecampaign_api_key' => '',
+    'brevo_api_key' => '',
+    'brevo_list_id' => 0,
+    'smtp_enabled' => 0,
+    'smtp_provider' => 'custom',
+    'smtp_host' => '',
+    'smtp_port' => 587,
+    'smtp_encryption' => 'tls',
+    'smtp_auth_type' => 'password',
+    'smtp_username' => '',
+    'smtp_oauth_provider' => 'google',
+    'smtp_oauth_client_id' => '',
+    'smtp_oauth_tenant_id' => 'common'
 );
 $settings = wp_parse_args($settings, $defaults);
 $tutorial_url = esc_url(plugins_url('docs/TUTORIAL.md', SPF_PLUGIN_FILE));
+
+$smtp_presets = class_exists('SyntekPro_Forms_SMTP')
+    ? SyntekPro_Forms_SMTP::get_provider_presets()
+    : array();
+$smtp_password_saved = class_exists('SyntekPro_Forms_SMTP') ? SyntekPro_Forms_SMTP::has_secret('password') : false;
+$smtp_oauth_secret_saved = class_exists('SyntekPro_Forms_SMTP') ? SyntekPro_Forms_SMTP::has_secret('oauth_client_secret') : false;
+$smtp_oauth_refresh_saved = class_exists('SyntekPro_Forms_SMTP') ? SyntekPro_Forms_SMTP::has_secret('oauth_refresh_token') : false;
+$smtp_recent_logs = class_exists('SyntekPro_Forms_SMTP') ? SyntekPro_Forms_SMTP::get_recent_logs(20) : array();
 
 $settings_theme = wp_get_theme();
 $settings_timezone = wp_timezone_string();
@@ -174,6 +280,10 @@ $plugin_cards = array(
                 <button type="button" class="spf-settings-tab-btn" data-tab="protection">
                     <span class="dashicons dashicons-shield"></span>
                     <?php _e('ReCAPTCHA & Protection', 'syntekpro-forms'); ?>
+                </button>
+                <button type="button" class="spf-settings-tab-btn" data-tab="smtp">
+                    <span class="dashicons dashicons-email-alt"></span>
+                    <?php _e('SMTP & Email Delivery', 'syntekpro-forms'); ?>
                 </button>
                 <button type="button" class="spf-settings-tab-btn" data-tab="rest-api">
                     <span class="dashicons dashicons-rest-api"></span>
@@ -315,10 +425,215 @@ $plugin_cards = array(
                         <p class="spf-setting-description"><?php _e('We love improving the form building experience for everyone in our community. By enabling data collection, you can help us learn more about how our customers use SyntekPro Forms.', 'syntekpro-forms'); ?> <a href="#" class="spf-help-link"><?php _e('Learn more', 'syntekpro-forms'); ?></a></p>
                     </div>
 
+                    <div class="spf-setting-field">
+                        <label class="spf-setting-label"><?php _e('Salesforce Instance URL', 'syntekpro-forms'); ?></label>
+                        <div class="spf-setting-input-wrap">
+                            <input type="url" name="salesforce_instance_url" value="<?php echo esc_attr($settings['salesforce_instance_url']); ?>" class="regular-text" placeholder="https://your-instance.my.salesforce.com">
+                        </div>
+                    </div>
+
+                    <div class="spf-setting-field">
+                        <label class="spf-setting-label"><?php _e('Salesforce Access Token', 'syntekpro-forms'); ?></label>
+                        <div class="spf-setting-input-wrap">
+                            <input type="text" name="salesforce_access_token" value="<?php echo esc_attr($settings['salesforce_access_token']); ?>" class="regular-text" placeholder="Salesforce OAuth access token">
+                        </div>
+                    </div>
+
+                    <div class="spf-setting-field">
+                        <label class="spf-setting-label"><?php _e('ActiveCampaign API URL', 'syntekpro-forms'); ?></label>
+                        <div class="spf-setting-input-wrap">
+                            <input type="url" name="activecampaign_api_url" value="<?php echo esc_attr($settings['activecampaign_api_url']); ?>" class="regular-text" placeholder="https://youraccount.api-us1.com">
+                        </div>
+                    </div>
+
+                    <div class="spf-setting-field">
+                        <label class="spf-setting-label"><?php _e('ActiveCampaign API Key', 'syntekpro-forms'); ?></label>
+                        <div class="spf-setting-input-wrap">
+                            <input type="text" name="activecampaign_api_key" value="<?php echo esc_attr($settings['activecampaign_api_key']); ?>" class="regular-text" placeholder="ActiveCampaign API key">
+                        </div>
+                    </div>
+
+                    <div class="spf-setting-field">
+                        <label class="spf-setting-label"><?php _e('Brevo API Key', 'syntekpro-forms'); ?></label>
+                        <div class="spf-setting-input-wrap">
+                            <input type="text" name="brevo_api_key" value="<?php echo esc_attr($settings['brevo_api_key']); ?>" class="regular-text" placeholder="Brevo API key">
+                        </div>
+                    </div>
+
+                    <div class="spf-setting-field">
+                        <label class="spf-setting-label"><?php _e('Brevo List ID', 'syntekpro-forms'); ?></label>
+                        <div class="spf-setting-input-wrap">
+                            <input type="number" min="0" name="brevo_list_id" value="<?php echo esc_attr((string) $settings['brevo_list_id']); ?>" class="small-text">
+                        </div>
+                        <p class="spf-setting-description"><?php _e('Optional. If provided, new contacts are added to this Brevo list.', 'syntekpro-forms'); ?></p>
+                    </div>
+
                     <div class="spf-settings-footer">
                         <button type="submit" name="spf_save_settings" class="button button-primary button-large">
                             <?php _e('Save Settings', 'syntekpro-forms'); ?> &rarr;
                         </button>
+                    </div>
+                </div>
+
+                <!-- SMTP Tab -->
+                <div id="spf-settings-tab-smtp" class="spf-settings-tab-pane">
+                    <h2><span class="dashicons dashicons-email-alt"></span> <?php _e('SMTP & Email Delivery', 'syntekpro-forms'); ?></h2>
+
+                    <div class="spf-setting-field">
+                        <label>
+                            <input type="checkbox" name="smtp_enabled" value="1" <?php checked($settings['smtp_enabled'], 1); ?>>
+                            <strong><?php _e('Enable SMTP for outgoing mail', 'syntekpro-forms'); ?></strong>
+                        </label>
+                        <p class="spf-setting-description"><?php _e('When enabled, SyntekPro Forms uses your SMTP provider for all wp_mail notifications and confirmations.', 'syntekpro-forms'); ?></p>
+                    </div>
+
+                    <div class="spf-setting-field">
+                        <label class="spf-setting-label" for="spf-smtp-provider"><?php _e('Provider Preset', 'syntekpro-forms'); ?></label>
+                        <div class="spf-setting-input-wrap">
+                            <select id="spf-smtp-provider" name="smtp_provider">
+                                <?php foreach ($smtp_presets as $preset_key => $preset): ?>
+                                    <option
+                                        value="<?php echo esc_attr($preset_key); ?>"
+                                        data-host="<?php echo esc_attr($preset['host']); ?>"
+                                        data-port="<?php echo esc_attr((string) $preset['port']); ?>"
+                                        data-encryption="<?php echo esc_attr($preset['encryption']); ?>"
+                                        data-auth-type="<?php echo esc_attr($preset['auth_type']); ?>"
+                                        data-oauth-provider="<?php echo esc_attr($preset['oauth_provider']); ?>"
+                                        <?php selected($settings['smtp_provider'], $preset_key); ?>
+                                    >
+                                        <?php echo esc_html($preset['label']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <p class="spf-setting-description"><?php _e('Select Gmail OAuth2, Outlook OAuth2, SendGrid, Mailgun, SES, or Custom. Presets auto-fill host, port, and auth mode.', 'syntekpro-forms'); ?></p>
+                    </div>
+
+                    <div class="spf-setting-field">
+                        <label class="spf-setting-label" for="spf-smtp-host"><?php _e('SMTP Host', 'syntekpro-forms'); ?></label>
+                        <input id="spf-smtp-host" type="text" name="smtp_host" value="<?php echo esc_attr($settings['smtp_host']); ?>" class="regular-text" placeholder="smtp.example.com">
+                    </div>
+
+                    <div class="spf-setting-field">
+                        <label class="spf-setting-label" for="spf-smtp-port"><?php _e('SMTP Port', 'syntekpro-forms'); ?></label>
+                        <input id="spf-smtp-port" type="number" min="1" name="smtp_port" value="<?php echo esc_attr((string) $settings['smtp_port']); ?>" class="small-text">
+                    </div>
+
+                    <div class="spf-setting-field">
+                        <label class="spf-setting-label" for="spf-smtp-encryption"><?php _e('Encryption', 'syntekpro-forms'); ?></label>
+                        <div class="spf-setting-input-wrap">
+                            <select id="spf-smtp-encryption" name="smtp_encryption">
+                                <option value="tls" <?php selected($settings['smtp_encryption'], 'tls'); ?>><?php _e('TLS / STARTTLS', 'syntekpro-forms'); ?></option>
+                                <option value="ssl" <?php selected($settings['smtp_encryption'], 'ssl'); ?>><?php _e('SSL', 'syntekpro-forms'); ?></option>
+                                <option value="none" <?php selected($settings['smtp_encryption'], 'none'); ?>><?php _e('None', 'syntekpro-forms'); ?></option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="spf-setting-field">
+                        <label class="spf-setting-label" for="spf-smtp-auth-type"><?php _e('Authentication', 'syntekpro-forms'); ?></label>
+                        <div class="spf-setting-input-wrap">
+                            <select id="spf-smtp-auth-type" name="smtp_auth_type">
+                                <option value="password" <?php selected($settings['smtp_auth_type'], 'password'); ?>><?php _e('Username + Password', 'syntekpro-forms'); ?></option>
+                                <option value="oauth2" <?php selected($settings['smtp_auth_type'], 'oauth2'); ?>><?php _e('OAuth2 (Gmail / Outlook)', 'syntekpro-forms'); ?></option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="spf-setting-field">
+                        <label class="spf-setting-label" for="spf-smtp-username"><?php _e('SMTP Username / Email', 'syntekpro-forms'); ?></label>
+                        <input id="spf-smtp-username" type="text" name="smtp_username" value="<?php echo esc_attr($settings['smtp_username']); ?>" class="regular-text" placeholder="notifications@example.com">
+                    </div>
+
+                    <div id="spf-smtp-password-wrap">
+                        <div class="spf-setting-field">
+                            <label class="spf-setting-label" for="spf-smtp-password"><?php _e('SMTP Password / API Key', 'syntekpro-forms'); ?></label>
+                            <input id="spf-smtp-password" type="password" name="smtp_password" value="" class="regular-text" autocomplete="new-password" placeholder="<?php echo $smtp_password_saved ? esc_attr__('Saved (leave blank to keep current)', 'syntekpro-forms') : esc_attr__('Enter SMTP password or API key', 'syntekpro-forms'); ?>">
+                            <p class="spf-setting-description"><?php _e('Stored encrypted with openssl_encrypt() in a non-autoloaded option and never rendered back into the DOM.', 'syntekpro-forms'); ?></p>
+                        </div>
+                    </div>
+
+                    <div id="spf-smtp-oauth-wrap">
+                        <div class="spf-setting-field">
+                            <label class="spf-setting-label" for="spf-smtp-oauth-provider"><?php _e('OAuth Provider', 'syntekpro-forms'); ?></label>
+                            <div class="spf-setting-input-wrap">
+                                <select id="spf-smtp-oauth-provider" name="smtp_oauth_provider">
+                                    <option value="google" <?php selected($settings['smtp_oauth_provider'], 'google'); ?>><?php _e('Google (Gmail)', 'syntekpro-forms'); ?></option>
+                                    <option value="microsoft" <?php selected($settings['smtp_oauth_provider'], 'microsoft'); ?>><?php _e('Microsoft (Outlook / 365)', 'syntekpro-forms'); ?></option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="spf-setting-field">
+                            <label class="spf-setting-label" for="spf-smtp-oauth-client-id"><?php _e('OAuth Client ID', 'syntekpro-forms'); ?></label>
+                            <input id="spf-smtp-oauth-client-id" type="text" name="smtp_oauth_client_id" value="<?php echo esc_attr($settings['smtp_oauth_client_id']); ?>" class="regular-text" placeholder="OAuth App Client ID">
+                        </div>
+
+                        <div class="spf-setting-field">
+                            <label class="spf-setting-label" for="spf-smtp-oauth-client-secret"><?php _e('OAuth Client Secret', 'syntekpro-forms'); ?></label>
+                            <input id="spf-smtp-oauth-client-secret" type="password" name="smtp_oauth_client_secret" value="" class="regular-text" autocomplete="new-password" placeholder="<?php echo $smtp_oauth_secret_saved ? esc_attr__('Saved (leave blank to keep current)', 'syntekpro-forms') : esc_attr__('Enter OAuth client secret', 'syntekpro-forms'); ?>">
+                        </div>
+
+                        <div class="spf-setting-field">
+                            <label class="spf-setting-label" for="spf-smtp-oauth-refresh-token"><?php _e('OAuth Refresh Token', 'syntekpro-forms'); ?></label>
+                            <input id="spf-smtp-oauth-refresh-token" type="password" name="smtp_oauth_refresh_token" value="" class="regular-text" autocomplete="new-password" placeholder="<?php echo $smtp_oauth_refresh_saved ? esc_attr__('Saved (leave blank to keep current)', 'syntekpro-forms') : esc_attr__('Enter OAuth refresh token', 'syntekpro-forms'); ?>">
+                        </div>
+
+                        <div class="spf-setting-field">
+                            <label class="spf-setting-label" for="spf-smtp-oauth-tenant-id"><?php _e('Microsoft Tenant ID', 'syntekpro-forms'); ?></label>
+                            <input id="spf-smtp-oauth-tenant-id" type="text" name="smtp_oauth_tenant_id" value="<?php echo esc_attr($settings['smtp_oauth_tenant_id']); ?>" class="regular-text" placeholder="common">
+                            <p class="spf-setting-description"><?php _e('Only used for Microsoft OAuth2. Keep as "common" unless your Azure app requires a specific tenant.', 'syntekpro-forms'); ?></p>
+                        </div>
+                    </div>
+
+                    <div class="spf-setting-field">
+                        <label class="spf-setting-label" for="spf-smtp-test-email"><?php _e('Send Test Email To', 'syntekpro-forms'); ?></label>
+                        <input id="spf-smtp-test-email" type="email" name="smtp_test_email" value="<?php echo esc_attr(get_option('admin_email')); ?>" class="regular-text" placeholder="admin@example.com">
+                    </div>
+
+                    <div class="spf-settings-footer" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                        <button type="submit" name="spf_save_settings" class="button button-primary button-large">
+                            <?php _e('Save SMTP Settings', 'syntekpro-forms'); ?>
+                        </button>
+                        <button type="submit" name="spf_send_test_email" class="button button-secondary button-large">
+                            <?php _e('Send Test Email', 'syntekpro-forms'); ?>
+                        </button>
+                    </div>
+
+                    <div class="spf-admin-content-card" style="padding:16px;margin-top:16px;">
+                        <h3><?php _e('Email Delivery Log', 'syntekpro-forms'); ?></h3>
+                        <?php if (empty($smtp_recent_logs)): ?>
+                            <p><?php _e('No email events logged yet. Send a test email to validate transport and populate this log.', 'syntekpro-forms'); ?></p>
+                        <?php else: ?>
+                            <table class="widefat striped">
+                                <thead>
+                                <tr>
+                                    <th><?php _e('Status', 'syntekpro-forms'); ?></th>
+                                    <th><?php _e('Timestamp', 'syntekpro-forms'); ?></th>
+                                    <th><?php _e('Recipient', 'syntekpro-forms'); ?></th>
+                                    <th><?php _e('Subject', 'syntekpro-forms'); ?></th>
+                                    <th><?php _e('Error', 'syntekpro-forms'); ?></th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <?php foreach ($smtp_recent_logs as $log_row): ?>
+                                    <tr>
+                                        <td>
+                                            <?php if (($log_row['status'] ?? '') === 'sent'): ?>
+                                                <span style="color:#007017;font-weight:600;"><?php _e('Sent', 'syntekpro-forms'); ?></span>
+                                            <?php else: ?>
+                                                <span style="color:#b42318;font-weight:600;"><?php _e('Failed', 'syntekpro-forms'); ?></span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td><?php echo esc_html((string) ($log_row['created_at'] ?? '')); ?></td>
+                                        <td><?php echo esc_html((string) ($log_row['recipient'] ?? '')); ?></td>
+                                        <td><?php echo esc_html((string) ($log_row['subject'] ?? '')); ?></td>
+                                        <td><?php echo esc_html((string) ($log_row['error_message'] ?? '')); ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        <?php endif; ?>
                     </div>
                 </div>
 
@@ -639,6 +954,7 @@ $plugin_cards = array(
 <script>
 jQuery(document).ready(function($) {
     var requestedTab = '<?php echo esc_js(isset($_GET['spf_settings_tab']) ? sanitize_key((string) $_GET['spf_settings_tab']) : ''); ?>';
+    var smtpPresetWasApplied = false;
 
     // Tab switching logic
     $('.spf-settings-tab-btn').on('click', function() {
@@ -654,6 +970,64 @@ jQuery(document).ready(function($) {
     if (requestedTab && $('.spf-settings-tab-btn[data-tab="' + requestedTab + '"]').length) {
         $('.spf-settings-tab-btn[data-tab="' + requestedTab + '"]').trigger('click');
     }
+
+    function toggleSmtpAuthSections() {
+        var mode = $('#spf-smtp-auth-type').val() || 'password';
+        if (mode === 'oauth2') {
+            $('#spf-smtp-password-wrap').hide();
+            $('#spf-smtp-oauth-wrap').show();
+        } else {
+            $('#spf-smtp-password-wrap').show();
+            $('#spf-smtp-oauth-wrap').hide();
+        }
+    }
+
+    function applySmtpPreset(forceApply) {
+        var $selected = $('#spf-smtp-provider option:selected');
+        if (!$selected.length) {
+            return;
+        }
+
+        if (!forceApply && !smtpPresetWasApplied) {
+            smtpPresetWasApplied = true;
+            return;
+        }
+
+        var host = $selected.data('host');
+        var port = $selected.data('port');
+        var encryption = $selected.data('encryption');
+        var authType = $selected.data('auth-type');
+        var oauthProvider = $selected.data('oauth-provider');
+
+        if (typeof host !== 'undefined') {
+            $('#spf-smtp-host').val(host);
+        }
+        if (typeof port !== 'undefined') {
+            $('#spf-smtp-port').val(port);
+        }
+        if (typeof encryption !== 'undefined') {
+            $('#spf-smtp-encryption').val(encryption);
+        }
+        if (typeof authType !== 'undefined') {
+            $('#spf-smtp-auth-type').val(authType);
+        }
+        if (typeof oauthProvider !== 'undefined') {
+            $('#spf-smtp-oauth-provider').val(oauthProvider);
+        }
+
+        toggleSmtpAuthSections();
+    }
+
+    $('#spf-smtp-provider').on('change', function() {
+        applySmtpPreset(true);
+    });
+
+    $('#spf-smtp-auth-type').on('change', function() {
+        toggleSmtpAuthSections();
+    });
+
+    toggleSmtpAuthSections();
+    applySmtpPreset(false);
 
     $('#spf-apply-analytics-window').on('click', function() {
         var days = $('#spf-analytics-days').val() || '30';

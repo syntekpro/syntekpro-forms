@@ -3,7 +3,7 @@
  * Plugin Name: SyntekPro Forms
  * Plugin URI: https://syntekpro.com
  * Description: Professional WordPress form builder with drag & drop interface, Gutenberg support, and advanced entry management
- * Version: 2.3.0
+ * Version: 1.6.4
  * Update URI: https://github.com/syntekpro/syntekpro-forms
  * Author: SyntekPro
  * Author URI: https://syntekpro.com
@@ -17,8 +17,8 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('SPF_VERSION', '2.3.0');
-define('SPF_DB_VERSION', '2.3.0');
+define('SPF_VERSION', '1.6.4');
+define('SPF_DB_VERSION', '1.6.4');
 define('SPF_ENABLE_AUDIT_LOG', true);
 define('SPF_ENABLE_BACKUPS', true);
 define('SPF_ENABLE_PREVIEW_LINKS', true);
@@ -131,6 +131,9 @@ if (file_exists(SPF_PLUGIN_DIR . 'includes/class-javascript-sdk.php')) {
 if (file_exists(SPF_PLUGIN_DIR . 'includes/class-pii-masking.php')) {
     require_once SPF_PLUGIN_DIR . 'includes/class-pii-masking.php';
 }
+if (file_exists(SPF_PLUGIN_DIR . 'includes/class-smtp.php')) {
+    require_once SPF_PLUGIN_DIR . 'includes/class-smtp.php';
+}
 
 class SyntekPro_Forms_Builder {
 
@@ -140,6 +143,7 @@ class SyntekPro_Forms_Builder {
     private $entries;
     private $spam_filter;
     private $growth_services;
+    private $smtp;
 
     public static function get_instance() {
         if (null === self::$instance) {
@@ -153,6 +157,9 @@ class SyntekPro_Forms_Builder {
         $this->growth_services = new SyntekPro_Forms_Growth_Services();
         $this->entries = new SyntekPro_Forms_Entries($this);
         $this->ajax_handler = new SyntekPro_Forms_Ajax_Handler($this, $this->spam_filter, $this->growth_services);
+        if (class_exists('SyntekPro_Forms_SMTP')) {
+            $this->smtp = SyntekPro_Forms_SMTP::get_instance();
+        }
         $this->init_hooks();
         $this->register_custom_capabilities();
     }
@@ -303,6 +310,19 @@ class SyntekPro_Forms_Builder {
             KEY form_event (form_id, event_type),
             KEY created_at (created_at),
             KEY field_name (field_name)
+        ) $charset_collate;";
+
+        $email_logs_table = $wpdb->prefix . 'spf_email_logs';
+        $email_logs_sql = "CREATE TABLE $email_logs_table (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            status varchar(20) NOT NULL,
+            recipient text,
+            subject text,
+            error_message text,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY status (status),
+            KEY created_at (created_at)
         ) $charset_collate;";
         
         // v2.0 Tables
@@ -522,6 +542,7 @@ class SyntekPro_Forms_Builder {
         dbDelta($webhook_queue_sql);
         dbDelta($drafts_sql);
         dbDelta($analytics_sql);
+        dbDelta($email_logs_sql);
         dbDelta($audit_log_sql);
         dbDelta($form_backup_sql);
         dbDelta($form_version_sql);
@@ -613,6 +634,22 @@ class SyntekPro_Forms_Builder {
             'mailchimp_audience_id' => '',
             'hubspot_private_token' => '',
             'hubspot_default_list_id' => '',
+            'salesforce_instance_url' => '',
+            'salesforce_access_token' => '',
+            'activecampaign_api_url' => '',
+            'activecampaign_api_key' => '',
+            'brevo_api_key' => '',
+            'brevo_list_id' => '',
+            'smtp_enabled' => 0,
+            'smtp_provider' => 'custom',
+            'smtp_host' => '',
+            'smtp_port' => 587,
+            'smtp_encryption' => 'tls',
+            'smtp_auth_type' => 'password',
+            'smtp_username' => '',
+            'smtp_oauth_provider' => 'google',
+            'smtp_oauth_client_id' => '',
+            'smtp_oauth_tenant_id' => 'common',
         );
     }
 

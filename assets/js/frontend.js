@@ -131,6 +131,14 @@
                 }
             });
 
+            // Include cached access/OTP tokens when available.
+            if ($form.attr('data-access-token') && !formData.get('spf_form_access_token')) {
+                formData.set('spf_form_access_token', $form.attr('data-access-token'));
+            }
+            if ($form.attr('data-otp-token') && !formData.get('spf_otp_token')) {
+                formData.set('spf_otp_token', $form.attr('data-otp-token'));
+            }
+
             // Include reCAPTCHA response if present
             if ($form.find('[name="g-recaptcha-response"]').length) {
                 formData.set('g-recaptcha-response', $form.find('[name="g-recaptcha-response"]').val());
@@ -167,6 +175,11 @@
                             return;
                         }
 
+                        if (payload.access_token) {
+                            $form.attr('data-access-token', payload.access_token);
+                            $form.find('[name="spf_form_access_token"]').val(payload.access_token);
+                        }
+
                         self.showSuccess($form, successMsg);
                         $form[0].reset(); // Reset form
                         if ($form.hasClass('spf-has-steps')) {
@@ -180,7 +193,35 @@
                         self.trackAnalytics($form, 'complete');
                         self.clearDraftData($form);
                     } else {
-                        self.showError($form, response.data || 'An error occurred. Please try again.');
+                        var errorData = response.data;
+                        if (errorData && typeof errorData === 'object') {
+                            if (errorData.requires_password) {
+                                var formPassword = window.prompt(errorData.message || 'This form requires a password. Enter password to continue:');
+                                if (formPassword) {
+                                    $form.find('[name="spf_form_password"]').val(formPassword);
+                                    self.submitFormAjax($form);
+                                    return;
+                                }
+                            }
+
+                            if (errorData.requires_otp) {
+                                if (errorData.otp_token) {
+                                    $form.attr('data-otp-token', errorData.otp_token);
+                                    $form.find('[name="spf_otp_token"]').val(errorData.otp_token);
+                                }
+
+                                var otpCode = window.prompt(errorData.message || 'Enter your OTP verification code:');
+                                if (otpCode) {
+                                    $form.find('[name="spf_otp_code"]').val(otpCode);
+                                    self.submitFormAjax($form);
+                                    return;
+                                }
+                            }
+
+                            self.showError($form, errorData.message || 'An error occurred. Please try again.');
+                        } else {
+                            self.showError($form, errorData || 'An error occurred. Please try again.');
+                        }
                         if (typeof grecaptcha !== 'undefined') {
                             grecaptcha.reset();
                         }

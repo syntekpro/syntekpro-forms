@@ -335,6 +335,11 @@ class SyntekPro_Forms_Ajax_Handler {
             $this->send_submission_error(__('Invalid submission payload.', 'syntekpro-forms'));
         }
 
+        $access_gate = $this->validate_form_access_gate($form_id, $form_settings, $raw_form_data, $client_ip);
+        if (is_array($access_gate) && !empty($access_gate['requires_password'])) {
+            $this->send_submission_error($access_gate);
+        }
+
         $availability = $this->builder->get_form_availability_state($form_settings, $form_id);
         if ($availability['status'] !== 'open') {
             $this->send_submission_error($availability['message']);
@@ -485,6 +490,15 @@ class SyntekPro_Forms_Ajax_Handler {
             $this->send_submission_error(__('Submission data processing failed.', 'syntekpro-forms'));
         }
 
+        $otp_gate = $this->validate_otp_gate($form_id, $form, $form_settings, $raw_form_data, $sanitized_data);
+        if (is_array($otp_gate) && !empty($otp_gate['requires_otp'])) {
+            $this->send_submission_error($otp_gate);
+        }
+
+        if (is_array($otp_gate) && !empty($otp_gate['otp_verified'])) {
+            $sanitized_data['otp_verified'] = 1;
+        }
+
         $ip_address_logged = '';
         $user_agent = '';
         if (!empty($settings['enable_ip_logging'])) {
@@ -620,6 +634,9 @@ class SyntekPro_Forms_Ajax_Handler {
             );
 
             $success_payload = $this->builder->build_success_payload($form_settings);
+            if (is_array($access_gate) && !empty($access_gate['access_token'])) {
+                $success_payload['access_token'] = sanitize_text_field((string) $access_gate['access_token']);
+            }
             if (!empty($payment_summary) && is_array($payment_summary)) {
                 $success_payload['payment'] = $payment_summary;
             }
@@ -692,6 +709,9 @@ class SyntekPro_Forms_Ajax_Handler {
         $settings = get_option('spf_settings');
         if (is_array($settings)) {
             unset($settings['recaptcha_secret_key']);
+            unset($settings['smtp_password']);
+            unset($settings['smtp_oauth_client_secret']);
+            unset($settings['smtp_oauth_refresh_token']);
         }
         wp_send_json_success($settings);
     }
@@ -736,6 +756,22 @@ class SyntekPro_Forms_Ajax_Handler {
             'mailchimp_audience_id'       => 'text',
             'hubspot_private_token'       => 'text',
             'hubspot_default_list_id'     => 'text',
+            'salesforce_instance_url'     => 'text',
+            'salesforce_access_token'     => 'text',
+            'activecampaign_api_url'      => 'text',
+            'activecampaign_api_key'      => 'text',
+            'brevo_api_key'               => 'text',
+            'brevo_list_id'               => 'int',
+            'smtp_enabled'                => 'bool',
+            'smtp_provider'               => 'text',
+            'smtp_host'                   => 'text',
+            'smtp_port'                   => 'int',
+            'smtp_encryption'             => 'text',
+            'smtp_auth_type'              => 'text',
+            'smtp_username'               => 'text',
+            'smtp_oauth_provider'         => 'text',
+            'smtp_oauth_client_id'        => 'text',
+            'smtp_oauth_tenant_id'        => 'text',
         );
 
         $sanitized = array();
@@ -832,6 +868,169 @@ class SyntekPro_Forms_Ajax_Handler {
             default:
                 return sanitize_text_field($value);
         }
+    }
+
+    private function validate_form_access_gate($form_id, $form_settings, $raw_form_data, $client_ip) {
+        if (empty($form_settings['password_protection_enabled'])) {
+            return array('ok' => true);
+        }
+
+        $configured_password = isset($form_settings['form_access_password'])
+            ? (string) $form_settings['form_access_password']
+            : '';
+
+        if ($configured_password === '') {
+            return array('ok' => true);
+        }
+
+        $submitted_token = isset($raw_form_data['spf_form_access_token'])
+            ? sanitize_text_field((string) $raw_form_data['spf_form_access_token'])
+            : '';
+
+        if ($submitted_token !== '') {
+            $token_key = 'spf_form_access_' . absint($form_id) . '_' . md5($submitted_token);
+            $token_data = get_transient($token_key);
+            if (is_array($token_data) && !empty($token_data['ip_hash'])) {
+                $expected_hash = md5((string) $client_ip);
+                if (hash_equals((string) $token_data['ip_hash'], $expected_hash)) {
+                    return array(
+                        'ok' => true,
+                        'access_token' => $submitted_token,
+                    );
+                }
+            }
+        }
+
+        $submitted_password = isset($raw_form_data['spf_form_password'])
+            ? sanitize_text_field((string) $raw_form_data['spf_form_password'])
+            : '';
+
+        if ($submitted_password !== '' && hash_equals($configured_password, $submitted_password)) {
+            $new_token = wp_generate_password(24, false, false);
+            $token_key = 'spf_form_access_' . absint($form_id) . '_' . md5($new_token);
+            set_transient(
+                $token_key,
+                array('ip_hash' => md5((string) $client_ip)),
+                DAY_IN_SECONDS
+            );
+
+            return array(
+                'ok' => true,
+                'access_token' => $new_token,
+            );
+        }
+
+        return array(
+            'requires_password' => 1,
+            'message' => __('This form is password-protected. Enter the form password to continue.', 'syntekpro-forms'),
+        );
+    }
+
+    private function validate_otp_gate($form_id, $form, $form_settings, $raw_form_data, $sanitized_data) {
+        if (empty($form_settings['otp_enabled'])) {
+            return array('ok' => true);
+        }
+
+        $email_field = !empty($form_settings['otp_email_field'])
+            ? sanitize_key((string) $form_settings['otp_email_field'])
+            : '';
+
+        $target_email = '';
+        if ($email_field !== '' && !empty($sanitized_data[$email_field])) {
+            $candidate = is_array($sanitized_data[$email_field]) ? '' : (string) $sanitized_data[$email_field];
+            if (is_email($candidate)) {
+                $target_email = sanitize_email($candidate);
+            }
+        }
+
+        if ($target_email === '') {
+            foreach ((array) $sanitized_data as $key => $value) {
+                if (strpos(strtolower((string) $key), 'email') !== false && !is_array($value) && is_email((string) $value)) {
+                    $target_email = sanitize_email((string) $value);
+                    break;
+                }
+            }
+        }
+
+        if ($target_email === '') {
+            return array(
+                'requires_otp' => 1,
+                'message' => __('OTP verification requires a valid email field in this form.', 'syntekpro-forms'),
+            );
+        }
+
+        $verified_key = 'spf_otp_verified_' . absint($form_id) . '_' . md5($target_email);
+        if (get_transient($verified_key)) {
+            return array('ok' => true, 'otp_verified' => 1);
+        }
+
+        $submitted_token = isset($raw_form_data['spf_otp_token']) ? sanitize_text_field((string) $raw_form_data['spf_otp_token']) : '';
+        $submitted_code = isset($raw_form_data['spf_otp_code']) ? sanitize_text_field((string) $raw_form_data['spf_otp_code']) : '';
+
+        if ($submitted_token !== '' && $submitted_code !== '') {
+            $otp_key = 'spf_otp_' . absint($form_id) . '_' . md5($submitted_token);
+            $otp_data = get_transient($otp_key);
+
+            if (is_array($otp_data)
+                && !empty($otp_data['code'])
+                && !empty($otp_data['email'])
+                && hash_equals((string) $otp_data['email'], $target_email)
+                && hash_equals((string) $otp_data['code'], $submitted_code)
+            ) {
+                delete_transient($otp_key);
+                set_transient($verified_key, 1, 30 * MINUTE_IN_SECONDS);
+
+                return array('ok' => true, 'otp_verified' => 1);
+            }
+
+            return array(
+                'requires_otp' => 1,
+                'otp_token' => $submitted_token,
+                'message' => __('The OTP code is invalid or expired. Please try again.', 'syntekpro-forms'),
+            );
+        }
+
+        $otp_code = (string) wp_rand(100000, 999999);
+        $otp_token = wp_generate_password(20, false, false);
+        $otp_key = 'spf_otp_' . absint($form_id) . '_' . md5($otp_token);
+
+        set_transient(
+            $otp_key,
+            array(
+                'code' => $otp_code,
+                'email' => $target_email,
+            ),
+            10 * MINUTE_IN_SECONDS
+        );
+
+        $subject_template = !empty($form_settings['otp_subject'])
+            ? (string) $form_settings['otp_subject']
+            : __('Your verification code for {form_title}', 'syntekpro-forms');
+        $message_template = !empty($form_settings['otp_message'])
+            ? (string) $form_settings['otp_message']
+            : __('Your one-time verification code is: {otp_code}', 'syntekpro-forms');
+
+        $replacements = array(
+            '{otp_code}' => $otp_code,
+            '{site_name}' => get_bloginfo('name'),
+            '{form_title}' => (string) ($form->title ?? __('Form', 'syntekpro-forms')),
+        );
+
+        $subject = strtr($subject_template, $replacements);
+        $message = strtr($message_template, $replacements);
+        $headers = array('Content-Type: text/plain; charset=UTF-8');
+
+        wp_mail($target_email, $subject, $message, $headers);
+
+        return array(
+            'requires_otp' => 1,
+            'otp_token' => $otp_token,
+            'message' => sprintf(
+                /* translators: %s: email address */
+                __('A verification code was sent to %s. Enter it to continue.', 'syntekpro-forms'),
+                $target_email
+            ),
+        );
     }
 
     private function send_submission_error($message) {

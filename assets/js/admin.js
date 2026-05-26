@@ -41,6 +41,7 @@
                 this.initFormSave();
                 this.initFormActions();
                 this.initLivePreview();
+                this.initEmailTemplateBuilder();
                 this.initBuilderEnhancements();
                 this.updateCanvasState();
             }
@@ -314,6 +315,72 @@
             });
 
             this.initEntriesSearch();
+        },
+
+        initEmailTemplateBuilder: function() {
+            var self = this;
+            var $textarea = $('#spf-notify-message-template');
+            var $preview = $('#spf-notify-template-preview');
+
+            if (!$textarea.length || !$preview.length) {
+                return;
+            }
+
+            function insertAtCursor($el, text) {
+                var el = $el.get(0);
+                if (!el) return;
+
+                var start = el.selectionStart || 0;
+                var end = el.selectionEnd || 0;
+                var current = $el.val() || '';
+                var updated = current.substring(0, start) + text + current.substring(end);
+                $el.val(updated);
+                el.selectionStart = el.selectionEnd = start + text.length;
+                $el.trigger('input');
+            }
+
+            function refreshPreview() {
+                var template = ($textarea.val() || '').toString();
+                var sampleData = {
+                    site_name: 'Example Site',
+                    submission_date: new Date().toLocaleString(),
+                    form_title: $('#spf-form-title').val() || 'Contact Form',
+                    entry_id: '123',
+                    all_fields: 'Name: Alex\nEmail: alex@example.com\nMessage: Hello from preview.'
+                };
+
+                var rendered = template;
+                Object.keys(sampleData).forEach(function(key) {
+                    var token = '{' + key + '}';
+                    rendered = rendered.split(token).join(sampleData[key]);
+                });
+
+                $preview.html(rendered.replace(/\n/g, '<br>'));
+            }
+
+            $(document).off('click.spfTemplateTag').on('click.spfTemplateTag', '.spf-template-tag', function(e) {
+                e.preventDefault();
+                insertAtCursor($textarea, $(this).data('tag') || '');
+            });
+
+            $(document).off('dragstart.spfTemplateTag').on('dragstart.spfTemplateTag', '.spf-template-tag', function(e) {
+                e.originalEvent.dataTransfer.setData('text/plain', $(this).data('tag') || '');
+            });
+
+            $textarea.on('dragover', function(e) {
+                e.preventDefault();
+            });
+
+            $textarea.on('drop', function(e) {
+                e.preventDefault();
+                var dropped = e.originalEvent.dataTransfer.getData('text/plain');
+                if (dropped) {
+                    insertAtCursor($textarea, dropped);
+                }
+            });
+
+            $textarea.on('input', refreshPreview);
+            refreshPreview();
         },
 
         initEntriesSearch: function() {
@@ -1499,8 +1566,16 @@
                         success_redirect_url: $('#spf-success-redirect-url').val(),
                         notify_enabled: $('#spf-notifications-enabled').is(':checked') ? 1 : 0,
                         notify_emails: $('#spf-notification-emails').val(),
+                        notify_subject: $('#spf-notify-subject').val(),
+                        notify_message_template: $('#spf-notify-message-template').val(),
                         notifications_enabled: $('#spf-notifications-enabled').is(':checked') ? 1 : 0,
                         notification_emails: $('#spf-notification-emails').val(),
+                        otp_enabled: $('#spf-otp-enabled').is(':checked') ? 1 : 0,
+                        otp_email_field: $('#spf-otp-email-field').val(),
+                        otp_subject: $('#spf-otp-subject').val(),
+                        otp_message: $('#spf-otp-message').val(),
+                        password_protection_enabled: $('#spf-password-protection-enabled').is(':checked') ? 1 : 0,
+                        form_access_password: $('#spf-form-access-password').val(),
                         submission_limit: $('#spf-submission-limit').val(),
                         submission_limit_message: $('#spf-submission-limit-message').val(),
                         schedule_start: $('#spf-schedule-start').val(),

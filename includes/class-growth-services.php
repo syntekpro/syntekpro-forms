@@ -212,6 +212,151 @@ class SyntekPro_Forms_Growth_Services {
         // CRM integrations still fire synchronously (lightweight)
         $this->send_mailchimp($payload, $plugin_settings);
         $this->send_hubspot($payload, $plugin_settings);
+        $this->send_salesforce($payload, $plugin_settings);
+        $this->send_activecampaign($payload, $plugin_settings);
+        $this->send_brevo($payload, $plugin_settings);
+    }
+
+    private function extract_contact_fields($data) {
+        $first_name = '';
+        $last_name = '';
+        $email = '';
+        $phone = '';
+
+        foreach ((array) $data as $key => $value) {
+            if (is_array($value)) {
+                continue;
+            }
+
+            $normalized_key = strtolower((string) $key);
+            $clean_value = sanitize_text_field((string) $value);
+
+            if ($email === '' && strpos($normalized_key, 'email') !== false && is_email($clean_value)) {
+                $email = $clean_value;
+            }
+            if ($phone === '' && (strpos($normalized_key, 'phone') !== false || strpos($normalized_key, 'mobile') !== false)) {
+                $phone = $clean_value;
+            }
+            if ($first_name === '' && (strpos($normalized_key, 'first') !== false || $normalized_key === 'name')) {
+                $first_name = $clean_value;
+            }
+            if ($last_name === '' && strpos($normalized_key, 'last') !== false) {
+                $last_name = $clean_value;
+            }
+        }
+
+        if ($last_name === '' && $first_name !== '') {
+            $last_name = $first_name;
+        }
+
+        return array(
+            'first_name' => $first_name,
+            'last_name' => $last_name,
+            'email' => $email,
+            'phone' => $phone,
+        );
+    }
+
+    private function send_salesforce($payload, $settings) {
+        $instance_url = !empty($settings['salesforce_instance_url']) ? esc_url_raw((string) $settings['salesforce_instance_url']) : '';
+        $access_token = !empty($settings['salesforce_access_token']) ? trim((string) $settings['salesforce_access_token']) : '';
+
+        if ($instance_url === '' || $access_token === '') {
+            return;
+        }
+
+        $contact = $this->extract_contact_fields($payload['data']);
+        if ($contact['email'] === '' && $contact['last_name'] === '') {
+            return;
+        }
+
+        $lead = array(
+            'LastName' => $contact['last_name'] !== '' ? $contact['last_name'] : __('Website Lead', 'syntekpro-forms'),
+            'Company' => get_bloginfo('name'),
+            'Email' => $contact['email'],
+            'FirstName' => $contact['first_name'],
+            'Phone' => $contact['phone'],
+            'Description' => wp_json_encode($payload['data']),
+        );
+
+        wp_remote_post(rtrim($instance_url, '/') . '/services/data/v60.0/sobjects/Lead', array(
+            'timeout' => 12,
+            'headers' => array(
+                'Authorization' => 'Bearer ' . $access_token,
+                'Content-Type' => 'application/json',
+            ),
+            'body' => wp_json_encode($lead),
+        ));
+    }
+
+    private function send_activecampaign($payload, $settings) {
+        $api_url = !empty($settings['activecampaign_api_url']) ? esc_url_raw((string) $settings['activecampaign_api_url']) : '';
+        $api_key = !empty($settings['activecampaign_api_key']) ? trim((string) $settings['activecampaign_api_key']) : '';
+
+        if ($api_url === '' || $api_key === '') {
+            return;
+        }
+
+        $contact = $this->extract_contact_fields($payload['data']);
+        if ($contact['email'] === '') {
+            return;
+        }
+
+        $endpoint = rtrim($api_url, '/') . '/api/3/contact/sync';
+        $body = array(
+            'contact' => array(
+                'email' => $contact['email'],
+                'firstName' => $contact['first_name'],
+                'lastName' => $contact['last_name'],
+                'phone' => $contact['phone'],
+            ),
+        );
+
+        wp_remote_post($endpoint, array(
+            'timeout' => 12,
+            'headers' => array(
+                'Api-Token' => $api_key,
+                'Content-Type' => 'application/json',
+            ),
+            'body' => wp_json_encode($body),
+        ));
+    }
+
+    private function send_brevo($payload, $settings) {
+        $api_key = !empty($settings['brevo_api_key']) ? trim((string) $settings['brevo_api_key']) : '';
+        if ($api_key === '') {
+            return;
+        }
+
+        $contact = $this->extract_contact_fields($payload['data']);
+        if ($contact['email'] === '') {
+            return;
+        }
+
+        $attributes = array(
+            'FIRSTNAME' => $contact['first_name'],
+            'LASTNAME' => $contact['last_name'],
+            'PHONE' => $contact['phone'],
+        );
+
+        $list_id = !empty($settings['brevo_list_id']) ? absint($settings['brevo_list_id']) : 0;
+        $body = array(
+            'email' => $contact['email'],
+            'attributes' => $attributes,
+            'updateEnabled' => true,
+        );
+        if ($list_id > 0) {
+            $body['listIds'] = array($list_id);
+        }
+
+        wp_remote_post('https://api.brevo.com/v3/contacts', array(
+            'timeout' => 12,
+            'headers' => array(
+                'api-key' => $api_key,
+                'Content-Type' => 'application/json',
+            ),
+            'body' => wp_json_encode($body),
+        ));
     }
 
     private function send_mailchimp($payload, $settings) {

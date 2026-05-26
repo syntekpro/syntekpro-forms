@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.6.4] - 2026-05-27
+
+### Added
+- SMTP delivery enhancements:
+  - Dedicated SMTP service class with PHPMailer wiring
+  - Provider presets (Gmail OAuth2, Outlook OAuth2, SendGrid, Mailgun, SES)
+  - Encrypted SMTP/OAuth secret storage in non-autoloaded options
+  - SMTP test email action and admin delivery log table/view
+- Form-level security controls:
+  - OTP email verification gate before final submission
+  - Password-protected form submissions with temporary access token workflow
+- Notification template enhancements:
+  - Email template builder controls in form builder with merge-tag palette
+  - Live preview support in builder
+  - Merge tag alias `{submission_date}`
+- Native CRM connector dispatch in growth services:
+  - Salesforce lead push
+  - ActiveCampaign contact sync
+  - Brevo contact sync
+
+### Changed
+- Bumped plugin version to `1.6.4`.
+- Bumped DB version constant to `1.6.4`.
+
 ## [2.3.0] - 2026-04-28
 
 ### Added

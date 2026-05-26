@@ -282,6 +282,23 @@ if (empty($steps)) {
             </div>
         <?php endif; ?>
 
+        <?php if (!empty($settings['password_protection_enabled'])): ?>
+            <div class="spf-field-wrapper spf-field-type-password-protect">
+                <label class="spf-field-label" for="spf-field-password-<?php echo $form_id; ?>">
+                    <?php _e('Form Access Password', 'syntekpro-forms'); ?>
+                </label>
+                <input type="password"
+                       id="spf-field-password-<?php echo $form_id; ?>"
+                       name="spf_form_password"
+                       class="spf-field-input"
+                       placeholder="<?php esc_attr_e('Enter access password', 'syntekpro-forms'); ?>">
+            </div>
+        <?php endif; ?>
+
+        <input type="hidden" name="spf_form_access_token" value="">
+        <input type="hidden" name="spf_otp_token" value="">
+        <input type="hidden" name="spf_otp_code" value="">
+
         <?php foreach ($steps as $index => $step): ?>
             <div class="spf-step" data-step-index="<?php echo $index; ?>" <?php echo $index === 0 ? '' : 'style="display:none;"'; ?>
                  data-step-title="<?php echo esc_attr($step['title']); ?>">

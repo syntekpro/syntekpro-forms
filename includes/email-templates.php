@@ -331,6 +331,7 @@ class SPF_Email_Templates {
         $template = str_replace('{form_title}', esc_html((string)($form->title ?? '')), $template);
         $template = str_replace('{entry_id}', (int)$entry_id, $template);
         $template = str_replace('{date}', date_i18n(get_option('date_format') . ' ' . get_option('time_format')), $template);
+        $template = str_replace('{submission_date}', date_i18n(get_option('date_format') . ' ' . get_option('time_format')), $template);
         $template = str_replace('{site_name}', get_bloginfo('name'), $template);
         $template = str_replace('{admin_email}', get_option('admin_email'), $template);
         $template = str_replace('{entries_url}', admin_url('admin.php?page=syntekpro-forms-entries'), $template);
