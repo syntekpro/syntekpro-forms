@@ -1,7 +1,7 @@
-# v1.6.5 - Remote Push Update Install
+# v2.3.1 - Remote Push Update Install
 
 ## Overview
-SyntekPro Forms v1.6.5 adds a secure remote push-update endpoint and enables plugin auto-updates by default so all websites using the plugin can receive and install new releases faster.
+SyntekPro Forms v2.3.1 adds a secure remote push-update endpoint and enables plugin auto-updates by default so all websites using the plugin can receive and install new releases faster.
 
 ## Added
 - New endpoint: POST /wp-json/syntekpro-forms/v1/push-update
@@ -15,8 +15,8 @@ SyntekPro Forms v1.6.5 adds a secure remote push-update endpoint and enables plu
 
 ## Changed
 - Auto-update for this plugin is enabled by default via `syntekpro_forms_force_auto_update` (default true)
-- Plugin version bumped to 1.6.5
-- DB version constant bumped to 1.6.5
+- Plugin version bumped to 2.3.1
+- DB version constant bumped to 2.3.1
 
 ## Example Push Request
 curl -X POST "https://example.com/wp-json/syntekpro-forms/v1/push-update" \

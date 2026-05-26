@@ -3,7 +3,7 @@
  * Plugin Name: SyntekPro Forms
  * Plugin URI: https://syntekpro.com
  * Description: Professional WordPress form builder with drag & drop interface, Gutenberg support, and advanced entry management
- * Version: 1.6.5
+ * Version: 2.3.1
  * Update URI: https://github.com/syntekpro/syntekpro-forms
  * Author: SyntekPro
  * Author URI: https://syntekpro.com
@@ -17,8 +17,8 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('SPF_VERSION', '1.6.5');
-define('SPF_DB_VERSION', '1.6.5');
+define('SPF_VERSION', '2.3.1');
+define('SPF_DB_VERSION', '2.3.1');
 define('SPF_ENABLE_AUDIT_LOG', true);
 define('SPF_ENABLE_BACKUPS', true);
 define('SPF_ENABLE_PREVIEW_LINKS', true);

@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [1.6.5] - 2026-05-27
+## [2.3.1] - 2026-05-27
 
 ### Added
 - Secure remote update push endpoint: `POST /wp-json/syntekpro-forms/v1/push-update`.
@@ -13,8 +13,8 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - Enabled auto-update by default for SyntekPro Forms installs through `syntekpro_forms_force_auto_update` (default: `true`).
-- Bumped plugin version to `1.6.5`.
-- Bumped DB version constant to `1.6.5`.
+- Bumped plugin version to `2.3.1`.
+- Bumped DB version constant to `2.3.1`.
 
 ## [1.6.4] - 2026-05-27
 
