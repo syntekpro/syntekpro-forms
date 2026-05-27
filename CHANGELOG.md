@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.3.3] - 2026-05-28
+
+### Added
+- Entries UI modern redesign:
+  - New visual theme for entries header, stats, tabs, toolbar, table, and pagination.
+  - Improved row emphasis for unread entries and clearer status/action affordances.
+  - Richer empty/loading states for entries screens.
+- Entry detail modal overhaul:
+  - Modernized metadata cards, toolbar, notes section, and captured-fields layout.
+  - Better responsive behavior on tablets/mobile.
+
+### Changed
+- Refactored entry modal rendering in admin JS to use structured class-based markup instead of inline-heavy styling.
+- Added `Read` stat pill to entries overview card row.
+- Bumped plugin version to `2.3.3`.
+- Bumped DB version constant to `2.3.3`.
+
 ## [2.3.2] - 2026-05-27
 
 ### Added

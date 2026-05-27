@@ -97,6 +97,10 @@ $status_spam_url = add_query_arg(
                 <span><?php _e('Unread', 'syntekpro-forms'); ?></span>
             </div>
             <div class="spf-stat-pill">
+                <strong><?php echo (int) $read_entries; ?></strong>
+                <span><?php _e('Read', 'syntekpro-forms'); ?></span>
+            </div>
+            <div class="spf-stat-pill">
                 <strong><?php echo (int) $spam_entries; ?></strong>
                 <span><?php _e('Spam', 'syntekpro-forms'); ?></span>
             </div>
@@ -112,12 +116,12 @@ $status_spam_url = add_query_arg(
             <li>
                 <a href="<?php echo esc_url($status_all_url); ?>" class="<?php echo $status === '' ? 'current' : ''; ?>">
                     <?php _e('All', 'syntekpro-forms'); ?> <span class="count">(<?php echo (int) $total_entries; ?>)</span>
-                </a> |
+                </a>
             </li>
             <li>
                 <a href="<?php echo esc_url($status_unread_url); ?>" class="<?php echo $status === 'unread' ? 'current' : ''; ?>">
                     <?php _e('Unread', 'syntekpro-forms'); ?> <span class="count">(<?php echo (int) $unread_entries; ?>)</span>
-                </a> |
+                </a>
             </li>
             <li>
                 <a href="<?php echo esc_url($status_read_url); ?>" class="<?php echo $status === 'read' ? 'current' : ''; ?>">
@@ -125,7 +129,7 @@ $status_spam_url = add_query_arg(
                 </a>
             </li>
             <li>
-                | <a href="<?php echo esc_url($status_spam_url); ?>" class="<?php echo $status === 'spam' ? 'current' : ''; ?>">
+                <a href="<?php echo esc_url($status_spam_url); ?>" class="<?php echo $status === 'spam' ? 'current' : ''; ?>">
                     <?php _e('Spam', 'syntekpro-forms'); ?> <span class="count">(<?php echo (int) $spam_entries; ?>)</span>
                 </a>
             </li>

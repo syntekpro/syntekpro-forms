@@ -75,7 +75,7 @@
                         entry_id: entryId
                     },
                     beforeSend: function() {
-                        $('#spf-entry-details-content').html('<div style="text-align:center;padding:40px;"><span class="dashicons dashicons-update spin"></span> Loading...</div>');
+                        $('#spf-entry-details-content').html('<div class="spf-entry-modal-loading"><span class="dashicons dashicons-update spin"></span><p>Loading entry details...</p></div>');
                         $('#spf-entry-modal').css('display', 'flex').fadeIn();
                     },
                     success: function(response) {
@@ -86,22 +86,29 @@
                             var spamActionStatus = currentStatus === 'spam' ? 'unread' : 'spam';
                             
                             // Toolbar
-                            html += '<div class="spf-entry-toolbar" style="display:flex;gap:8px;margin-bottom:15px;flex-wrap:wrap;">';
-                            html += '<button class="button button-small spf-edit-entry-btn" data-entry-id="' + entryId + '" data-editing="false"><span class="dashicons dashicons-edit" style="vertical-align:middle;"></span> Edit Entry</button>';
-                            html += '<button class="button button-small spf-export-pdf-btn" data-entry-id="' + entryId + '"><span class="dashicons dashicons-media-document" style="vertical-align:middle;"></span> Export PDF</button>';
-                            html += '<button class="button button-small spf-update-entry-status" data-entry-id="' + entryId + '" data-status="' + self.escapeHtml(spamActionStatus) + '"><span class="dashicons dashicons-shield" style="vertical-align:middle;"></span> ' + self.escapeHtml(spamActionLabel) + '</button>';
+                            html += '<div class="spf-entry-toolbar">';
+                            html += '<div class="spf-entry-toolbar-main">';
+                            html += '<button class="button button-small spf-edit-entry-btn" data-entry-id="' + entryId + '" data-editing="false"><span class="dashicons dashicons-edit"></span> Edit Entry</button>';
+                            html += '<button class="button button-small spf-export-pdf-btn" data-entry-id="' + entryId + '"><span class="dashicons dashicons-media-document"></span> Export PDF</button>';
+                            html += '<button class="button button-small spf-update-entry-status" data-entry-id="' + entryId + '" data-status="' + self.escapeHtml(spamActionStatus) + '"><span class="dashicons dashicons-shield"></span> ' + self.escapeHtml(spamActionLabel) + '</button>';
+                            html += '</div>';
+                            html += '<div class="spf-entry-toolbar-secondary">';
+                            html += '<span class="spf-entry-status-chip spf-status-badge spf-status-' + self.escapeHtml(currentStatus) + '">' + self.escapeHtml(self.getEntryStatusLabel(currentStatus)) + '</span>';
+                            html += '</div>';
                             html += '</div>';
 
                             // Form & Metadata info
-                            html += '<div class="spf-entry-metadata" style="background:#f9f9f9;padding:15px;border-radius:4px;margin-bottom:20px;display:grid;grid-template-columns:1fr 1fr;gap:15px;">';
-                            html += '<div><strong>' + 'Form:' + '</strong><br>' + response.data.form_title + '</div>';
-                            html += '<div><strong>' + 'Submitted:' + '</strong><br>' + response.data.created_at + '</div>';
-                            html += '<div><strong>' + 'IP Address:' + '</strong><br>' + response.data.ip_address + '</div>';
-                            html += '<div><strong>' + 'Status:' + '</strong><br><span class="spf-status-badge spf-status-' + self.escapeHtml(currentStatus) + '">' + self.escapeHtml(self.getEntryStatusLabel(currentStatus)) + '</span></div>';
-                            html += '<div><strong>' + 'User Agent:' + '</strong><br><small>' + response.data.user_agent + '</small></div>';
+                            html += '<div class="spf-entry-meta-grid spf-entry-metadata">';
+                            html += '<div class="spf-entry-meta-card"><span class="spf-entry-meta-label">Form</span><div class="spf-entry-meta-value">' + self.escapeHtml(response.data.form_title || '') + '</div></div>';
+                            html += '<div class="spf-entry-meta-card"><span class="spf-entry-meta-label">Submitted</span><div class="spf-entry-meta-value">' + self.escapeHtml(response.data.created_at || '') + '</div></div>';
+                            html += '<div class="spf-entry-meta-card"><span class="spf-entry-meta-label">IP Address</span><div class="spf-entry-meta-value">' + self.escapeHtml(response.data.ip_address || '') + '</div></div>';
+                            html += '<div class="spf-entry-meta-card spf-entry-meta-status"><span class="spf-entry-meta-label">Status</span><div class="spf-entry-meta-value"><span class="spf-status-badge spf-status-' + self.escapeHtml(currentStatus) + '">' + self.escapeHtml(self.getEntryStatusLabel(currentStatus)) + '</span></div></div>';
+                            html += '<div class="spf-entry-meta-card spf-entry-meta-wide"><span class="spf-entry-meta-label">User Agent</span><div class="spf-entry-meta-value"><small>' + self.escapeHtml(response.data.user_agent || '') + '</small></div></div>';
                             html += '</div>';
 
                             html += '<div class="spf-entry-detail-section">';
+                            html += '<div class="spf-entry-section-head"><h3>Captured Fields</h3><p>Submitted values for this entry.</p></div>';
+                            html += '<div class="spf-entry-details-grid">';
                             if (response.data.entry_data) {
                                 $.each(response.data.entry_data, function(key, value) {
                                     var displayValue = self.normalizeEntryValue(value);
@@ -113,13 +120,14 @@
                                 });
                             }
                             html += '</div>';
+                            html += '</div>';
 
                             // Notes section
                             var existingNote = response.data.notes || '';
-                            html += '<div class="spf-entry-notes-section" style="margin-top:20px;padding-top:15px;border-top:1px solid #e0e0e0;">';
-                            html += '<h4 style="margin:0 0 8px;"><span class="dashicons dashicons-admin-comments" style="vertical-align:middle;"></span> Admin Notes</h4>';
-                            html += '<textarea class="spf-note-textarea" style="width:100%;min-height:80px;padding:8px;border:1px solid #ddd;border-radius:4px;" placeholder="Add a private note about this entry...">' + self.escapeHtml(existingNote) + '</textarea>';
-                            html += '<button class="button button-primary button-small spf-save-note-btn" data-entry-id="' + entryId + '" style="margin-top:8px;">Save Note</button>';
+                            html += '<div class="spf-entry-notes-section">';
+                            html += '<h4><span class="dashicons dashicons-admin-comments"></span> Admin Notes</h4>';
+                            html += '<textarea class="spf-note-textarea" placeholder="Add a private note about this entry...">' + self.escapeHtml(existingNote) + '</textarea>';
+                            html += '<button class="button button-primary button-small spf-save-note-btn" data-entry-id="' + entryId + '">Save Note</button>';
                             html += '</div>';
                             
                             $('#spf-entry-details-content').html(html);
@@ -127,7 +135,7 @@
                             if (currentStatus === 'unread') {
                                 self.requestEntryStatusUpdate(entryId, 'read', function(updatedStatus) {
                                     self.setEntryRowStatus($row, updatedStatus);
-                                    $('#spf-entry-details-content .spf-entry-metadata .spf-status-badge')
+                                    $('#spf-entry-details-content .spf-entry-meta-status .spf-status-badge, #spf-entry-details-content .spf-entry-toolbar-secondary .spf-status-badge')
                                         .removeClass('spf-status-unread spf-status-read spf-status-spam')
                                         .addClass('spf-status-' + updatedStatus)
                                         .text(self.getEntryStatusLabel(updatedStatus));
@@ -283,7 +291,7 @@
                     $rows.each(function() {
                         var $val = $(this).find('.spf-detail-value');
                         var raw = $val.text().trim();
-                        $val.html('<input type="text" class="spf-edit-field" value="' + self.escapeHtml(raw) + '" style="width:100%;padding:4px 8px;">');
+                        $val.html('<input type="text" class="spf-edit-field" value="' + self.escapeHtml(raw) + '">');
                     });
                 } else {
                     // Save edits
@@ -613,7 +621,7 @@
                 .remove();
 
             $modalStatusButton.append(' ' + buttonLabel);
-            $('#spf-entry-details-content .spf-entry-metadata .spf-status-badge')
+            $('#spf-entry-details-content .spf-entry-meta-status .spf-status-badge, #spf-entry-details-content .spf-entry-toolbar-secondary .spf-status-badge')
                 .removeClass('spf-status-unread spf-status-read spf-status-spam')
                 .addClass('spf-status-' + status)
                 .text(this.getEntryStatusLabel(status));

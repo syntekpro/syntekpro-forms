@@ -1,20 +1,21 @@
-# v2.3.2 - Entry Spam Moderation And Dashboard Status Updates
+# v2.3.3 - Entries UI And Modal Redesign
 
 ## Overview
-SyntekPro Forms v2.3.2 improves entry moderation by adding a dedicated Spam status workflow across the entries list and reading pane, plus updated dashboard visibility for Spam counts.
+SyntekPro Forms v2.3.3 delivers a complete visual overhaul of the Entries admin experience, including a redesigned entries table, toolbar, and entry detail modal for a more modern and polished workflow.
 
 ## Added
-- `Spam` as a first-class entry status in admin entry management.
-- Entry reading pane controls to toggle between `Mark as Spam` and `Not Spam`.
-- Entries list support for:
-  - Spam status tab and status filter
-  - Row-level spam toggle actions
-  - Bulk action: `Recover from Spam`
-- Dashboard widget Spam summary card with direct link to filtered Spam entries.
+- New entries page visual theme:
+  - Refined header and stats presentation
+  - Modern status tabs and filter/action toolbar styling
+  - Improved table readability, status clarity, and action button presentation
+- Redesigned entry detail modal:
+  - Dedicated toolbar and status chip
+  - Metadata card grid for key submission info
+  - Improved captured-fields layout and notes section styling
+- Better responsive treatment for entries screens on smaller devices.
 
 ## Changed
-- Unified status update path for entries via shared status update action (`read`, `unread`, `spam`).
-- Opening an entry now auto-marks as read only when current status is `unread`.
-- Dashboard read counter now uses explicit `read` status count.
-- Plugin version bumped to 2.3.2.
-- DB version constant bumped to 2.3.2.
+- Refactored entry modal rendering to class-based markup in admin JS for maintainability and consistent theming.
+- Added `Read` metric card to entries overview stats.
+- Plugin version bumped to 2.3.3.
+- DB version constant bumped to 2.3.3.
