@@ -23,7 +23,8 @@ $entries = array();
 // Get counts
 $total_entries = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}spf_entries");
 $unread_entries = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}spf_entries WHERE status = 'unread'");
-$read_entries = max(0, (int) $total_entries - (int) $unread_entries);
+$read_entries = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}spf_entries WHERE status = 'read'");
+$spam_entries = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}spf_entries WHERE status = 'spam'");
 
 $status_base_url = admin_url('admin.php?page=syntekpro-forms-entries');
 $status_all_url = add_query_arg(
@@ -50,6 +51,17 @@ $status_unread_url = add_query_arg(
 $status_read_url = add_query_arg(
     array(
         'status' => 'read',
+        'form_id' => $form_id,
+        's' => $search,
+        'date_from' => $date_from,
+        'date_to' => $date_to,
+    ),
+    $status_base_url
+);
+
+$status_spam_url = add_query_arg(
+    array(
+        'status' => 'spam',
         'form_id' => $form_id,
         's' => $search,
         'date_from' => $date_from,
@@ -84,6 +96,10 @@ $status_read_url = add_query_arg(
                 <strong><?php echo (int) $unread_entries; ?></strong>
                 <span><?php _e('Unread', 'syntekpro-forms'); ?></span>
             </div>
+            <div class="spf-stat-pill">
+                <strong><?php echo (int) $spam_entries; ?></strong>
+                <span><?php _e('Spam', 'syntekpro-forms'); ?></span>
+            </div>
         </div>
     </div>
 
@@ -106,6 +122,11 @@ $status_read_url = add_query_arg(
             <li>
                 <a href="<?php echo esc_url($status_read_url); ?>" class="<?php echo $status === 'read' ? 'current' : ''; ?>">
                     <?php _e('Read', 'syntekpro-forms'); ?> <span class="count">(<?php echo (int) $read_entries; ?>)</span>
+                </a>
+            </li>
+            <li>
+                | <a href="<?php echo esc_url($status_spam_url); ?>" class="<?php echo $status === 'spam' ? 'current' : ''; ?>">
+                    <?php _e('Spam', 'syntekpro-forms'); ?> <span class="count">(<?php echo (int) $spam_entries; ?>)</span>
                 </a>
             </li>
         </ul>
@@ -133,6 +154,7 @@ $status_read_url = add_query_arg(
                         <option value=""><?php _e('All Statuses', 'syntekpro-forms'); ?></option>
                         <option value="unread" <?php selected($status, 'unread'); ?>><?php _e('Unread', 'syntekpro-forms'); ?></option>
                         <option value="read" <?php selected($status, 'read'); ?>><?php _e('Read', 'syntekpro-forms'); ?></option>
+                        <option value="spam" <?php selected($status, 'spam'); ?>><?php _e('Spam', 'syntekpro-forms'); ?></option>
                     </select>
                     </div>
 
@@ -159,6 +181,9 @@ $status_read_url = add_query_arg(
                         <option value=""><?php _e('Bulk Actions', 'syntekpro-forms'); ?></option>
                         <option value="delete"><?php _e('Delete Permanently', 'syntekpro-forms'); ?></option>
                         <option value="mark_read"><?php _e('Mark as Read', 'syntekpro-forms'); ?></option>
+                        <option value="mark_unread"><?php _e('Mark as Unread', 'syntekpro-forms'); ?></option>
+                        <option value="mark_spam"><?php _e('Mark as Spam', 'syntekpro-forms'); ?></option>
+                        <option value="recover_spam"><?php _e('Recover from Spam', 'syntekpro-forms'); ?></option>
                     </select>
                     <button type="button" id="spf-apply-bulk-action" class="button spf-btn-apply"><?php _e('Apply', 'syntekpro-forms'); ?></button>
                 </div>

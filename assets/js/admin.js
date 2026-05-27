@@ -81,11 +81,15 @@
                     success: function(response) {
                         if (response.success) {
                             var html = '';
+                            var currentStatus = response.data.status || 'unread';
+                            var spamActionLabel = currentStatus === 'spam' ? spfAdmin.strings.notSpam : spfAdmin.strings.markSpam;
+                            var spamActionStatus = currentStatus === 'spam' ? 'unread' : 'spam';
                             
                             // Toolbar
                             html += '<div class="spf-entry-toolbar" style="display:flex;gap:8px;margin-bottom:15px;flex-wrap:wrap;">';
                             html += '<button class="button button-small spf-edit-entry-btn" data-entry-id="' + entryId + '" data-editing="false"><span class="dashicons dashicons-edit" style="vertical-align:middle;"></span> Edit Entry</button>';
                             html += '<button class="button button-small spf-export-pdf-btn" data-entry-id="' + entryId + '"><span class="dashicons dashicons-media-document" style="vertical-align:middle;"></span> Export PDF</button>';
+                            html += '<button class="button button-small spf-update-entry-status" data-entry-id="' + entryId + '" data-status="' + self.escapeHtml(spamActionStatus) + '"><span class="dashicons dashicons-shield" style="vertical-align:middle;"></span> ' + self.escapeHtml(spamActionLabel) + '</button>';
                             html += '</div>';
 
                             // Form & Metadata info
@@ -93,6 +97,7 @@
                             html += '<div><strong>' + 'Form:' + '</strong><br>' + response.data.form_title + '</div>';
                             html += '<div><strong>' + 'Submitted:' + '</strong><br>' + response.data.created_at + '</div>';
                             html += '<div><strong>' + 'IP Address:' + '</strong><br>' + response.data.ip_address + '</div>';
+                            html += '<div><strong>' + 'Status:' + '</strong><br><span class="spf-status-badge spf-status-' + self.escapeHtml(currentStatus) + '">' + self.escapeHtml(self.getEntryStatusLabel(currentStatus)) + '</span></div>';
                             html += '<div><strong>' + 'User Agent:' + '</strong><br><small>' + response.data.user_agent + '</small></div>';
                             html += '</div>';
 
@@ -119,16 +124,15 @@
                             
                             $('#spf-entry-details-content').html(html);
                             
-                            // Mark as read in UI
-                            $row.removeClass('spf-unread-row');
-                            $row.find('.spf-status-badge').removeClass('spf-status-unread').addClass('spf-status-read').text('Read');
-                            
-                            // Send silent mark as read request
-                            $.post(spfAdmin.ajaxurl, {
-                                action: 'spf_mark_entry_read',
-                                nonce: spfAdmin.nonce,
-                                entry_id: entryId
-                            });
+                            if (currentStatus === 'unread') {
+                                self.requestEntryStatusUpdate(entryId, 'read', function(updatedStatus) {
+                                    self.setEntryRowStatus($row, updatedStatus);
+                                    $('#spf-entry-details-content .spf-entry-metadata .spf-status-badge')
+                                        .removeClass('spf-status-unread spf-status-read spf-status-spam')
+                                        .addClass('spf-status-' + updatedStatus)
+                                        .text(self.getEntryStatusLabel(updatedStatus));
+                                });
+                            }
                         } else {
                             $('#spf-entry-details-content').html('<div class="error">' + response.data + '</div>');
                         }
@@ -196,22 +200,30 @@
                             }
                         }
                     });
-                } else if (action === 'mark_read') {
-                    // Mark multiple as read
+                } else if (action === 'mark_read' || action === 'mark_unread' || action === 'mark_spam' || action === 'recover_spam') {
+                    var targetStatus = action === 'mark_spam' ? 'spam' : (action === 'mark_read' ? 'read' : 'unread');
                     selectedIds.forEach(function(id) {
                         var $row = $entriesWrap.find('tr[data-entry-id="' + id + '"]');
-                        $.post(spfAdmin.ajaxurl, {
-                            action: 'spf_mark_entry_read',
-                            nonce: spfAdmin.nonce,
-                            entry_id: id
-                        }, function() {
-                            $row.removeClass('spf-unread-row');
-                            $row.find('.spf-status-badge').removeClass('spf-status-unread').addClass('spf-status-read').text('Read');
+                        self.requestEntryStatusUpdate(id, targetStatus, function(updatedStatus) {
+                            self.setEntryRowStatus($row, updatedStatus);
+                            self.syncEntryStatusButtons(id, updatedStatus);
                         });
                     });
                     $entriesWrap.find('.spf-entry-checkbox').prop('checked', false);
                     $entriesWrap.find('#cb-select-all-1').prop('checked', false);
                 }
+            });
+
+            $(document).off('click', '.spf-update-entry-status').on('click', '.spf-update-entry-status', function() {
+                var $button = $(this);
+                var entryId = $button.data('entry-id');
+                var targetStatus = $button.data('status');
+                var $row = $button.closest('tr');
+
+                self.requestEntryStatusUpdate(entryId, targetStatus, function(updatedStatus) {
+                    self.setEntryRowStatus($row, updatedStatus);
+                    self.syncEntryStatusButtons(entryId, updatedStatus);
+                });
             });
 
             // Toggle Star
@@ -482,8 +494,10 @@
             entries.forEach(function(entry) {
                 var previewHtml = self.buildEntryPreview(entry.entry_data || {});
                 var status = (entry.status || 'unread');
-                var statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
+                var statusLabel = self.getEntryStatusLabel(status);
                 var starred = entry.starred === 1 || entry.starred === '1';
+                var spamToggleLabel = status === 'spam' ? spfAdmin.strings.notSpam : spfAdmin.strings.markSpam;
+                var spamToggleStatus = status === 'spam' ? 'unread' : 'spam';
 
                 html += '<tr class="' + (status === 'unread' ? 'spf-unread-row' : '') + '" data-entry-id="' + entry.id + '">';
                 html += '<th scope="row" class="check-column"><input type="checkbox" name="entry[]" value="' + entry.id + '" class="spf-entry-checkbox"></th>';
@@ -495,6 +509,7 @@
                 html += '<td><span class="spf-status-badge spf-status-' + self.escapeHtml(status) + '">' + self.escapeHtml(statusLabel) + '</span></td>';
                 html += '<td class="spf-row-actions">';
                 html += '<button class="button button-small spf-entry-action spf-entry-action-view spf-view-entry spf-tooltip" title="View full details" data-entry-id="' + entry.id + '"><span class="dashicons dashicons-visibility"></span><span>View</span></button>';
+                html += '<button class="button button-small spf-entry-action spf-entry-action-spam spf-update-entry-status spf-tooltip" title="' + self.escapeHtml(spamToggleLabel) + '" data-entry-id="' + entry.id + '" data-status="' + self.escapeHtml(spamToggleStatus) + '"><span class="dashicons dashicons-shield"></span><span>' + self.escapeHtml(spamToggleLabel) + '</span></button>';
                 html += '<button class="button button-small spf-entry-action spf-entry-action-delete spf-delete-entry spf-tooltip" title="Delete entry" data-entry-id="' + entry.id + '"><span class="dashicons dashicons-trash"></span><span>Delete</span></button>';
                 html += '</td>';
                 html += '</tr>';
@@ -551,6 +566,75 @@
             }
 
             return html;
+        },
+
+        getEntryStatusLabel: function(status) {
+            if (status === 'spam') {
+                return 'Spam';
+            }
+
+            if (status === 'read') {
+                return 'Read';
+            }
+
+            return 'Unread';
+        },
+
+        setEntryRowStatus: function($row, status) {
+            if (!$row || !$row.length) {
+                return;
+            }
+
+            $row.toggleClass('spf-unread-row', status === 'unread');
+            $row.find('.spf-status-badge')
+                .removeClass('spf-status-unread spf-status-read spf-status-spam')
+                .addClass('spf-status-' + status)
+                .text(this.getEntryStatusLabel(status));
+        },
+
+        syncEntryStatusButtons: function(entryId, status) {
+            var nextStatus = status === 'spam' ? 'unread' : 'spam';
+            var buttonLabel = status === 'spam' ? spfAdmin.strings.notSpam : spfAdmin.strings.markSpam;
+            var $modalStatusButton = $('#spf-entry-details-content .spf-update-entry-status[data-entry-id="' + entryId + '"]');
+
+            $('tr[data-entry-id="' + entryId + '"] .spf-update-entry-status')
+                .attr('title', buttonLabel)
+                .data('status', nextStatus)
+                .find('span:last')
+                .text(buttonLabel);
+
+            $modalStatusButton
+                .attr('data-status', nextStatus)
+                .data('status', nextStatus)
+                .contents()
+                .filter(function() {
+                    return this.nodeType === 3;
+                })
+                .remove();
+
+            $modalStatusButton.append(' ' + buttonLabel);
+            $('#spf-entry-details-content .spf-entry-metadata .spf-status-badge')
+                .removeClass('spf-status-unread spf-status-read spf-status-spam')
+                .addClass('spf-status-' + status)
+                .text(this.getEntryStatusLabel(status));
+        },
+
+        requestEntryStatusUpdate: function(entryId, status, onSuccess) {
+            $.post(spfAdmin.ajaxurl, {
+                action: 'spf_update_entry_status',
+                nonce: spfAdmin.nonce,
+                entry_id: entryId,
+                status: status
+            }, function(response) {
+                if (response && response.success) {
+                    if (typeof onSuccess === 'function') {
+                        onSuccess((response.data && response.data.status) || status);
+                    }
+                    return;
+                }
+
+                alert((response && response.data) || spfAdmin.strings.error);
+            });
         },
 
         formatEntryKeyLabel: function(key) {

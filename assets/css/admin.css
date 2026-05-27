@@ -895,6 +895,11 @@ div.wrap.spf-settings-page {
     color: #0c5460;
 }
 
+.spf-status-spam {
+    background: #fde2e4;
+    color: #9f1239;
+}
+
 /* Empty State */
 .spf-empty-state {
     text-align: center;
@@ -1744,6 +1749,11 @@ body.spf-builder-fullscreen-mode .spf-form-builder-wrap {
 .spf-status-unread {
     background: #fff1c7;
     color: #8a5800;
+}
+
+.spf-status-spam {
+    background: #fde2e4;
+    color: #9f1239;
 }
 
 .spf-entry-preview {

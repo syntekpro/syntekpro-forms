@@ -3,7 +3,7 @@
  * Plugin Name: SyntekPro Forms
  * Plugin URI: https://syntekpro.com
  * Description: Professional WordPress form builder with drag & drop interface, Gutenberg support, and advanced entry management
- * Version: 2.3.1
+ * Version: 2.3.2
  * Update URI: https://github.com/syntekpro/syntekpro-forms
  * Author: SyntekPro
  * Author URI: https://syntekpro.com
@@ -17,8 +17,8 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('SPF_VERSION', '2.3.1');
-define('SPF_DB_VERSION', '2.3.1');
+define('SPF_VERSION', '2.3.2');
+define('SPF_DB_VERSION', '2.3.2');
 define('SPF_ENABLE_AUDIT_LOG', true);
 define('SPF_ENABLE_BACKUPS', true);
 define('SPF_ENABLE_PREVIEW_LINKS', true);
@@ -1310,7 +1310,9 @@ class SyntekPro_Forms_Builder {
             'strings' => array(
                 'confirmDelete' => __('Are you sure you want to delete this?', 'syntekpro-forms'),
                 'saved'         => __('Saved successfully!', 'syntekpro-forms'),
-                'error'         => __('An error occurred. Please try again.', 'syntekpro-forms')
+                'error'         => __('An error occurred. Please try again.', 'syntekpro-forms'),
+                'markSpam'      => __('Mark as Spam', 'syntekpro-forms'),
+                'notSpam'       => __('Not Spam', 'syntekpro-forms')
             )
         ));
     }
@@ -2268,12 +2270,16 @@ class SyntekPro_Forms_Builder {
         $forms_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$forms_table} WHERE status != 'trash'");
         $entries_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$entries_table}");
         $unread_count = (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$entries_table} WHERE status = %s", 'unread'));
-        $read_count = max(0, $entries_count - $unread_count);
+        $read_count = (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$entries_table} WHERE status = %s", 'read'));
+        $spam_count = (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$entries_table} WHERE status = %s", 'spam'));
 
         $entries = $wpdb->get_results("\n            SELECT e.*, f.title as form_title \n            FROM {$entries_table} e \n            LEFT JOIN {$forms_table} f ON e.form_id = f.id \n            ORDER BY e.created_at DESC \n            LIMIT 5\n        ");
 
         $forms_url = esc_url(admin_url('admin.php?page=syntekpro-forms'));
         $entries_url = esc_url(admin_url('admin.php?page=syntekpro-forms-entries'));
+        $read_entries_url = esc_url(add_query_arg('status', 'read', admin_url('admin.php?page=syntekpro-forms-entries')));
+        $unread_entries_url = esc_url(add_query_arg('status', 'unread', admin_url('admin.php?page=syntekpro-forms-entries')));
+        $spam_entries_url = esc_url(add_query_arg('status', 'spam', admin_url('admin.php?page=syntekpro-forms-entries')));
 
         echo '<style>
             .spf-dashboard-summary a {
@@ -2288,11 +2294,12 @@ class SyntekPro_Forms_Builder {
             }
         </style>';
 
-        echo '<div class="spf-dashboard-summary" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 14px;">';
+        echo '<div class="spf-dashboard-summary" style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:0 0 14px;">';
         echo '<a href="' . $forms_url . '" style="background:#f6f7f7;border:1px solid #dcdcde;border-radius:6px;padding:10px;text-decoration:none;color:inherit;display:block;"><div style="font-size:11px;color:#646970;text-transform:uppercase;letter-spacing:.4px;">' . esc_html__('Forms', 'syntekpro-forms') . '</div><div style="font-size:22px;font-weight:700;line-height:1.2;">' . esc_html((string) $forms_count) . '</div></a>';
         echo '<a href="' . $entries_url . '" style="background:#f6f7f7;border:1px solid #dcdcde;border-radius:6px;padding:10px;text-decoration:none;color:inherit;display:block;"><div style="font-size:11px;color:#646970;text-transform:uppercase;letter-spacing:.4px;">' . esc_html__('Entries', 'syntekpro-forms') . '</div><div style="font-size:22px;font-weight:700;line-height:1.2;">' . esc_html((string) $entries_count) . '</div></a>';
-        echo '<a href="' . $entries_url . '" style="background:#f0f6ff;border:1px solid #bfdbfe;border-radius:6px;padding:10px;text-decoration:none;color:inherit;display:block;"><div style="font-size:11px;color:#1e40af;text-transform:uppercase;letter-spacing:.4px;">' . esc_html__('Read', 'syntekpro-forms') . '</div><div style="font-size:22px;font-weight:700;line-height:1.2;color:#1e3a8a;">' . esc_html((string) $read_count) . '</div></a>';
-        echo '<a href="' . $entries_url . '" style="background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;padding:10px;text-decoration:none;color:inherit;display:block;"><div style="font-size:11px;color:#9a3412;text-transform:uppercase;letter-spacing:.4px;">' . esc_html__('Unread', 'syntekpro-forms') . '</div><div style="font-size:22px;font-weight:700;line-height:1.2;color:#c2410c;">' . esc_html((string) $unread_count) . '</div></a>';
+        echo '<a href="' . $read_entries_url . '" style="background:#f0f6ff;border:1px solid #bfdbfe;border-radius:6px;padding:10px;text-decoration:none;color:inherit;display:block;"><div style="font-size:11px;color:#1e40af;text-transform:uppercase;letter-spacing:.4px;">' . esc_html__('Read', 'syntekpro-forms') . '</div><div style="font-size:22px;font-weight:700;line-height:1.2;color:#1e3a8a;">' . esc_html((string) $read_count) . '</div></a>';
+        echo '<a href="' . $unread_entries_url . '" style="background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;padding:10px;text-decoration:none;color:inherit;display:block;"><div style="font-size:11px;color:#9a3412;text-transform:uppercase;letter-spacing:.4px;">' . esc_html__('Unread', 'syntekpro-forms') . '</div><div style="font-size:22px;font-weight:700;line-height:1.2;color:#c2410c;">' . esc_html((string) $unread_count) . '</div></a>';
+        echo '<a href="' . $spam_entries_url . '" style="background:#fff1f2;border:1px solid #fecdd3;border-radius:6px;padding:10px;text-decoration:none;color:inherit;display:block;"><div style="font-size:11px;color:#be123c;text-transform:uppercase;letter-spacing:.4px;">' . esc_html__('Spam', 'syntekpro-forms') . '</div><div style="font-size:22px;font-weight:700;line-height:1.2;color:#9f1239;">' . esc_html((string) $spam_count) . '</div></a>';
         echo '</div>';
 
         if ($forms_count === 0 && $entries_count === 0) {

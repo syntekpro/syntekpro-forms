@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.3.2] - 2026-05-27
+
+### Added
+- Entry moderation enhancements in admin:
+  - Added `Spam` as a first-class entry status alongside `Read` and `Unread`.
+  - Added Spam status controls in both the entries table and entry reading pane/modal.
+  - Added a dedicated bulk action: `Recover from Spam`.
+- Entries screen improvements:
+  - Added Spam counts and status tab/filter options.
+- Dashboard widget improvements:
+  - Added Spam summary card with direct filter link.
+
+### Changed
+- Entry status update flow now uses shared AJAX status updates for `read`, `unread`, and `spam`.
+- Dashboard read count now queries `read` status directly (no longer inferred from total minus unread).
+- Bumped plugin version to `2.3.2`.
+- Bumped DB version constant to `2.3.2`.
+
 ## [2.3.1] - 2026-05-27
 
 ### Added

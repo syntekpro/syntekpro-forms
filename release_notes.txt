@@ -1,28 +1,20 @@
-# v2.3.1 - Remote Push Update Install
+# v2.3.2 - Entry Spam Moderation And Dashboard Status Updates
 
 ## Overview
-SyntekPro Forms v2.3.1 adds a secure remote push-update endpoint and enables plugin auto-updates by default so all websites using the plugin can receive and install new releases faster.
+SyntekPro Forms v2.3.2 improves entry moderation by adding a dedicated Spam status workflow across the entries list and reading pane, plus updated dashboard visibility for Spam counts.
 
 ## Added
-- New endpoint: POST /wp-json/syntekpro-forms/v1/push-update
-- Endpoint authorization options:
-  - WordPress user auth with update_plugins capability
-  - Shared token auth via filter `syntekpro_forms_push_update_token` and header `X-SPF-Update-Token`
-- Push update flow now:
-  - Clears cached plugin update transients
-  - Requests latest GitHub release metadata
-  - Installs the update package immediately when available
+- `Spam` as a first-class entry status in admin entry management.
+- Entry reading pane controls to toggle between `Mark as Spam` and `Not Spam`.
+- Entries list support for:
+  - Spam status tab and status filter
+  - Row-level spam toggle actions
+  - Bulk action: `Recover from Spam`
+- Dashboard widget Spam summary card with direct link to filtered Spam entries.
 
 ## Changed
-- Auto-update for this plugin is enabled by default via `syntekpro_forms_force_auto_update` (default true)
-- Plugin version bumped to 2.3.1
-- DB version constant bumped to 2.3.1
-
-## Example Push Request
-curl -X POST "https://example.com/wp-json/syntekpro-forms/v1/push-update" \
-  -H "X-SPF-Update-Token: YOUR_SHARED_TOKEN"
-
-## Notes
-- To define a shared token, add a filter in a must-use plugin or theme:
-  add_filter('syntekpro_forms_push_update_token', function () { return 'YOUR_SHARED_TOKEN'; });
-- Ensure your GitHub release includes a plugin zip whose root folder is `syntekpro-forms`.
+- Unified status update path for entries via shared status update action (`read`, `unread`, `spam`).
+- Opening an entry now auto-marks as read only when current status is `unread`.
+- Dashboard read counter now uses explicit `read` status count.
+- Plugin version bumped to 2.3.2.
+- DB version constant bumped to 2.3.2.

@@ -26,10 +26,15 @@ class SyntekPro_Forms_Entries {
     public function register_hooks() {
         add_action('wp_ajax_spf_get_entry', array($this, 'ajax_get_entry'));
         add_action('wp_ajax_spf_mark_entry_read', array($this, 'ajax_mark_entry_read'));
+        add_action('wp_ajax_spf_update_entry_status', array($this, 'ajax_update_entry_status'));
         add_action('wp_ajax_spf_delete_entry', array($this, 'ajax_delete_entry'));
         add_action('wp_ajax_spf_bulk_delete_entries', array($this, 'ajax_bulk_delete_entries'));
         add_action('wp_ajax_spf_export_entries', array($this, 'ajax_export_entries'));
         add_action('wp_ajax_spf_search_entries', array($this, 'ajax_search_entries'));
+    }
+
+    private function get_allowed_entry_statuses() {
+        return array('read', 'unread', 'spam');
     }
 
     public function ajax_get_entry() {
@@ -62,10 +67,17 @@ class SyntekPro_Forms_Entries {
             'created_at' => date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime((string) $entry->created_at)),
             'ip_address' => $entry->ip_address,
             'user_agent' => $entry->user_agent,
+            'status' => (string) $entry->status,
+            'notes' => (string) $entry->notes,
         ));
     }
 
     public function ajax_mark_entry_read() {
+        $_POST['status'] = 'read';
+        $this->ajax_update_entry_status();
+    }
+
+    public function ajax_update_entry_status() {
         check_ajax_referer('spf_admin_nonce', 'nonce');
 
         if (!current_user_can('manage_options')) {
@@ -74,16 +86,25 @@ class SyntekPro_Forms_Entries {
 
         global $wpdb;
         $entry_id = intval($_POST['entry_id']);
+        $status = isset($_POST['status']) ? sanitize_text_field(wp_unslash((string) $_POST['status'])) : 'read';
 
-        $wpdb->update(
+        if (!in_array($status, $this->get_allowed_entry_statuses(), true)) {
+            wp_send_json_error('Invalid status');
+        }
+
+        $updated = $wpdb->update(
             $wpdb->prefix . 'spf_entries',
-            array('status' => 'read'),
+            array('status' => $status),
             array('id' => $entry_id),
             array('%s'),
             array('%d')
         );
 
-        wp_send_json_success();
+        if ($updated === false) {
+            wp_send_json_error('Failed to update entry status');
+        }
+
+        wp_send_json_success(array('status' => $status));
     }
 
     public function ajax_delete_entry() {
@@ -161,7 +182,7 @@ class SyntekPro_Forms_Entries {
             wp_die('Invalid date format');
         }
 
-        if (!in_array($status, array('read', 'unread'), true)) {
+        if (!in_array($status, $this->get_allowed_entry_statuses(), true)) {
             $status = '';
         }
 
@@ -346,7 +367,7 @@ class SyntekPro_Forms_Entries {
             wp_send_json_error('Invalid date format');
         }
 
-        if (!in_array($status, array('read', 'unread'), true)) {
+        if (!in_array($status, $this->get_allowed_entry_statuses(), true)) {
             $status = '';
         }
 

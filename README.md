@@ -4,7 +4,7 @@ Professional WordPress form builder plugin with advanced operations, analytics, 
 
 ## Version
 
-Current release: 2.3.1
+Current release: 2.3.2
 
 ## Overview
 
@@ -18,19 +18,13 @@ SyntekPro Forms provides an end-to-end form platform inside WordPress:
 - Developer APIs (REST, WP-CLI hooks, extensibility points)
 - GitHub release updater with remote push-install endpoint
 
-## What Is New In 2.3.1
+## What Is New In 2.3.2
 
-- Added secure remote push-update install endpoint:
-  - POST /wp-json/syntekpro-forms/v1/push-update
-- Added token authorization support for push updates:
-  - filter: syntekpro_forms_push_update_token
-  - header: X-SPF-Update-Token
-- Added immediate update workflow:
-  - clears update caches
-  - refreshes GitHub release metadata
-  - installs update package when available
-- Enabled plugin auto-update by default (filterable):
-  - syntekpro_forms_force_auto_update
+- Added first-class `Spam` status support for entries.
+- Added Spam controls in the entry reading pane and entries table rows.
+- Added Spam tab/filter/count visibility on the Entries admin screen.
+- Added `Recover from Spam` bulk action.
+- Updated dashboard widget summary with a dedicated Spam card and filtered status links.
 
 ## Core Capabilities
 
